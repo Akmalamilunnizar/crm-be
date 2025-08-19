@@ -1,0 +1,227 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model accounts {
+  id        String   @id
+  name      String
+  saldo     Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+}
+
+model assets {
+  id            String   @id
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime
+  brand         String
+  date          String
+  description   String
+  mac_address   String
+  model         String
+  price         Float
+  quantity      Float
+  serial_number String
+  site          String
+  status        String
+  status_in_out String
+  type          String
+}
+
+model company {
+  id          String     @id
+  name        String
+  url         String
+  email       String
+  phone       String
+  logo_url    String?
+  npwp        String
+  address     String
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime
+  description String?    @db.Text
+  customer    customer[]
+}
+
+model customer {
+  id                     String                   @id
+  address                String
+  area_id                String
+  card_identition        String
+  company_id             String
+  email                  String?
+  gender                 String
+  product_id             String
+  ip_static              String
+  job                    String
+  latitude               Float
+  longitude              Float
+  mac_address            String
+  name                   String
+  no_identition          Int
+  password               String
+  phone                  String
+  type_of_service        String
+  createdAt              DateTime                 @default(now())
+  updatedAt              DateTime
+  installation_date      DateTime                 @db.Date
+  next_payment_date      DateTime                 @db.Date
+  areas                  areas                    @relation(fields: [area_id], references: [id], onDelete: Cascade, map: "customer_ibfk_1")
+  company                company                  @relation(fields: [company_id], references: [id], onDelete: Cascade, map: "customer_ibfk_2")
+  products               products                 @relation(fields: [product_id], references: [id], onDelete: Cascade, map: "customer_ibfk_3")
+  customer_installations customer_installations[]
+
+  @@index([company_id], map: "company_id")
+  @@index([area_id], map: "customer_ibfk_1")
+  @@index([product_id], map: "customer_ibfk_3")
+}
+
+model device {
+  id        String   @id
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+}
+
+model areas {
+  id               String     @id
+  name_city        String
+  name_subdistrict String
+  name_village     String
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime
+  customer         customer[]
+}
+
+model logs {
+  id        String   @id
+  user_id   String
+  action    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+
+  @@index([user_id], map: "user_id")
+}
+
+model products {
+  id          String     @id
+  name        String
+  price       BigInt
+  description String
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime
+  customer    customer[]
+}
+
+model users {
+  id                     String                   @id
+  email                  String                   @unique
+  name                   String
+  password               String
+  createdAt              DateTime                 @default(now())
+  updatedAt              DateTime?
+  token                  String?                  @db.Text
+  role_id                String?
+  logo_url               String?
+  phone                  String?
+  customer_installations customer_installations[]
+  role                   roles?                   @relation(fields: [role_id], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "users_ibfk_1")
+
+  @@index([role_id], map: "role_id")
+}
+
+model roles {
+  id        String    @id
+  name      String    @unique
+  createdAt DateTime  @default(now())
+  updatedAt DateTime?
+  users     users[]
+}
+
+model images {
+  id                      String    @id
+  file                    String
+  full_path               String
+  archive_installation_id String
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime?
+}
+
+model customer_installations {
+  id            String    @id
+  customer_id   String?
+  technician_id String
+  description   String?   @db.Text
+  date          DateTime  @db.Date
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime
+  customer      customer? @relation(fields: [customer_id], references: [id], onDelete: Cascade, map: "customer_installations_ibfk_1")
+  users         users     @relation(fields: [technician_id], references: [id], onDelete: Cascade, map: "customer_installations_ibfk_2")
+
+  @@index([customer_id], map: "archive_installation_ibfk_1")
+  @@index([technician_id], map: "customer_installations_ibfk_2")
+}
+
+model invoices {
+  id            String          @id
+  amount        Int
+  link          String          @db.Text
+  status        invoices_status
+  customer_id   String
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime
+  invoice_items invoice_items[]
+}
+
+model invoice_items {
+  id          String   @id
+  name        String
+  qty         Int
+  total       Int
+  price       Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime
+  invoices_id String
+  invoices    invoices @relation(fields: [invoices_id], references: [id], onDelete: Cascade, map: "invoice_items_ibfk_1")
+
+  @@index([invoices_id], map: "invoice_items_ibfk_1")
+}
+
+model transactions {
+  id          String                   @id
+  account_id  String
+  type_cash   transactions_type_cash
+  type_in_out transactions_type_in_out
+  date        DateTime
+  description String
+  amount      BigInt
+  category    String
+  method      String
+  invoice_id  String?
+  createdAt   DateTime                 @default(now())
+  updatedAt   DateTime
+
+  @@index([account_id], map: "transactions_account_id_fkey")
+}
+
+enum transactions_type_in_out {
+  debit
+  credit
+}
+
+enum transactions_type_cash {
+  internet
+  cash_flow
+}
+
+enum invoices_status {
+  paid
+  unpaid
+  pending
+}

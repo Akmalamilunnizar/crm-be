@@ -1,0 +1,308 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    /* Fix table text overflow and improve layout */
+    table {
+        background-color: #ffffff !important;
+        color: #000000 !important;
+        width: 100% !important;
+        table-layout: auto !important;
+    }
+    
+    thead, tbody, tr, th, td {
+        background-color: #ffffff !important;
+        color: #000000 !important;
+    }
+    
+    /* Fix text overflow in table cells */
+    td, th {
+        padding: 0.75rem !important;
+        text-align: left !important;
+        vertical-align: top !important;
+        word-wrap: break-word !important;
+        overflow-wrap: break-word !important;
+        max-width: 200px !important;
+        white-space: normal !important;
+    }
+    
+    /* Ensure table headers are properly styled */
+    th {
+        font-weight: 600 !important;
+        background-color: #f3f4f6 !important;
+        border-bottom: 1px solid #d1d5db !important;
+    }
+    
+    /* Add zebra striping for better readability */
+    tr:nth-child(even) {
+        background-color: #f9fafb !important;
+    }
+    
+    tr:hover {
+        background-color: #f3f4f6 !important;
+    }
+    
+    /* Fix UTable component specific styling */
+    .u-table {
+        overflow-x: auto !important;
+    }
+    
+    .u-table table {
+        min-width: 100% !important;
+    }
+    
+    /* Additional UTable fixes */
+    [data-table] {
+        overflow-x: auto !important;
+    }
+    
+    [data-table] table {
+        min-width: 100% !important;
+        border-collapse: collapse !important;
+    }
+    
+    [data-table] td,
+    [data-table] th {
+        padding: 0.75rem !important;
+        border-bottom: 1px solid #e5e7eb !important;
+        word-break: break-word !important;
+        hyphens: auto !important;
+    }
+    
+    /* Ensure long text doesn't break layout */
+    [data-table] td > * {
+        max-width: 100% !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+    }
+    
+    /* Fix for specific table types */
+    .dashboard-table td,
+    .dashboard-table th {
+        max-width: none !important;
+        white-space: normal !important;
+        word-break: break-word !important;
+    }
+    
+    /* Responsive table design */
+    .responsive-table {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        scrollbar-width: thin !important;
+        border-radius: 0.5rem !important;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06) !important;
+        max-height: 70vh !important;
+        position: relative !important;
+    }
+    
+    .responsive-table table {
+        min-width: 640px !important;
+        width: 100% !important;
+        margin-bottom: 0 !important;
+    }
+    
+    /* Custom scrollbar styling */
+    .responsive-table::-webkit-scrollbar {
+        height: 8px !important;
+        width: 8px !important;
+    }
+    
+    .responsive-table::-webkit-scrollbar-track {
+        background: #f1f5f9 !important;
+        border-radius: 4px !important;
+    }
+    
+    .responsive-table::-webkit-scrollbar-thumb {
+        background: #cbd5e1 !important;
+        border-radius: 4px !important;
+        border: 1px solid #f1f5f9 !important;
+    }
+    
+    .responsive-table::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8 !important;
+    }
+    
+    /* Scroll indicator */
+    .scroll-indicator {
+        position: absolute !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        height: 4px !important;
+        background: linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899) !important;
+        opacity: 0.7 !important;
+        border-radius: 0 0 0.5rem 0.5rem !important;
+    }
+    
+    /* Mobile-first responsive design */
+    @media (max-width: 768px) {
+        .responsive-table table {
+            min-width: 100% !important;
+        }
+        
+        .responsive-table td,
+        .responsive-table th {
+            padding: 0.5rem !important;
+            font-size: 0.875rem !important;
+        }
+        
+        /* Stack table on very small screens */
+        @media (max-width: 480px) {
+            .responsive-table {
+                overflow-x: visible !important;
+            }
+            
+            .responsive-table table {
+                display: block !important;
+            }
+            
+            .responsive-table thead {
+                display: none !important;
+            }
+            
+            .responsive-table tbody {
+                display: block !important;
+            }
+            
+            .responsive-table tr {
+                display: block !important;
+                margin-bottom: 1rem !important;
+                padding: 1rem !important;
+                border: 1px solid #e5e7eb !important;
+                border-radius: 0.5rem !important;
+                background-color: #ffffff !important;
+            }
+            
+            .responsive-table td {
+                display: block !important;
+                text-align: left !important;
+                padding: 0.5rem 0 !important;
+                border-bottom: 1px solid #f3f4f6 !important;
+            }
+            
+            .responsive-table td:last-child {
+                border-bottom: none !important;
+            }
+            
+            .responsive-table td::before {
+                content: attr(data-label) ": " !important;
+                font-weight: 600 !important;
+                color: #374151 !important;
+                margin-right: 0.5rem !important;
+            }
+        }
+    }
+    
+    /* Tablet responsive design */
+    @media (min-width: 769px) and (max-width: 1024px) {
+        .responsive-table td,
+        .responsive-table th {
+            padding: 0.625rem !important;
+            font-size: 0.875rem !important;
+        }
+    }
+}
+
+@layer utilities {
+    /* Chrome, Safari and Opera */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+
+    .no-scrollbar {
+      -ms-overflow-style: none; /* IE and Edge */
+      scrollbar-width: none; /* Firefox */
+    }
+    
+    /* Responsive table utilities */
+    .table-container {
+        @apply w-full overflow-x-auto;
+    }
+    
+    .table-scroll {
+        @apply min-w-full;
+    }
+    
+    .mobile-table {
+        @apply block w-full;
+    }
+    
+    .mobile-table-row {
+        @apply block w-full mb-4 p-4 border border-gray-200 rounded-lg bg-white;
+    }
+    
+    .mobile-table-cell {
+        @apply block w-full py-2 border-b border-gray-100 last:border-b-0;
+    }
+    
+    /* Table scroll container - FIXED for horizontal scrolling */
+    .table-scroll-container {
+        @apply relative bg-white rounded-lg shadow border border-gray-200 overflow-hidden;
+        max-height: 70vh !important;
+    }
+    
+    .table-scroll-content {
+        @apply overflow-x-auto overflow-y-auto;
+        max-height: calc(70vh - 40px) !important;
+        -webkit-overflow-scrolling: touch !important;
+        scrollbar-width: thin !important;
+    }
+    
+    /* Custom horizontal scrollbar */
+    .table-scroll-content::-webkit-scrollbar {
+        height: 8px !important;
+        width: 8px !important;
+    }
+    
+    .table-scroll-content::-webkit-scrollbar-track {
+        background: #f1f5f9 !important;
+        border-radius: 4px !important;
+    }
+    
+    .table-scroll-content::-webkit-scrollbar-thumb {
+        background: #cbd5e1 !important;
+        border-radius: 4px !important;
+        border: 1px solid #f1f5f9 !important;
+    }
+    
+    .table-scroll-content::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8 !important;
+    }
+    
+    /* Ensure tables can scroll horizontally */
+    .table-scroll-content table {
+        min-width: 800px !important;
+        width: 100% !important;
+    }
+    
+    /* Force horizontal scroll for wide tables */
+    .table-scroll-content .dashboard-table {
+        min-width: 800px !important;
+        overflow-x: auto !important;
+    }
+    
+    .table-scroll-content .dashboard-table table {
+        min-width: 800px !important;
+        width: 100% !important;
+    }
+    
+    .table-scroll-footer {
+        @apply bg-gray-50 border-t border-gray-200 px-4 py-2 text-sm text-gray-600;
+        height: 40px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+    
+    /* Horizontal scroll indicator */
+    .scroll-hint {
+        @apply text-xs text-gray-500;
+        animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+        0%, 100% { opacity: 0.6; }
+        50% { opacity: 1; }
+    }
+}

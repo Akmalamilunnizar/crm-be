@@ -1,0 +1,43 @@
+{
+  "name": "nuxt-app",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "@i2d/nuxt-pdf-frame": "^0.5.0",
+    "@nuxt/ui": "2.21.1",
+    "@nuxtjs/leaflet": "^1.2.6",
+    "@nuxtjs/tailwindcss": "^6.13.1",
+    "@pinia/nuxt": "^0.10.1",
+    "@vuelidate/core": "^2.0.3",
+    "Math": "^0.0.1-security",
+    "chart.js": "^4.4.8",
+    "date-fns": "^4.1.0",
+    "echarts": "^5.6.0",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^3.0.1",
+    "nuxt": "^3.15.4",
+    "nuxt-storage": "^1.2.2",
+    "ohash": "^2.0.11",
+    "pinia": "^3.0.1",
+    "v-calendar": "^3.1.2",
+    "vue": "latest",
+    "vue-chartjs": "^5.3.2",
+    "vue-router": "latest",
+    "yarn": "^1.22.22",
+    "yup": "^1.6.1"
+  },
+  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e",
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "nuxt-echarts": "^0.3.2",
+    "typescript": "^5.7.3",
+    "vue-tsc": "^2.2.2"
+  }
+}

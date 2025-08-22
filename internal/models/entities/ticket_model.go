@@ -17,9 +17,10 @@ const (
 	TroublePower    TroubleType = "power"
 	TroubleOther    TroubleType = "other"
 
-	AssignCS   Assignee = "1631f7d5-7d01-40af-8d24-1692cefa205a"
-	AssignNOC  Assignee = "752e699f-c48c-44ed-8dfa-c8962b4be7ab"
-	AssignTech Assignee = "11f0fba5-b49c-4237-9250-ee1b873a7c2b"
+	// Use role names instead of hardcoded UUIDs - these will be looked up dynamically
+	AssignCS   Assignee = "CUSTOMER_SERVICE"
+	AssignNOC  Assignee = "NOC"
+	AssignTech Assignee = "TECHNICIAN"
 )
 
 type TroubleTicket struct {
@@ -45,8 +46,7 @@ func (t *TroubleTicket) BeforeCreate(tx *gorm.DB) (err error) {
 	if t.Status == "" || t.Status == "received" {
 		t.Status = "unfinished"
 	}
-	if t.CurrentAssignee == "" {
-		t.CurrentAssignee = string(AssignCS)
-	}
+	// Note: CurrentAssignee will be set by the service layer using dynamic role lookup
+	// This hook is kept for other defaults but role assignment is handled in service
 	return nil
 }

@@ -10,7 +10,12 @@ func (s *Service) CreateCS(input entities.TroubleTicket) (*entities.TroubleTicke
 	// Force initial state to match DB enum values
 	input.Status = "unfinished"
 	if input.CurrentAssignee == "" {
-		input.CurrentAssignee = string(entities.AssignCS)
+		// Look up CS role ID dynamically
+		csRoleID, err := s.repo.RoleIDByName(string(entities.AssignCS))
+		if err != nil {
+			return nil, err
+		}
+		input.CurrentAssignee = csRoleID
 	}
 	if err := s.repo.Create(&input); err != nil {
 		return nil, err
@@ -24,7 +29,12 @@ func (s *Service) SendToNOC(id uint64, note string) (*entities.TroubleTicket, er
 		return nil, err
 	}
 	t.Status = "ongoing"
-	t.CurrentAssignee = string(entities.AssignNOC)
+	// Look up NOC role ID dynamically
+	nocRoleID, err := s.repo.RoleIDByName(string(entities.AssignNOC))
+	if err != nil {
+		return nil, err
+	}
+	t.CurrentAssignee = nocRoleID
 	t.NOCNote = &note
 	if err := s.repo.Save(t); err != nil {
 		return nil, err
@@ -40,7 +50,12 @@ func (s *Service) SendToCS(id uint64, note string) (*entities.TroubleTicket, err
 	}
 	// keep status ongoing while reassigning
 	t.Status = "ongoing"
-	t.CurrentAssignee = string(entities.AssignCS)
+	// Look up CS role ID dynamically
+	csRoleID, err := s.repo.RoleIDByName(string(entities.AssignCS))
+	if err != nil {
+		return nil, err
+	}
+	t.CurrentAssignee = csRoleID
 	// reuse NOC note field for context when NOC sends back to CS
 	t.NOCNote = &note
 	if err := s.repo.Save(t); err != nil {
@@ -55,7 +70,12 @@ func (s *Service) NOCSolved(id uint64, note string) (*entities.TroubleTicket, er
 		return nil, err
 	}
 	t.Status = "finished"
-	t.CurrentAssignee = string(entities.AssignCS)
+	// Look up CS role ID dynamically
+	csRoleID, err := s.repo.RoleIDByName(string(entities.AssignCS))
+	if err != nil {
+		return nil, err
+	}
+	t.CurrentAssignee = csRoleID
 	t.NOCNote = &note
 	if err := s.repo.Save(t); err != nil {
 		return nil, err
@@ -69,7 +89,12 @@ func (s *Service) NOCPhysical(id uint64, note string) (*entities.TroubleTicket, 
 		return nil, err
 	}
 	t.Status = "ongoing"
-	t.CurrentAssignee = string(entities.AssignCS)
+	// Look up CS role ID dynamically
+	csRoleID, err := s.repo.RoleIDByName(string(entities.AssignCS))
+	if err != nil {
+		return nil, err
+	}
+	t.CurrentAssignee = csRoleID
 	t.NOCNote = &note
 	if err := s.repo.Save(t); err != nil {
 		return nil, err
@@ -83,7 +108,12 @@ func (s *Service) AssignTechnician(id uint64, techUserID string) (*entities.Trou
 		return nil, err
 	}
 	t.AssignedTo = techUserID
-	t.CurrentAssignee = string(entities.AssignTech)
+	// Look up Technician role ID dynamically
+	techRoleID, err := s.repo.RoleIDByName(string(entities.AssignTech))
+	if err != nil {
+		return nil, err
+	}
+	t.CurrentAssignee = techRoleID
 	if t.Status == "unfinished" {
 		t.Status = "ongoing"
 	}
@@ -99,7 +129,12 @@ func (s *Service) TechnicianResolve(id uint64, note string) (*entities.TroubleTi
 		return nil, err
 	}
 	t.Status = "finished"
-	t.CurrentAssignee = string(entities.AssignCS)
+	// Look up CS role ID dynamically
+	csRoleID, err := s.repo.RoleIDByName(string(entities.AssignCS))
+	if err != nil {
+		return nil, err
+	}
+	t.CurrentAssignee = csRoleID
 	t.TechnicianNote = &note
 	if err := s.repo.Save(t); err != nil {
 		return nil, err

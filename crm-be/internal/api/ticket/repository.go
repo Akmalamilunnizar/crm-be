@@ -112,10 +112,13 @@ func (r *Repo) HotLocations() ([]Hotspot, error) {
 
 // RoleIDByName finds role id by roles.name
 func (r *Repo) RoleIDByName(name string) (string, error) {
+	log.Printf("RoleIDByName: Looking for role with name: '%s'", name)
 	var row struct{ ID string }
 	if err := r.DB.Table("roles").Select("id").Where("name = ?", name).Scan(&row).Error; err != nil {
+		log.Printf("RoleIDByName: Error querying role '%s': %v", name, err)
 		return "", err
 	}
+	log.Printf("RoleIDByName: Found role ID '%s' for name '%s'", row.ID, name)
 	return row.ID, nil
 }
 

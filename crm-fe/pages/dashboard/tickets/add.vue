@@ -21,8 +21,8 @@ const gpsLat = ref<number | undefined>(undefined)
 const gpsLng = ref<number | undefined>(undefined)
 watch(() => form.value.customer_id, (id) => {
   const c = customers.value.find(c => c.id === id)
-  gpsLat.value = c?.latitude
-  gpsLng.value = c?.longitude
+  // gpsLat.value = c?.latitude
+  // gpsLng.value = c?.longitude
 })
 
 onMounted(async () => {

@@ -1,6 +1,10 @@
 package ticketapi
 
-import "skripsi-be/internal/models/entities"
+import (
+	"fmt"
+	"log"
+	"skripsi-be/internal/models/entities"
+)
 
 type Service struct{ repo *Repo }
 
@@ -30,9 +34,16 @@ func (s *Service) SendToNOC(id uint64, note string) (*entities.TroubleTicket, er
 	}
 	t.Status = "ongoing"
 	// Look up NOC role ID dynamically
-	nocRoleID, err := s.repo.RoleIDByName(string(entities.AssignNOC))
+	nocRoleName := string(entities.AssignNOC)
+	log.Printf("SendToNOC: Looking up role ID for name: '%s'", nocRoleName)
+	nocRoleID, err := s.repo.RoleIDByName(nocRoleName)
 	if err != nil {
+		log.Printf("SendToNOC: Error looking up NOC role ID: %v", err)
 		return nil, err
+	}
+	log.Printf("SendToNOC: Found NOC role ID: '%s'", nocRoleID)
+	if nocRoleID == "" {
+		return nil, fmt.Errorf("NOC role ID is empty for role name: %s", nocRoleName)
 	}
 	t.CurrentAssignee = nocRoleID
 	t.NOCNote = &note

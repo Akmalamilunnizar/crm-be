@@ -195,24 +195,8 @@ const getTicketActions = (ticket: any) => {
           ticket.status !== 'finished',
         tooltip: 'Return ticket to Customer Service'
       },
-      {
-        label: 'NOC Solved',
-        color: 'bg-green-600',
-        action: () => { actPrepareNOC(ticket.id) },
-        show: (isAdmin.value || isNOC.value) &&
-          ticket.current_assignee_name === 'NOC' &&
-          ticket.status !== 'finished',
-        tooltip: 'Mark as solved by NOC'
-      },
-      {
-        label: 'Physical',
-        color: 'bg-amber-600',
-        action: () => { actPrepareNOC(ticket.id) },
-        show: (isAdmin.value || isNOC.value) &&
-          ticket.current_assignee_name === 'NOC' &&
-          ticket.status !== 'finished',
-        tooltip: 'Requires physical intervention'
-      },
+      
+      
       {
         label: 'Assign Tech',
         color: 'bg-cyan-600',
@@ -378,6 +362,7 @@ const TroubleReport = defineAsyncComponent(() => import('@/pages/dashboard/repor
             <tr class="text-left border-b border-gray-100 uppercase text-xs tracking-wide text-gray-600">
               <th class="p-2">ID</th>
               <th class="p-2">Title</th>
+              <th class="p-2">Description</th>
               <th class="p-2">Type</th>
               <th class="p-2">Status</th>
               <th class="p-2">Assigned To Role</th>
@@ -389,6 +374,7 @@ const TroubleReport = defineAsyncComponent(() => import('@/pages/dashboard/repor
             <tr v-for="r in rows" :key="r.id" class="border-b border-gray-100 hover:bg-gray-50/60">
               <td class="p-2">{{ r.id }}</td>
               <td class="p-2">{{ r.title }}</td>
+              <td class="p-2 max-w-xs truncate" :title="r.description">{{ r.description || '-' }}</td>
               <td class="p-2 capitalize">{{ typeNameMap[r.type] || r.type }}</td>
               <td class="p-2 capitalize">{{ r.status }}</td>
               <td class="p-2 capitalize">{{ r.current_assignee_name || r.current_assignee_role }}</td>
@@ -524,12 +510,8 @@ const TroubleReport = defineAsyncComponent(() => import('@/pages/dashboard/repor
             <button class="px-4 py-2 rounded bg-purple-600 text-white" @click="sendToCSFromModal">
               To CS
             </button>
-            <button class="px-4 py-2 rounded bg-green-600 text-white" @click="nocSolvedFromModal">
-              NOC Solved
-            </button>
-            <button class="px-4 py-2 rounded bg-amber-600 text-white" @click="nocPhysicalFromModal">
-              Physical
-            </button>
+            
+            
           </div>
         </div>
       </div>

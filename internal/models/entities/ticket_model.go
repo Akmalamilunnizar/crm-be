@@ -18,7 +18,7 @@ const (
 	TroubleOther    TroubleType = "other"
 
 	// Use role names instead of hardcoded UUIDs - these will be looked up dynamically
-	AssignCS   Assignee = "CUSTOMER_SERVICE"
+	AssignCS   Assignee = "CUSTOMER SERVICE"
 	AssignNOC  Assignee = "NOC"
 	AssignTech Assignee = "TECHNICIAN"
 )

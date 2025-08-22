@@ -1,6 +1,10 @@
 package ticketapi
 
-import "skripsi-be/internal/models/entities"
+import (
+	"fmt"
+	"log"
+	"skripsi-be/internal/models/entities"
+)
 
 type Service struct{ repo *Repo }
 
@@ -14,6 +18,9 @@ func (s *Service) CreateCS(input entities.TroubleTicket) (*entities.TroubleTicke
 		csRoleID, err := s.repo.RoleIDByName(string(entities.AssignCS))
 		if err != nil {
 			return nil, err
+		}
+		if csRoleID == "" {
+			return nil, fmt.Errorf("cs role ID is empty")
 		}
 		input.CurrentAssignee = csRoleID
 	}
@@ -30,9 +37,16 @@ func (s *Service) SendToNOC(id uint64, note string) (*entities.TroubleTicket, er
 	}
 	t.Status = "ongoing"
 	// Look up NOC role ID dynamically
-	nocRoleID, err := s.repo.RoleIDByName(string(entities.AssignNOC))
+	nocRoleName := string(entities.AssignNOC)
+	log.Printf("SendToNOC: Looking up role ID for name: '%s'", nocRoleName)
+	nocRoleID, err := s.repo.RoleIDByName(nocRoleName)
 	if err != nil {
+		log.Printf("SendToNOC: Error looking up NOC role ID: %v", err)
 		return nil, err
+	}
+	log.Printf("SendToNOC: Found NOC role ID: '%s'", nocRoleID)
+	if nocRoleID == "" {
+		return nil, fmt.Errorf("noc role ID is empty for role name: %s", nocRoleName)
 	}
 	t.CurrentAssignee = nocRoleID
 	t.NOCNote = &note
@@ -51,9 +65,14 @@ func (s *Service) SendToCS(id uint64, note string) (*entities.TroubleTicket, err
 	// keep status ongoing while reassigning
 	t.Status = "ongoing"
 	// Look up CS role ID dynamically
-	csRoleID, err := s.repo.RoleIDByName(string(entities.AssignCS))
+	csRoleName := string(entities.AssignCS)
+	log.Printf("SendToCS: Looking up role ID for name: '%s'", csRoleName)
+	csRoleID, err := s.repo.RoleIDByName(csRoleName)
 	if err != nil {
 		return nil, err
+	}
+	if csRoleID == "" {
+		return nil, fmt.Errorf("cs role ID is empty for role name: %s", csRoleName)
 	}
 	t.CurrentAssignee = csRoleID
 	// reuse NOC note field for context when NOC sends back to CS
@@ -75,6 +94,9 @@ func (s *Service) NOCSolved(id uint64, note string) (*entities.TroubleTicket, er
 	if err != nil {
 		return nil, err
 	}
+	if csRoleID == "" {
+		return nil, fmt.Errorf("cs role ID is empty")
+	}
 	t.CurrentAssignee = csRoleID
 	t.NOCNote = &note
 	if err := s.repo.Save(t); err != nil {
@@ -94,6 +116,9 @@ func (s *Service) NOCPhysical(id uint64, note string) (*entities.TroubleTicket, 
 	if err != nil {
 		return nil, err
 	}
+	if csRoleID == "" {
+		return nil, fmt.Errorf("cs role ID is empty")
+	}
 	t.CurrentAssignee = csRoleID
 	t.NOCNote = &note
 	if err := s.repo.Save(t); err != nil {
@@ -112,6 +137,9 @@ func (s *Service) AssignTechnician(id uint64, techUserID string) (*entities.Trou
 	techRoleID, err := s.repo.RoleIDByName(string(entities.AssignTech))
 	if err != nil {
 		return nil, err
+	}
+	if techRoleID == "" {
+		return nil, fmt.Errorf("technician role ID is empty")
 	}
 	t.CurrentAssignee = techRoleID
 	if t.Status == "unfinished" {
@@ -133,6 +161,9 @@ func (s *Service) TechnicianResolve(id uint64, note string) (*entities.TroubleTi
 	csRoleID, err := s.repo.RoleIDByName(string(entities.AssignCS))
 	if err != nil {
 		return nil, err
+	}
+	if csRoleID == "" {
+		return nil, fmt.Errorf("cs role ID is empty")
 	}
 	t.CurrentAssignee = csRoleID
 	t.TechnicianNote = &note

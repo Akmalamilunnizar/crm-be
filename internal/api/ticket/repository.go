@@ -1,8 +1,10 @@
 package ticketapi
 
 import (
+	"fmt"
 	"log"
 	"skripsi-be/internal/models/entities"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -110,12 +112,36 @@ func (r *Repo) HotLocations() ([]Hotspot, error) {
 	return rows, err
 }
 
-// RoleIDByName finds role id by roles.name
+// RoleIDByName finds role id by roles.name with fallback between space/underscore variants
 func (r *Repo) RoleIDByName(name string) (string, error) {
+	log.Printf("RoleIDByName: Looking for role with name: '%s'", name)
 	var row struct{ ID string }
 	if err := r.DB.Table("roles").Select("id").Where("name = ?", name).Scan(&row).Error; err != nil {
+		log.Printf("RoleIDByName: Error querying role '%s': %v", name, err)
 		return "", err
 	}
+	if row.ID == "" {
+		// Try space/underscore normalized counterpart
+		alt := name
+		if strings.Contains(name, " ") {
+			alt = strings.ReplaceAll(name, " ", "_")
+		} else if strings.Contains(name, "_") {
+			alt = strings.ReplaceAll(name, "_", " ")
+		}
+		if alt != name {
+			log.Printf("RoleIDByName: Not found, trying alternative name: '%s'", alt)
+			if err := r.DB.Table("roles").Select("id").Where("name = ?", alt).Scan(&row).Error; err != nil {
+				log.Printf("RoleIDByName: Error querying role alt '%s': %v", alt, err)
+				return "", err
+			}
+		}
+	}
+	if row.ID == "" {
+		err := fmt.Errorf("role '%s' not found (after fallback)", name)
+		log.Printf("RoleIDByName: %v", err)
+		return "", err
+	}
+	log.Printf("RoleIDByName: Found role ID '%s' for name '%s'", row.ID, name)
 	return row.ID, nil
 }
 

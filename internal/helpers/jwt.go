@@ -106,6 +106,10 @@ func VerifyToken(c *fiber.Ctx) error {
 	if err != nil {
 		return ResponseUtils(c, fiber.StatusUnauthorized, false, "Invalid Token Claims", nil)
 	}
+
+	// Debug logging
+	log.Printf("VerifyToken - Extracted role from JWT: '%s'", audience[0])
+
 	c.Locals("user_id", subject)
 	c.Locals("role", audience[0])
 	return c.Next()

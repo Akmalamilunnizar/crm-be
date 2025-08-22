@@ -88,6 +88,11 @@ export type invoice_items = $Result.DefaultSelection<Prisma.$invoice_itemsPayloa
  * 
  */
 export type transactions = $Result.DefaultSelection<Prisma.$transactionsPayload>
+/**
+ * Model TroubleTicket
+ * Prisma model mapping to the existing `trouble_tickets` table
+ */
+export type TroubleTicket = $Result.DefaultSelection<Prisma.$TroubleTicketPayload>
 
 /**
  * Enums
@@ -405,6 +410,16 @@ export class PrismaClient<
     * ```
     */
   get transactions(): Prisma.transactionsDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.troubleTicket`: Exposes CRUD operations for the **TroubleTicket** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more TroubleTickets
+    * const troubleTickets = await prisma.troubleTicket.findMany()
+    * ```
+    */
+  get troubleTicket(): Prisma.TroubleTicketDelegate<ExtArgs, ClientOptions>;
 }
 
 export namespace Prisma {
@@ -859,7 +874,8 @@ export namespace Prisma {
     customer_installations: 'customer_installations',
     invoices: 'invoices',
     invoice_items: 'invoice_items',
-    transactions: 'transactions'
+    transactions: 'transactions',
+    TroubleTicket: 'TroubleTicket'
   };
 
   export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -878,7 +894,7 @@ export namespace Prisma {
       omit: GlobalOmitOptions
     }
     meta: {
-      modelProps: "accounts" | "assets" | "company" | "customer" | "device" | "areas" | "logs" | "products" | "users" | "roles" | "images" | "customer_installations" | "invoices" | "invoice_items" | "transactions"
+      modelProps: "accounts" | "assets" | "company" | "customer" | "device" | "areas" | "logs" | "products" | "users" | "roles" | "images" | "customer_installations" | "invoices" | "invoice_items" | "transactions" | "troubleTicket"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -1872,6 +1888,72 @@ export namespace Prisma {
           }
         }
       }
+      TroubleTicket: {
+        payload: Prisma.$TroubleTicketPayload<ExtArgs>
+        fields: Prisma.TroubleTicketFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.TroubleTicketFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TroubleTicketPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.TroubleTicketFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TroubleTicketPayload>
+          }
+          findFirst: {
+            args: Prisma.TroubleTicketFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TroubleTicketPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.TroubleTicketFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TroubleTicketPayload>
+          }
+          findMany: {
+            args: Prisma.TroubleTicketFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TroubleTicketPayload>[]
+          }
+          create: {
+            args: Prisma.TroubleTicketCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TroubleTicketPayload>
+          }
+          createMany: {
+            args: Prisma.TroubleTicketCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          delete: {
+            args: Prisma.TroubleTicketDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TroubleTicketPayload>
+          }
+          update: {
+            args: Prisma.TroubleTicketUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TroubleTicketPayload>
+          }
+          deleteMany: {
+            args: Prisma.TroubleTicketDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.TroubleTicketUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          upsert: {
+            args: Prisma.TroubleTicketUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$TroubleTicketPayload>
+          }
+          aggregate: {
+            args: Prisma.TroubleTicketAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateTroubleTicket>
+          }
+          groupBy: {
+            args: Prisma.TroubleTicketGroupByArgs<ExtArgs>
+            result: $Utils.Optional<TroubleTicketGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.TroubleTicketCountArgs<ExtArgs>
+            result: $Utils.Optional<TroubleTicketCountAggregateOutputType> | number
+          }
+        }
+      }
     }
   } & {
     other: {
@@ -1971,6 +2053,7 @@ export namespace Prisma {
     invoices?: invoicesOmit
     invoice_items?: invoice_itemsOmit
     transactions?: transactionsOmit
+    troubleTicket?: TroubleTicketOmit
   }
 
   /* Types for Logging */
@@ -17016,6 +17099,1061 @@ export namespace Prisma {
 
 
   /**
+   * Model TroubleTicket
+   */
+
+  export type AggregateTroubleTicket = {
+    _count: TroubleTicketCountAggregateOutputType | null
+    _avg: TroubleTicketAvgAggregateOutputType | null
+    _sum: TroubleTicketSumAggregateOutputType | null
+    _min: TroubleTicketMinAggregateOutputType | null
+    _max: TroubleTicketMaxAggregateOutputType | null
+  }
+
+  export type TroubleTicketAvgAggregateOutputType = {
+    id: number | null
+    customer_id: number | null
+    type: number | null
+    assigned_to: number | null
+  }
+
+  export type TroubleTicketSumAggregateOutputType = {
+    id: bigint | null
+    customer_id: bigint | null
+    type: number | null
+    assigned_to: number | null
+  }
+
+  export type TroubleTicketMinAggregateOutputType = {
+    id: bigint | null
+    customer_id: bigint | null
+    type: number | null
+    title: string | null
+    description: string | null
+    status: string | null
+    assigned_to: number | null
+    current_assignee_role: string | null
+    customer_note: string | null
+    noc_note: string | null
+    technician_note: string | null
+    created_at: Date | null
+    updated_at: Date | null
+  }
+
+  export type TroubleTicketMaxAggregateOutputType = {
+    id: bigint | null
+    customer_id: bigint | null
+    type: number | null
+    title: string | null
+    description: string | null
+    status: string | null
+    assigned_to: number | null
+    current_assignee_role: string | null
+    customer_note: string | null
+    noc_note: string | null
+    technician_note: string | null
+    created_at: Date | null
+    updated_at: Date | null
+  }
+
+  export type TroubleTicketCountAggregateOutputType = {
+    id: number
+    customer_id: number
+    type: number
+    title: number
+    description: number
+    status: number
+    assigned_to: number
+    current_assignee_role: number
+    customer_note: number
+    noc_note: number
+    technician_note: number
+    created_at: number
+    updated_at: number
+    _all: number
+  }
+
+
+  export type TroubleTicketAvgAggregateInputType = {
+    id?: true
+    customer_id?: true
+    type?: true
+    assigned_to?: true
+  }
+
+  export type TroubleTicketSumAggregateInputType = {
+    id?: true
+    customer_id?: true
+    type?: true
+    assigned_to?: true
+  }
+
+  export type TroubleTicketMinAggregateInputType = {
+    id?: true
+    customer_id?: true
+    type?: true
+    title?: true
+    description?: true
+    status?: true
+    assigned_to?: true
+    current_assignee_role?: true
+    customer_note?: true
+    noc_note?: true
+    technician_note?: true
+    created_at?: true
+    updated_at?: true
+  }
+
+  export type TroubleTicketMaxAggregateInputType = {
+    id?: true
+    customer_id?: true
+    type?: true
+    title?: true
+    description?: true
+    status?: true
+    assigned_to?: true
+    current_assignee_role?: true
+    customer_note?: true
+    noc_note?: true
+    technician_note?: true
+    created_at?: true
+    updated_at?: true
+  }
+
+  export type TroubleTicketCountAggregateInputType = {
+    id?: true
+    customer_id?: true
+    type?: true
+    title?: true
+    description?: true
+    status?: true
+    assigned_to?: true
+    current_assignee_role?: true
+    customer_note?: true
+    noc_note?: true
+    technician_note?: true
+    created_at?: true
+    updated_at?: true
+    _all?: true
+  }
+
+  export type TroubleTicketAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which TroubleTicket to aggregate.
+     */
+    where?: TroubleTicketWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of TroubleTickets to fetch.
+     */
+    orderBy?: TroubleTicketOrderByWithRelationInput | TroubleTicketOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: TroubleTicketWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` TroubleTickets from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` TroubleTickets.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned TroubleTickets
+    **/
+    _count?: true | TroubleTicketCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: TroubleTicketAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: TroubleTicketSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: TroubleTicketMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: TroubleTicketMaxAggregateInputType
+  }
+
+  export type GetTroubleTicketAggregateType<T extends TroubleTicketAggregateArgs> = {
+        [P in keyof T & keyof AggregateTroubleTicket]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateTroubleTicket[P]>
+      : GetScalarType<T[P], AggregateTroubleTicket[P]>
+  }
+
+
+
+
+  export type TroubleTicketGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: TroubleTicketWhereInput
+    orderBy?: TroubleTicketOrderByWithAggregationInput | TroubleTicketOrderByWithAggregationInput[]
+    by: TroubleTicketScalarFieldEnum[] | TroubleTicketScalarFieldEnum
+    having?: TroubleTicketScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: TroubleTicketCountAggregateInputType | true
+    _avg?: TroubleTicketAvgAggregateInputType
+    _sum?: TroubleTicketSumAggregateInputType
+    _min?: TroubleTicketMinAggregateInputType
+    _max?: TroubleTicketMaxAggregateInputType
+  }
+
+  export type TroubleTicketGroupByOutputType = {
+    id: bigint
+    customer_id: bigint
+    type: number | null
+    title: string
+    description: string | null
+    status: string
+    assigned_to: number | null
+    current_assignee_role: string
+    customer_note: string | null
+    noc_note: string | null
+    technician_note: string | null
+    created_at: Date | null
+    updated_at: Date | null
+    _count: TroubleTicketCountAggregateOutputType | null
+    _avg: TroubleTicketAvgAggregateOutputType | null
+    _sum: TroubleTicketSumAggregateOutputType | null
+    _min: TroubleTicketMinAggregateOutputType | null
+    _max: TroubleTicketMaxAggregateOutputType | null
+  }
+
+  type GetTroubleTicketGroupByPayload<T extends TroubleTicketGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<TroubleTicketGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof TroubleTicketGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], TroubleTicketGroupByOutputType[P]>
+            : GetScalarType<T[P], TroubleTicketGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type TroubleTicketSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    customer_id?: boolean
+    type?: boolean
+    title?: boolean
+    description?: boolean
+    status?: boolean
+    assigned_to?: boolean
+    current_assignee_role?: boolean
+    customer_note?: boolean
+    noc_note?: boolean
+    technician_note?: boolean
+    created_at?: boolean
+    updated_at?: boolean
+  }, ExtArgs["result"]["troubleTicket"]>
+
+
+
+  export type TroubleTicketSelectScalar = {
+    id?: boolean
+    customer_id?: boolean
+    type?: boolean
+    title?: boolean
+    description?: boolean
+    status?: boolean
+    assigned_to?: boolean
+    current_assignee_role?: boolean
+    customer_note?: boolean
+    noc_note?: boolean
+    technician_note?: boolean
+    created_at?: boolean
+    updated_at?: boolean
+  }
+
+  export type TroubleTicketOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "customer_id" | "type" | "title" | "description" | "status" | "assigned_to" | "current_assignee_role" | "customer_note" | "noc_note" | "technician_note" | "created_at" | "updated_at", ExtArgs["result"]["troubleTicket"]>
+
+  export type $TroubleTicketPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "TroubleTicket"
+    objects: {}
+    scalars: $Extensions.GetPayloadResult<{
+      /**
+       * BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY
+       */
+      id: bigint
+      /**
+       * BIGINT UNSIGNED (FK to customers; kept scalar to avoid cross-type relation)
+       */
+      customer_id: bigint
+      /**
+       * INT NULLABLE
+       */
+      type: number | null
+      /**
+       * LONGTEXT NOT NULL
+       */
+      title: string
+      /**
+       * TEXT NULLABLE
+       */
+      description: string | null
+      /**
+       * VARCHAR(191) NOT NULL DEFAULT 'received'
+       */
+      status: string
+      /**
+       * INT NULLABLE
+       */
+      assigned_to: number | null
+      /**
+       * VARCHAR(191) NOT NULL DEFAULT 'customer_service'
+       */
+      current_assignee_role: string
+      /**
+       * TEXT NULLABLE
+       */
+      customer_note: string | null
+      /**
+       * TEXT NULLABLE
+       */
+      noc_note: string | null
+      /**
+       * TEXT NULLABLE
+       */
+      technician_note: string | null
+      /**
+       * DATETIME NULLABLE
+       */
+      created_at: Date | null
+      /**
+       * DATETIME NULLABLE
+       */
+      updated_at: Date | null
+    }, ExtArgs["result"]["troubleTicket"]>
+    composites: {}
+  }
+
+  type TroubleTicketGetPayload<S extends boolean | null | undefined | TroubleTicketDefaultArgs> = $Result.GetResult<Prisma.$TroubleTicketPayload, S>
+
+  type TroubleTicketCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<TroubleTicketFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: TroubleTicketCountAggregateInputType | true
+    }
+
+  export interface TroubleTicketDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['TroubleTicket'], meta: { name: 'TroubleTicket' } }
+    /**
+     * Find zero or one TroubleTicket that matches the filter.
+     * @param {TroubleTicketFindUniqueArgs} args - Arguments to find a TroubleTicket
+     * @example
+     * // Get one TroubleTicket
+     * const troubleTicket = await prisma.troubleTicket.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends TroubleTicketFindUniqueArgs>(args: SelectSubset<T, TroubleTicketFindUniqueArgs<ExtArgs>>): Prisma__TroubleTicketClient<$Result.GetResult<Prisma.$TroubleTicketPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one TroubleTicket that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {TroubleTicketFindUniqueOrThrowArgs} args - Arguments to find a TroubleTicket
+     * @example
+     * // Get one TroubleTicket
+     * const troubleTicket = await prisma.troubleTicket.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends TroubleTicketFindUniqueOrThrowArgs>(args: SelectSubset<T, TroubleTicketFindUniqueOrThrowArgs<ExtArgs>>): Prisma__TroubleTicketClient<$Result.GetResult<Prisma.$TroubleTicketPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first TroubleTicket that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TroubleTicketFindFirstArgs} args - Arguments to find a TroubleTicket
+     * @example
+     * // Get one TroubleTicket
+     * const troubleTicket = await prisma.troubleTicket.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends TroubleTicketFindFirstArgs>(args?: SelectSubset<T, TroubleTicketFindFirstArgs<ExtArgs>>): Prisma__TroubleTicketClient<$Result.GetResult<Prisma.$TroubleTicketPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first TroubleTicket that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TroubleTicketFindFirstOrThrowArgs} args - Arguments to find a TroubleTicket
+     * @example
+     * // Get one TroubleTicket
+     * const troubleTicket = await prisma.troubleTicket.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends TroubleTicketFindFirstOrThrowArgs>(args?: SelectSubset<T, TroubleTicketFindFirstOrThrowArgs<ExtArgs>>): Prisma__TroubleTicketClient<$Result.GetResult<Prisma.$TroubleTicketPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more TroubleTickets that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TroubleTicketFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all TroubleTickets
+     * const troubleTickets = await prisma.troubleTicket.findMany()
+     * 
+     * // Get first 10 TroubleTickets
+     * const troubleTickets = await prisma.troubleTicket.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const troubleTicketWithIdOnly = await prisma.troubleTicket.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends TroubleTicketFindManyArgs>(args?: SelectSubset<T, TroubleTicketFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TroubleTicketPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a TroubleTicket.
+     * @param {TroubleTicketCreateArgs} args - Arguments to create a TroubleTicket.
+     * @example
+     * // Create one TroubleTicket
+     * const TroubleTicket = await prisma.troubleTicket.create({
+     *   data: {
+     *     // ... data to create a TroubleTicket
+     *   }
+     * })
+     * 
+     */
+    create<T extends TroubleTicketCreateArgs>(args: SelectSubset<T, TroubleTicketCreateArgs<ExtArgs>>): Prisma__TroubleTicketClient<$Result.GetResult<Prisma.$TroubleTicketPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many TroubleTickets.
+     * @param {TroubleTicketCreateManyArgs} args - Arguments to create many TroubleTickets.
+     * @example
+     * // Create many TroubleTickets
+     * const troubleTicket = await prisma.troubleTicket.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends TroubleTicketCreateManyArgs>(args?: SelectSubset<T, TroubleTicketCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Delete a TroubleTicket.
+     * @param {TroubleTicketDeleteArgs} args - Arguments to delete one TroubleTicket.
+     * @example
+     * // Delete one TroubleTicket
+     * const TroubleTicket = await prisma.troubleTicket.delete({
+     *   where: {
+     *     // ... filter to delete one TroubleTicket
+     *   }
+     * })
+     * 
+     */
+    delete<T extends TroubleTicketDeleteArgs>(args: SelectSubset<T, TroubleTicketDeleteArgs<ExtArgs>>): Prisma__TroubleTicketClient<$Result.GetResult<Prisma.$TroubleTicketPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one TroubleTicket.
+     * @param {TroubleTicketUpdateArgs} args - Arguments to update one TroubleTicket.
+     * @example
+     * // Update one TroubleTicket
+     * const troubleTicket = await prisma.troubleTicket.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends TroubleTicketUpdateArgs>(args: SelectSubset<T, TroubleTicketUpdateArgs<ExtArgs>>): Prisma__TroubleTicketClient<$Result.GetResult<Prisma.$TroubleTicketPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more TroubleTickets.
+     * @param {TroubleTicketDeleteManyArgs} args - Arguments to filter TroubleTickets to delete.
+     * @example
+     * // Delete a few TroubleTickets
+     * const { count } = await prisma.troubleTicket.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends TroubleTicketDeleteManyArgs>(args?: SelectSubset<T, TroubleTicketDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more TroubleTickets.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TroubleTicketUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many TroubleTickets
+     * const troubleTicket = await prisma.troubleTicket.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends TroubleTicketUpdateManyArgs>(args: SelectSubset<T, TroubleTicketUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create or update one TroubleTicket.
+     * @param {TroubleTicketUpsertArgs} args - Arguments to update or create a TroubleTicket.
+     * @example
+     * // Update or create a TroubleTicket
+     * const troubleTicket = await prisma.troubleTicket.upsert({
+     *   create: {
+     *     // ... data to create a TroubleTicket
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the TroubleTicket we want to update
+     *   }
+     * })
+     */
+    upsert<T extends TroubleTicketUpsertArgs>(args: SelectSubset<T, TroubleTicketUpsertArgs<ExtArgs>>): Prisma__TroubleTicketClient<$Result.GetResult<Prisma.$TroubleTicketPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of TroubleTickets.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TroubleTicketCountArgs} args - Arguments to filter TroubleTickets to count.
+     * @example
+     * // Count the number of TroubleTickets
+     * const count = await prisma.troubleTicket.count({
+     *   where: {
+     *     // ... the filter for the TroubleTickets we want to count
+     *   }
+     * })
+    **/
+    count<T extends TroubleTicketCountArgs>(
+      args?: Subset<T, TroubleTicketCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], TroubleTicketCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a TroubleTicket.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TroubleTicketAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends TroubleTicketAggregateArgs>(args: Subset<T, TroubleTicketAggregateArgs>): Prisma.PrismaPromise<GetTroubleTicketAggregateType<T>>
+
+    /**
+     * Group by TroubleTicket.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {TroubleTicketGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends TroubleTicketGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: TroubleTicketGroupByArgs['orderBy'] }
+        : { orderBy?: TroubleTicketGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, TroubleTicketGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetTroubleTicketGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the TroubleTicket model
+   */
+  readonly fields: TroubleTicketFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for TroubleTicket.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__TroubleTicketClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the TroubleTicket model
+   */
+  interface TroubleTicketFieldRefs {
+    readonly id: FieldRef<"TroubleTicket", 'BigInt'>
+    readonly customer_id: FieldRef<"TroubleTicket", 'BigInt'>
+    readonly type: FieldRef<"TroubleTicket", 'Int'>
+    readonly title: FieldRef<"TroubleTicket", 'String'>
+    readonly description: FieldRef<"TroubleTicket", 'String'>
+    readonly status: FieldRef<"TroubleTicket", 'String'>
+    readonly assigned_to: FieldRef<"TroubleTicket", 'Int'>
+    readonly current_assignee_role: FieldRef<"TroubleTicket", 'String'>
+    readonly customer_note: FieldRef<"TroubleTicket", 'String'>
+    readonly noc_note: FieldRef<"TroubleTicket", 'String'>
+    readonly technician_note: FieldRef<"TroubleTicket", 'String'>
+    readonly created_at: FieldRef<"TroubleTicket", 'DateTime'>
+    readonly updated_at: FieldRef<"TroubleTicket", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * TroubleTicket findUnique
+   */
+  export type TroubleTicketFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TroubleTicket
+     */
+    select?: TroubleTicketSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TroubleTicket
+     */
+    omit?: TroubleTicketOmit<ExtArgs> | null
+    /**
+     * Filter, which TroubleTicket to fetch.
+     */
+    where: TroubleTicketWhereUniqueInput
+  }
+
+  /**
+   * TroubleTicket findUniqueOrThrow
+   */
+  export type TroubleTicketFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TroubleTicket
+     */
+    select?: TroubleTicketSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TroubleTicket
+     */
+    omit?: TroubleTicketOmit<ExtArgs> | null
+    /**
+     * Filter, which TroubleTicket to fetch.
+     */
+    where: TroubleTicketWhereUniqueInput
+  }
+
+  /**
+   * TroubleTicket findFirst
+   */
+  export type TroubleTicketFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TroubleTicket
+     */
+    select?: TroubleTicketSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TroubleTicket
+     */
+    omit?: TroubleTicketOmit<ExtArgs> | null
+    /**
+     * Filter, which TroubleTicket to fetch.
+     */
+    where?: TroubleTicketWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of TroubleTickets to fetch.
+     */
+    orderBy?: TroubleTicketOrderByWithRelationInput | TroubleTicketOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for TroubleTickets.
+     */
+    cursor?: TroubleTicketWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` TroubleTickets from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` TroubleTickets.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of TroubleTickets.
+     */
+    distinct?: TroubleTicketScalarFieldEnum | TroubleTicketScalarFieldEnum[]
+  }
+
+  /**
+   * TroubleTicket findFirstOrThrow
+   */
+  export type TroubleTicketFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TroubleTicket
+     */
+    select?: TroubleTicketSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TroubleTicket
+     */
+    omit?: TroubleTicketOmit<ExtArgs> | null
+    /**
+     * Filter, which TroubleTicket to fetch.
+     */
+    where?: TroubleTicketWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of TroubleTickets to fetch.
+     */
+    orderBy?: TroubleTicketOrderByWithRelationInput | TroubleTicketOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for TroubleTickets.
+     */
+    cursor?: TroubleTicketWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` TroubleTickets from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` TroubleTickets.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of TroubleTickets.
+     */
+    distinct?: TroubleTicketScalarFieldEnum | TroubleTicketScalarFieldEnum[]
+  }
+
+  /**
+   * TroubleTicket findMany
+   */
+  export type TroubleTicketFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TroubleTicket
+     */
+    select?: TroubleTicketSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TroubleTicket
+     */
+    omit?: TroubleTicketOmit<ExtArgs> | null
+    /**
+     * Filter, which TroubleTickets to fetch.
+     */
+    where?: TroubleTicketWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of TroubleTickets to fetch.
+     */
+    orderBy?: TroubleTicketOrderByWithRelationInput | TroubleTicketOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing TroubleTickets.
+     */
+    cursor?: TroubleTicketWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` TroubleTickets from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` TroubleTickets.
+     */
+    skip?: number
+    distinct?: TroubleTicketScalarFieldEnum | TroubleTicketScalarFieldEnum[]
+  }
+
+  /**
+   * TroubleTicket create
+   */
+  export type TroubleTicketCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TroubleTicket
+     */
+    select?: TroubleTicketSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TroubleTicket
+     */
+    omit?: TroubleTicketOmit<ExtArgs> | null
+    /**
+     * The data needed to create a TroubleTicket.
+     */
+    data: XOR<TroubleTicketCreateInput, TroubleTicketUncheckedCreateInput>
+  }
+
+  /**
+   * TroubleTicket createMany
+   */
+  export type TroubleTicketCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many TroubleTickets.
+     */
+    data: TroubleTicketCreateManyInput | TroubleTicketCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * TroubleTicket update
+   */
+  export type TroubleTicketUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TroubleTicket
+     */
+    select?: TroubleTicketSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TroubleTicket
+     */
+    omit?: TroubleTicketOmit<ExtArgs> | null
+    /**
+     * The data needed to update a TroubleTicket.
+     */
+    data: XOR<TroubleTicketUpdateInput, TroubleTicketUncheckedUpdateInput>
+    /**
+     * Choose, which TroubleTicket to update.
+     */
+    where: TroubleTicketWhereUniqueInput
+  }
+
+  /**
+   * TroubleTicket updateMany
+   */
+  export type TroubleTicketUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update TroubleTickets.
+     */
+    data: XOR<TroubleTicketUpdateManyMutationInput, TroubleTicketUncheckedUpdateManyInput>
+    /**
+     * Filter which TroubleTickets to update
+     */
+    where?: TroubleTicketWhereInput
+    /**
+     * Limit how many TroubleTickets to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * TroubleTicket upsert
+   */
+  export type TroubleTicketUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TroubleTicket
+     */
+    select?: TroubleTicketSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TroubleTicket
+     */
+    omit?: TroubleTicketOmit<ExtArgs> | null
+    /**
+     * The filter to search for the TroubleTicket to update in case it exists.
+     */
+    where: TroubleTicketWhereUniqueInput
+    /**
+     * In case the TroubleTicket found by the `where` argument doesn't exist, create a new TroubleTicket with this data.
+     */
+    create: XOR<TroubleTicketCreateInput, TroubleTicketUncheckedCreateInput>
+    /**
+     * In case the TroubleTicket was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<TroubleTicketUpdateInput, TroubleTicketUncheckedUpdateInput>
+  }
+
+  /**
+   * TroubleTicket delete
+   */
+  export type TroubleTicketDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TroubleTicket
+     */
+    select?: TroubleTicketSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TroubleTicket
+     */
+    omit?: TroubleTicketOmit<ExtArgs> | null
+    /**
+     * Filter which TroubleTicket to delete.
+     */
+    where: TroubleTicketWhereUniqueInput
+  }
+
+  /**
+   * TroubleTicket deleteMany
+   */
+  export type TroubleTicketDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which TroubleTickets to delete
+     */
+    where?: TroubleTicketWhereInput
+    /**
+     * Limit how many TroubleTickets to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * TroubleTicket without action
+   */
+  export type TroubleTicketDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TroubleTicket
+     */
+    select?: TroubleTicketSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TroubleTicket
+     */
+    omit?: TroubleTicketOmit<ExtArgs> | null
+  }
+
+
+  /**
    * Enums
    */
 
@@ -17247,6 +18385,25 @@ export namespace Prisma {
   export type TransactionsScalarFieldEnum = (typeof TransactionsScalarFieldEnum)[keyof typeof TransactionsScalarFieldEnum]
 
 
+  export const TroubleTicketScalarFieldEnum: {
+    id: 'id',
+    customer_id: 'customer_id',
+    type: 'type',
+    title: 'title',
+    description: 'description',
+    status: 'status',
+    assigned_to: 'assigned_to',
+    current_assignee_role: 'current_assignee_role',
+    customer_note: 'customer_note',
+    noc_note: 'noc_note',
+    technician_note: 'technician_note',
+    created_at: 'created_at',
+    updated_at: 'updated_at'
+  };
+
+  export type TroubleTicketScalarFieldEnum = (typeof TroubleTicketScalarFieldEnum)[keyof typeof TroubleTicketScalarFieldEnum]
+
+
   export const SortOrder: {
     asc: 'asc',
     desc: 'desc'
@@ -17430,6 +18587,19 @@ export namespace Prisma {
   };
 
   export type transactionsOrderByRelevanceFieldEnum = (typeof transactionsOrderByRelevanceFieldEnum)[keyof typeof transactionsOrderByRelevanceFieldEnum]
+
+
+  export const TroubleTicketOrderByRelevanceFieldEnum: {
+    title: 'title',
+    description: 'description',
+    status: 'status',
+    current_assignee_role: 'current_assignee_role',
+    customer_note: 'customer_note',
+    noc_note: 'noc_note',
+    technician_note: 'technician_note'
+  };
+
+  export type TroubleTicketOrderByRelevanceFieldEnum = (typeof TroubleTicketOrderByRelevanceFieldEnum)[keyof typeof TroubleTicketOrderByRelevanceFieldEnum]
 
 
   /**
@@ -18610,6 +19780,101 @@ export namespace Prisma {
     invoice_id?: StringNullableWithAggregatesFilter<"transactions"> | string | null
     createdAt?: DateTimeWithAggregatesFilter<"transactions"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"transactions"> | Date | string
+  }
+
+  export type TroubleTicketWhereInput = {
+    AND?: TroubleTicketWhereInput | TroubleTicketWhereInput[]
+    OR?: TroubleTicketWhereInput[]
+    NOT?: TroubleTicketWhereInput | TroubleTicketWhereInput[]
+    id?: BigIntFilter<"TroubleTicket"> | bigint | number
+    customer_id?: BigIntFilter<"TroubleTicket"> | bigint | number
+    type?: IntNullableFilter<"TroubleTicket"> | number | null
+    title?: StringFilter<"TroubleTicket"> | string
+    description?: StringNullableFilter<"TroubleTicket"> | string | null
+    status?: StringFilter<"TroubleTicket"> | string
+    assigned_to?: IntNullableFilter<"TroubleTicket"> | number | null
+    current_assignee_role?: StringFilter<"TroubleTicket"> | string
+    customer_note?: StringNullableFilter<"TroubleTicket"> | string | null
+    noc_note?: StringNullableFilter<"TroubleTicket"> | string | null
+    technician_note?: StringNullableFilter<"TroubleTicket"> | string | null
+    created_at?: DateTimeNullableFilter<"TroubleTicket"> | Date | string | null
+    updated_at?: DateTimeNullableFilter<"TroubleTicket"> | Date | string | null
+  }
+
+  export type TroubleTicketOrderByWithRelationInput = {
+    id?: SortOrder
+    customer_id?: SortOrder
+    type?: SortOrderInput | SortOrder
+    title?: SortOrder
+    description?: SortOrderInput | SortOrder
+    status?: SortOrder
+    assigned_to?: SortOrderInput | SortOrder
+    current_assignee_role?: SortOrder
+    customer_note?: SortOrderInput | SortOrder
+    noc_note?: SortOrderInput | SortOrder
+    technician_note?: SortOrderInput | SortOrder
+    created_at?: SortOrderInput | SortOrder
+    updated_at?: SortOrderInput | SortOrder
+    _relevance?: TroubleTicketOrderByRelevanceInput
+  }
+
+  export type TroubleTicketWhereUniqueInput = Prisma.AtLeast<{
+    id?: bigint | number
+    AND?: TroubleTicketWhereInput | TroubleTicketWhereInput[]
+    OR?: TroubleTicketWhereInput[]
+    NOT?: TroubleTicketWhereInput | TroubleTicketWhereInput[]
+    customer_id?: BigIntFilter<"TroubleTicket"> | bigint | number
+    type?: IntNullableFilter<"TroubleTicket"> | number | null
+    title?: StringFilter<"TroubleTicket"> | string
+    description?: StringNullableFilter<"TroubleTicket"> | string | null
+    status?: StringFilter<"TroubleTicket"> | string
+    assigned_to?: IntNullableFilter<"TroubleTicket"> | number | null
+    current_assignee_role?: StringFilter<"TroubleTicket"> | string
+    customer_note?: StringNullableFilter<"TroubleTicket"> | string | null
+    noc_note?: StringNullableFilter<"TroubleTicket"> | string | null
+    technician_note?: StringNullableFilter<"TroubleTicket"> | string | null
+    created_at?: DateTimeNullableFilter<"TroubleTicket"> | Date | string | null
+    updated_at?: DateTimeNullableFilter<"TroubleTicket"> | Date | string | null
+  }, "id">
+
+  export type TroubleTicketOrderByWithAggregationInput = {
+    id?: SortOrder
+    customer_id?: SortOrder
+    type?: SortOrderInput | SortOrder
+    title?: SortOrder
+    description?: SortOrderInput | SortOrder
+    status?: SortOrder
+    assigned_to?: SortOrderInput | SortOrder
+    current_assignee_role?: SortOrder
+    customer_note?: SortOrderInput | SortOrder
+    noc_note?: SortOrderInput | SortOrder
+    technician_note?: SortOrderInput | SortOrder
+    created_at?: SortOrderInput | SortOrder
+    updated_at?: SortOrderInput | SortOrder
+    _count?: TroubleTicketCountOrderByAggregateInput
+    _avg?: TroubleTicketAvgOrderByAggregateInput
+    _max?: TroubleTicketMaxOrderByAggregateInput
+    _min?: TroubleTicketMinOrderByAggregateInput
+    _sum?: TroubleTicketSumOrderByAggregateInput
+  }
+
+  export type TroubleTicketScalarWhereWithAggregatesInput = {
+    AND?: TroubleTicketScalarWhereWithAggregatesInput | TroubleTicketScalarWhereWithAggregatesInput[]
+    OR?: TroubleTicketScalarWhereWithAggregatesInput[]
+    NOT?: TroubleTicketScalarWhereWithAggregatesInput | TroubleTicketScalarWhereWithAggregatesInput[]
+    id?: BigIntWithAggregatesFilter<"TroubleTicket"> | bigint | number
+    customer_id?: BigIntWithAggregatesFilter<"TroubleTicket"> | bigint | number
+    type?: IntNullableWithAggregatesFilter<"TroubleTicket"> | number | null
+    title?: StringWithAggregatesFilter<"TroubleTicket"> | string
+    description?: StringNullableWithAggregatesFilter<"TroubleTicket"> | string | null
+    status?: StringWithAggregatesFilter<"TroubleTicket"> | string
+    assigned_to?: IntNullableWithAggregatesFilter<"TroubleTicket"> | number | null
+    current_assignee_role?: StringWithAggregatesFilter<"TroubleTicket"> | string
+    customer_note?: StringNullableWithAggregatesFilter<"TroubleTicket"> | string | null
+    noc_note?: StringNullableWithAggregatesFilter<"TroubleTicket"> | string | null
+    technician_note?: StringNullableWithAggregatesFilter<"TroubleTicket"> | string | null
+    created_at?: DateTimeNullableWithAggregatesFilter<"TroubleTicket"> | Date | string | null
+    updated_at?: DateTimeNullableWithAggregatesFilter<"TroubleTicket"> | Date | string | null
   }
 
   export type accountsCreateInput = {
@@ -19844,6 +21109,118 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type TroubleTicketCreateInput = {
+    id?: bigint | number
+    customer_id: bigint | number
+    type?: number | null
+    title: string
+    description?: string | null
+    status?: string
+    assigned_to?: number | null
+    current_assignee_role?: string
+    customer_note?: string | null
+    noc_note?: string | null
+    technician_note?: string | null
+    created_at?: Date | string | null
+    updated_at?: Date | string | null
+  }
+
+  export type TroubleTicketUncheckedCreateInput = {
+    id?: bigint | number
+    customer_id: bigint | number
+    type?: number | null
+    title: string
+    description?: string | null
+    status?: string
+    assigned_to?: number | null
+    current_assignee_role?: string
+    customer_note?: string | null
+    noc_note?: string | null
+    technician_note?: string | null
+    created_at?: Date | string | null
+    updated_at?: Date | string | null
+  }
+
+  export type TroubleTicketUpdateInput = {
+    id?: BigIntFieldUpdateOperationsInput | bigint | number
+    customer_id?: BigIntFieldUpdateOperationsInput | bigint | number
+    type?: NullableIntFieldUpdateOperationsInput | number | null
+    title?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    status?: StringFieldUpdateOperationsInput | string
+    assigned_to?: NullableIntFieldUpdateOperationsInput | number | null
+    current_assignee_role?: StringFieldUpdateOperationsInput | string
+    customer_note?: NullableStringFieldUpdateOperationsInput | string | null
+    noc_note?: NullableStringFieldUpdateOperationsInput | string | null
+    technician_note?: NullableStringFieldUpdateOperationsInput | string | null
+    created_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    updated_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  }
+
+  export type TroubleTicketUncheckedUpdateInput = {
+    id?: BigIntFieldUpdateOperationsInput | bigint | number
+    customer_id?: BigIntFieldUpdateOperationsInput | bigint | number
+    type?: NullableIntFieldUpdateOperationsInput | number | null
+    title?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    status?: StringFieldUpdateOperationsInput | string
+    assigned_to?: NullableIntFieldUpdateOperationsInput | number | null
+    current_assignee_role?: StringFieldUpdateOperationsInput | string
+    customer_note?: NullableStringFieldUpdateOperationsInput | string | null
+    noc_note?: NullableStringFieldUpdateOperationsInput | string | null
+    technician_note?: NullableStringFieldUpdateOperationsInput | string | null
+    created_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    updated_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  }
+
+  export type TroubleTicketCreateManyInput = {
+    id?: bigint | number
+    customer_id: bigint | number
+    type?: number | null
+    title: string
+    description?: string | null
+    status?: string
+    assigned_to?: number | null
+    current_assignee_role?: string
+    customer_note?: string | null
+    noc_note?: string | null
+    technician_note?: string | null
+    created_at?: Date | string | null
+    updated_at?: Date | string | null
+  }
+
+  export type TroubleTicketUpdateManyMutationInput = {
+    id?: BigIntFieldUpdateOperationsInput | bigint | number
+    customer_id?: BigIntFieldUpdateOperationsInput | bigint | number
+    type?: NullableIntFieldUpdateOperationsInput | number | null
+    title?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    status?: StringFieldUpdateOperationsInput | string
+    assigned_to?: NullableIntFieldUpdateOperationsInput | number | null
+    current_assignee_role?: StringFieldUpdateOperationsInput | string
+    customer_note?: NullableStringFieldUpdateOperationsInput | string | null
+    noc_note?: NullableStringFieldUpdateOperationsInput | string | null
+    technician_note?: NullableStringFieldUpdateOperationsInput | string | null
+    created_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    updated_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  }
+
+  export type TroubleTicketUncheckedUpdateManyInput = {
+    id?: BigIntFieldUpdateOperationsInput | bigint | number
+    customer_id?: BigIntFieldUpdateOperationsInput | bigint | number
+    type?: NullableIntFieldUpdateOperationsInput | number | null
+    title?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    status?: StringFieldUpdateOperationsInput | string
+    assigned_to?: NullableIntFieldUpdateOperationsInput | number | null
+    current_assignee_role?: StringFieldUpdateOperationsInput | string
+    customer_note?: NullableStringFieldUpdateOperationsInput | string | null
+    noc_note?: NullableStringFieldUpdateOperationsInput | string | null
+    technician_note?: NullableStringFieldUpdateOperationsInput | string | null
+    created_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    updated_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  }
+
   export type StringFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel>
     in?: string[]
@@ -20847,6 +22224,101 @@ export namespace Prisma {
     _max?: NestedEnumtransactions_type_in_outFilter<$PrismaModel>
   }
 
+  export type IntNullableFilter<$PrismaModel = never> = {
+    equals?: number | IntFieldRefInput<$PrismaModel> | null
+    in?: number[] | null
+    notIn?: number[] | null
+    lt?: number | IntFieldRefInput<$PrismaModel>
+    lte?: number | IntFieldRefInput<$PrismaModel>
+    gt?: number | IntFieldRefInput<$PrismaModel>
+    gte?: number | IntFieldRefInput<$PrismaModel>
+    not?: NestedIntNullableFilter<$PrismaModel> | number | null
+  }
+
+  export type TroubleTicketOrderByRelevanceInput = {
+    fields: TroubleTicketOrderByRelevanceFieldEnum | TroubleTicketOrderByRelevanceFieldEnum[]
+    sort: SortOrder
+    search: string
+  }
+
+  export type TroubleTicketCountOrderByAggregateInput = {
+    id?: SortOrder
+    customer_id?: SortOrder
+    type?: SortOrder
+    title?: SortOrder
+    description?: SortOrder
+    status?: SortOrder
+    assigned_to?: SortOrder
+    current_assignee_role?: SortOrder
+    customer_note?: SortOrder
+    noc_note?: SortOrder
+    technician_note?: SortOrder
+    created_at?: SortOrder
+    updated_at?: SortOrder
+  }
+
+  export type TroubleTicketAvgOrderByAggregateInput = {
+    id?: SortOrder
+    customer_id?: SortOrder
+    type?: SortOrder
+    assigned_to?: SortOrder
+  }
+
+  export type TroubleTicketMaxOrderByAggregateInput = {
+    id?: SortOrder
+    customer_id?: SortOrder
+    type?: SortOrder
+    title?: SortOrder
+    description?: SortOrder
+    status?: SortOrder
+    assigned_to?: SortOrder
+    current_assignee_role?: SortOrder
+    customer_note?: SortOrder
+    noc_note?: SortOrder
+    technician_note?: SortOrder
+    created_at?: SortOrder
+    updated_at?: SortOrder
+  }
+
+  export type TroubleTicketMinOrderByAggregateInput = {
+    id?: SortOrder
+    customer_id?: SortOrder
+    type?: SortOrder
+    title?: SortOrder
+    description?: SortOrder
+    status?: SortOrder
+    assigned_to?: SortOrder
+    current_assignee_role?: SortOrder
+    customer_note?: SortOrder
+    noc_note?: SortOrder
+    technician_note?: SortOrder
+    created_at?: SortOrder
+    updated_at?: SortOrder
+  }
+
+  export type TroubleTicketSumOrderByAggregateInput = {
+    id?: SortOrder
+    customer_id?: SortOrder
+    type?: SortOrder
+    assigned_to?: SortOrder
+  }
+
+  export type IntNullableWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: number | IntFieldRefInput<$PrismaModel> | null
+    in?: number[] | null
+    notIn?: number[] | null
+    lt?: number | IntFieldRefInput<$PrismaModel>
+    lte?: number | IntFieldRefInput<$PrismaModel>
+    gt?: number | IntFieldRefInput<$PrismaModel>
+    gte?: number | IntFieldRefInput<$PrismaModel>
+    not?: NestedIntNullableWithAggregatesFilter<$PrismaModel> | number | null
+    _count?: NestedIntNullableFilter<$PrismaModel>
+    _avg?: NestedFloatNullableFilter<$PrismaModel>
+    _sum?: NestedIntNullableFilter<$PrismaModel>
+    _min?: NestedIntNullableFilter<$PrismaModel>
+    _max?: NestedIntNullableFilter<$PrismaModel>
+  }
+
   export type StringFieldUpdateOperationsInput = {
     set?: string
   }
@@ -21295,6 +22767,14 @@ export namespace Prisma {
     set?: $Enums.transactions_type_in_out
   }
 
+  export type NullableIntFieldUpdateOperationsInput = {
+    set?: number | null
+    increment?: number
+    decrement?: number
+    multiply?: number
+    divide?: number
+  }
+
   export type NestedStringFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel>
     in?: string[]
@@ -21552,6 +23032,33 @@ export namespace Prisma {
     _count?: NestedIntFilter<$PrismaModel>
     _min?: NestedEnumtransactions_type_in_outFilter<$PrismaModel>
     _max?: NestedEnumtransactions_type_in_outFilter<$PrismaModel>
+  }
+
+  export type NestedIntNullableWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: number | IntFieldRefInput<$PrismaModel> | null
+    in?: number[] | null
+    notIn?: number[] | null
+    lt?: number | IntFieldRefInput<$PrismaModel>
+    lte?: number | IntFieldRefInput<$PrismaModel>
+    gt?: number | IntFieldRefInput<$PrismaModel>
+    gte?: number | IntFieldRefInput<$PrismaModel>
+    not?: NestedIntNullableWithAggregatesFilter<$PrismaModel> | number | null
+    _count?: NestedIntNullableFilter<$PrismaModel>
+    _avg?: NestedFloatNullableFilter<$PrismaModel>
+    _sum?: NestedIntNullableFilter<$PrismaModel>
+    _min?: NestedIntNullableFilter<$PrismaModel>
+    _max?: NestedIntNullableFilter<$PrismaModel>
+  }
+
+  export type NestedFloatNullableFilter<$PrismaModel = never> = {
+    equals?: number | FloatFieldRefInput<$PrismaModel> | null
+    in?: number[] | null
+    notIn?: number[] | null
+    lt?: number | FloatFieldRefInput<$PrismaModel>
+    lte?: number | FloatFieldRefInput<$PrismaModel>
+    gt?: number | FloatFieldRefInput<$PrismaModel>
+    gte?: number | FloatFieldRefInput<$PrismaModel>
+    not?: NestedFloatNullableFilter<$PrismaModel> | number | null
   }
 
   export type customerCreateWithoutCompanyInput = {

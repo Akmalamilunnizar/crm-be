@@ -225,3 +225,35 @@ enum invoices_status {
   unpaid
   pending
 }
+
+/// Prisma model mapping to the existing `trouble_tickets` table
+model TroubleTicket {
+  /// BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY
+  id                    BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  /// BIGINT UNSIGNED (FK to customers; kept scalar to avoid cross-type relation)
+  customer_id           BigInt    @db.UnsignedBigInt
+  /// INT NULLABLE
+  type                  Int?
+  /// LONGTEXT NOT NULL
+  title                 String    @db.LongText
+  /// TEXT NULLABLE
+  description           String?   @db.Text
+  /// VARCHAR(191) NOT NULL DEFAULT 'received'
+  status                ENUM    @default("received") @db.ENUM(191)
+  /// INT NULLABLE
+  assigned_to           Int?
+  /// VARCHAR(191) NOT NULL DEFAULT 'customer_service'
+  current_assignee_role String    @db.VarChar(191)
+  /// TEXT NULLABLE
+  customer_note         String?   @db.Text
+  /// TEXT NULLABLE
+  noc_note              String?   @db.Text
+  /// TEXT NULLABLE
+  technician_note       String?   @db.Text
+  /// DATETIME NULLABLE
+  created_at            DateTime?
+  /// DATETIME NULLABLE
+  updated_at            DateTime?
+
+  @@map("trouble_tickets")
+}

@@ -293,6 +293,22 @@ exports.Prisma.TransactionsScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
+exports.Prisma.TroubleTicketScalarFieldEnum = {
+  id: 'id',
+  customer_id: 'customer_id',
+  type: 'type',
+  title: 'title',
+  description: 'description',
+  status: 'status',
+  assigned_to: 'assigned_to',
+  current_assignee_role: 'current_assignee_role',
+  customer_note: 'customer_note',
+  noc_note: 'noc_note',
+  technician_note: 'technician_note',
+  created_at: 'created_at',
+  updated_at: 'updated_at'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -426,6 +442,16 @@ exports.Prisma.transactionsOrderByRelevanceFieldEnum = {
   method: 'method',
   invoice_id: 'invoice_id'
 };
+
+exports.Prisma.TroubleTicketOrderByRelevanceFieldEnum = {
+  title: 'title',
+  description: 'description',
+  status: 'status',
+  current_assignee_role: 'current_assignee_role',
+  customer_note: 'customer_note',
+  noc_note: 'noc_note',
+  technician_note: 'technician_note'
+};
 exports.invoices_status = exports.$Enums.invoices_status = {
   paid: 'paid',
   unpaid: 'unpaid',
@@ -457,7 +483,8 @@ exports.Prisma.ModelName = {
   customer_installations: 'customer_installations',
   invoices: 'invoices',
   invoice_items: 'invoice_items',
-  transactions: 'transactions'
+  transactions: 'transactions',
+  TroubleTicket: 'TroubleTicket'
 };
 
 /**

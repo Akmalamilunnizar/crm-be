@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"log"
 	"skripsi-be/internal/api/admin/account"
 	"skripsi-be/internal/api/admin/area"
 	"skripsi-be/internal/api/admin/asset"
@@ -17,6 +18,7 @@ import (
 	authapi "skripsi-be/internal/api/auth"
 	upload_file "skripsi-be/internal/api/common/upload_file"
 	customerdashboard "skripsi-be/internal/api/customer/dashboard"
+	ticketapi "skripsi-be/internal/api/ticket"
 	midtrans "skripsi-be/internal/api/webhook/midtrans"
 	"skripsi-be/internal/api/webhook/moota"
 
@@ -25,6 +27,14 @@ import (
 
 func RouteFiber(app *fiber.App) {
 	app.Static("/", "./public")
+
+	// Add a test endpoint to verify server is working
+	app.Get("/", func(c *fiber.Ctx) error {
+		return c.JSON(fiber.Map{
+			"message": "Server is running",
+			"status":  "ok",
+		})
+	})
 
 	api := app.Group("/api")
 
@@ -50,6 +60,11 @@ func RouteFiber(app *fiber.App) {
 
 	customer := api.Group("/customer")
 	customerdashboard.CustomerDashboardRoute(customer.Group("/dashboard"))
+
+	// tickets module (shared access beneath /api)
+	log.Println("Registering ticket routes...")
+	ticketapi.TicketRoutes(api)
+	log.Println("Ticket routes registered successfully")
 
 	webhook := api.Group("/webhook")
 	moota.WebhookMootaRoute(webhook.Group("/moota"))

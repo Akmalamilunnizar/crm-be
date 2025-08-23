@@ -24,17 +24,12 @@ type TicketWithAssignee struct {
 func (r *Repo) ListAll() ([]TicketWithAssignee, error) {
 	var items []TicketWithAssignee
 	err := r.DB.Table("trouble_tickets t").
-		Select("t.*, r1.name as assignee_name, r2.name as current_assignee_name").
+		Select("t.*, r1.name as assignee_name, r2.name as current_assignee_name, tt.name as type_name").
 		Joins("LEFT JOIN roles r1 ON r1.id = t.assigned_to").
 		Joins("LEFT JOIN roles r2 ON r2.id = t.current_assignee_role").
+		Joins("LEFT JOIN trouble_type tt ON tt.id = t.type").
 		Order("t.created_at DESC").
 		Scan(&items).Error
-
-	// Debug logging
-	for i, item := range items {
-		log.Printf("Ticket %d: ID=%d, AssignedTo=%s, AssigneeName='%s', CurrentAssigneeRole='%s', CurrentAssigneeName='%s'",
-			i+1, item.ID, item.AssignedTo, item.AssigneeName, item.CurrentAssignee, item.CurrentAssigneeName)
-	}
 
 	return items, err
 }

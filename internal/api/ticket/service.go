@@ -30,6 +30,27 @@ func (s *Service) CreateCS(input entities.TroubleTicket) (*entities.TroubleTicke
 	return &input, nil
 }
 
+// CreateTicketFromNetwatch creates a ticket from Netwatch monitoring
+func (s *Service) CreateTicketFromNetwatch(input *entities.TroubleTicket) (*entities.TroubleTicket, error) {
+	// Force initial state to match DB enum values
+	input.Status = "ongoing" // Netwatch tickets start as ongoing
+
+	// Look up CS role ID dynamically for assignment
+	csRoleID, err := s.repo.RoleIDByName(string(entities.AssignCS))
+	if err != nil {
+		return nil, err
+	}
+	if csRoleID == "" {
+		return nil, fmt.Errorf("cs role ID is empty")
+	}
+	input.CurrentAssignee = csRoleID
+
+	if err := s.repo.Create(input); err != nil {
+		return nil, err
+	}
+	return input, nil
+}
+
 func (s *Service) SendToNOC(id uint64, note string) (*entities.TroubleTicket, error) {
 	t, err := s.repo.ByID(id)
 	if err != nil {
@@ -57,13 +78,17 @@ func (s *Service) SendToNOC(id uint64, note string) (*entities.TroubleTicket, er
 }
 
 // SendToCS moves the ticket back to Customer Service with an optional NOC note
-func (s *Service) SendToCS(id uint64, note string) (*entities.TroubleTicket, error) {
+func (s *Service) SendToCS(id uint64, note string, tType *string) (*entities.TroubleTicket, error) {
 	t, err := s.repo.ByID(id)
 	if err != nil {
 		return nil, err
 	}
 	// keep status ongoing while reassigning
 	t.Status = "ongoing"
+	// If NOC provided a diagnosed trouble type, persist it
+	if tType != nil && *tType != "" {
+		t.Type = tType
+	}
 	// Look up CS role ID dynamically
 	csRoleName := string(entities.AssignCS)
 	log.Printf("SendToCS: Looking up role ID for name: '%s'", csRoleName)

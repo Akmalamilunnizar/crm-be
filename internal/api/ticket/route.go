@@ -30,7 +30,7 @@ func TicketRoutes(api fiber.Router) {
 	g.Post("/:id/resolve", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "TECHNICIAN"), h.TechnicianResolve)
 	g.Post("/:id/technician-note", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "TECHNICIAN"), h.AddTechnicianNote)
 
-	g.Get("/reports/by-type", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "CUSTOMER_SERVICE"), h.ReportByType)
+	g.Get("/reports/by-type", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "CUSTOMER_SERVICE", "NOC", "TECHNICIAN"), h.ReportByType)
 	g.Get("/lookups/trouble-types", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "CUSTOMER_SERVICE", "NOC", "TECHNICIAN"), h.TroubleTypes)
 	g.Post("/lookups/trouble-types", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "CUSTOMER_SERVICE"), h.CreateTroubleType)
 	g.Get("/reports/hotspots", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "CUSTOMER_SERVICE"), h.HotLocations)

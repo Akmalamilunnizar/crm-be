@@ -16,6 +16,7 @@ const (
 	TroubleHardware TroubleType = "hardware"
 	TroublePower    TroubleType = "power"
 	TroubleOther    TroubleType = "other"
+	TroubleNetwork  TroubleType = "network" // New type for Netwatch-triggered tickets
 
 	// Use role names instead of hardcoded UUIDs - these will be looked up dynamically
 	AssignCS   Assignee = "CUSTOMER SERVICE"

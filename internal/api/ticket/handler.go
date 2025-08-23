@@ -104,10 +104,11 @@ func (h *Handler) SendToCS(c *fiber.Ctx) error {
 		return helpers.ResponseUtils(c, 400, false, "bad id", nil)
 	}
 	var body struct {
-		Note string `json:"note"`
+		Note string  `json:"note"`
+		Type *string `json:"type"`
 	}
 	_ = c.BodyParser(&body)
-	out, err := h.svc.SendToCS(id, body.Note)
+	out, err := h.svc.SendToCS(id, body.Note, body.Type)
 	if err != nil {
 		return helpers.ResponseUtils(c, 500, false, err.Error(), nil)
 	}

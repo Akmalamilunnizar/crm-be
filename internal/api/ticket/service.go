@@ -57,13 +57,17 @@ func (s *Service) SendToNOC(id uint64, note string) (*entities.TroubleTicket, er
 }
 
 // SendToCS moves the ticket back to Customer Service with an optional NOC note
-func (s *Service) SendToCS(id uint64, note string) (*entities.TroubleTicket, error) {
+func (s *Service) SendToCS(id uint64, note string, tType *string) (*entities.TroubleTicket, error) {
 	t, err := s.repo.ByID(id)
 	if err != nil {
 		return nil, err
 	}
 	// keep status ongoing while reassigning
 	t.Status = "ongoing"
+	// If NOC provided a diagnosed trouble type, persist it
+	if tType != nil && *tType != "" {
+		t.Type = tType
+	}
 	// Look up CS role ID dynamically
 	csRoleName := string(entities.AssignCS)
 	log.Printf("SendToCS: Looking up role ID for name: '%s'", csRoleName)

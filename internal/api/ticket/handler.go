@@ -1,7 +1,10 @@
 package ticketapi
 
 import (
+	"fmt"
 	"log"
+	"os"
+	"path/filepath"
 	"skripsi-be/internal/helpers"
 	"skripsi-be/internal/models/entities"
 	"strconv"
@@ -169,24 +172,91 @@ func (h *Handler) AddTechnicianNote(c *fiber.Ctx) error {
 	if err != nil {
 		return helpers.ResponseUtils(c, 400, false, "bad id", nil)
 	}
-	var body struct {
-		Note string `json:"note"`
-	}
-	if err := c.BodyParser(&body); err != nil {
-		return helpers.ResponseUtils(c, 400, false, err.Error(), nil)
-	}
-	if body.Note == "" {
-		return helpers.ResponseUtils(c, 400, false, "note is required", nil)
+
+	// Parse multipart form
+	form, err := c.MultipartForm()
+	if err != nil {
+		return helpers.ResponseUtils(c, 400, false, "failed to parse multipart form", nil)
 	}
 
-	out, err := h.svc.AddTechnicianNote(id, body.Note)
+	// Get note from form
+	notes := form.Value["note"]
+	if len(notes) == 0 || notes[0] == "" {
+		return helpers.ResponseUtils(c, 400, false, "note is required", nil)
+	}
+	note := notes[0]
+
+	// Get uploaded files
+	var imgTechBfPath, imgTechAfPath *string
+
+	// Handle img_tech_bf file
+	if files := form.File["img_tech_bf"]; len(files) > 0 {
+		file := files[0]
+		if file.Size > 10*1024*1024 { // 10MB limit
+			return helpers.ResponseUtils(c, 400, false, "img_tech_bf file too large (max 10MB)", nil)
+		}
+
+		// Create uploads directory if not exists
+		uploadDir := "uploads/technician"
+		if err := os.MkdirAll(uploadDir, 0755); err != nil {
+			return helpers.ResponseUtils(c, 500, false, "failed to create upload directory", nil)
+		}
+
+		// Generate filename
+		ext := filepath.Ext(file.Filename)
+		filename := fmt.Sprintf("%d-bf%s", id, ext)
+		filepath := filepath.Join(uploadDir, filename)
+
+		// Save file
+		if err := c.SaveFile(file, filepath); err != nil {
+			return helpers.ResponseUtils(c, 500, false, "failed to save img_bf file", nil)
+		}
+
+		// Store relative path for database
+		relativePath := "/" + filepath
+		imgTechBfPath = &relativePath
+	}
+
+	// Handle img_tech_af file
+	if files := form.File["img_tech_af"]; len(files) > 0 {
+		file := files[0]
+		if file.Size > 10*1024*1024 { // 10MB limit
+			return helpers.ResponseUtils(c, 400, false, "img_tech_af file too large (max 10MB)", nil)
+		}
+
+		// Create uploads directory if not exists
+		uploadDir := "uploads/technician"
+		if err := os.MkdirAll(uploadDir, 0755); err != nil {
+			return helpers.ResponseUtils(c, 500, false, "failed to create upload directory", nil)
+		}
+
+		// Generate filename
+		ext := filepath.Ext(file.Filename)
+		filename := fmt.Sprintf("%d-af%s", id, ext)
+		filepath := filepath.Join(uploadDir, filename)
+
+		// Save file
+		if err := c.SaveFile(file, filepath); err != nil {
+			return helpers.ResponseUtils(c, 500, false, "failed to save img_tech_af file", nil)
+		}
+
+		// Store relative path for database
+		relativePath := "/" + filepath
+		imgTechAfPath = &relativePath
+	}
+
+	out, err := h.svc.AddTechnicianNote(id, note, imgTechBfPath, imgTechAfPath)
 	if err != nil {
 		return helpers.ResponseUtils(c, 500, false, err.Error(), nil)
 	}
 
-	return helpers.ResponseUtils(c, 200, true, "Technician note added successfully", fiber.Map{
+	return helpers.ResponseUtils(c, 200, true, "Technician note & images added successfully", fiber.Map{
 		"ticket_id":       out.ID,
 		"technician_note": out.TechnicianNote,
+		"img_tech_bf":     out.ImgTechBf,
+		"img_tech_af":     out.ImgTechAf,
+		"img_cs":          out.ImgCs,
+		"img_noc":         out.ImgNoc,
 	})
 }
 

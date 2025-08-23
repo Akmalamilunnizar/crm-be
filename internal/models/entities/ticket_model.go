@@ -35,6 +35,10 @@ type TroubleTicket struct {
 	CustomerNote    *string    `gorm:"type:text" json:"customer_note,omitempty"`
 	NOCNote         *string    `gorm:"type:text" json:"noc_note,omitempty"`
 	TechnicianNote  *string    `gorm:"type:text" json:"technician_note,omitempty"`
+	ImgTechBf       *string    `gorm:"type:varchar(255)" json:"img_tech_bf,omitempty"`
+	ImgTechAf       *string    `gorm:"type:varchar(255)" json:"img_tech_af,omitempty"`
+	ImgCs           *string    `gorm:"type:varchar(255)" json:"img_cs,omitempty"`
+	ImgNoc          *string    `gorm:"type:varchar(255)" json:"img_noc,omitempty"`
 	CreatedAt       *time.Time `gorm:"column:created_at" json:"created_at,omitempty"`
 	UpdatedAt       *time.Time `gorm:"column:updated_at" json:"updated_at,omitempty"`
 }

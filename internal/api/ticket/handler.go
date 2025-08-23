@@ -163,6 +163,33 @@ func (h *Handler) TechnicianResolve(c *fiber.Ctx) error {
 	return helpers.ResponseUtils(c, 200, true, "ok", out)
 }
 
+// AddTechnicianNote allows technician to add a note to a ticket
+func (h *Handler) AddTechnicianNote(c *fiber.Ctx) error {
+	id, err := idParam(c)
+	if err != nil {
+		return helpers.ResponseUtils(c, 400, false, "bad id", nil)
+	}
+	var body struct {
+		Note string `json:"note"`
+	}
+	if err := c.BodyParser(&body); err != nil {
+		return helpers.ResponseUtils(c, 400, false, err.Error(), nil)
+	}
+	if body.Note == "" {
+		return helpers.ResponseUtils(c, 400, false, "note is required", nil)
+	}
+
+	out, err := h.svc.AddTechnicianNote(id, body.Note)
+	if err != nil {
+		return helpers.ResponseUtils(c, 500, false, err.Error(), nil)
+	}
+
+	return helpers.ResponseUtils(c, 200, true, "Technician note added successfully", fiber.Map{
+		"ticket_id":       out.ID,
+		"technician_note": out.TechnicianNote,
+	})
+}
+
 func (h *Handler) ReportByType(c *fiber.Ctx) error {
 	rows, err := h.svc.repo.CountByType()
 	if err != nil {

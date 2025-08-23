@@ -197,3 +197,19 @@ func (s *Service) TechnicianResolve(id uint64, note string) (*entities.TroubleTi
 	}
 	return t, nil
 }
+
+// AddTechnicianNote adds a technician note to a ticket without changing status
+func (s *Service) AddTechnicianNote(id uint64, note string) (*entities.TroubleTicket, error) {
+	t, err := s.repo.ByID(id)
+	if err != nil {
+		return nil, err
+	}
+
+	// Update the technician note field
+	t.TechnicianNote = &note
+
+	if err := s.repo.Save(t); err != nil {
+		return nil, err
+	}
+	return t, nil
+}

@@ -31,6 +31,7 @@ func (s *Service) CreateCS(input entities.TroubleTicket) (*entities.TroubleTicke
 }
 
 // CreateTicketFromNetwatch creates a ticket from Netwatch monitoring
+// DISABLED FOR TESTING - Netwatch integration is currently disabled
 func (s *Service) CreateTicketFromNetwatch(input *entities.TroubleTicket) (*entities.TroubleTicket, error) {
 	// Force initial state to match DB enum values
 	input.Status = "ongoing" // Netwatch tickets start as ongoing
@@ -51,7 +52,7 @@ func (s *Service) CreateTicketFromNetwatch(input *entities.TroubleTicket) (*enti
 	return input, nil
 }
 
-func (s *Service) SendToNOC(id uint64, note string) (*entities.TroubleTicket, error) {
+func (s *Service) SendToNOC(id uint64, note string, imageFilename *string) (*entities.TroubleTicket, error) {
 	t, err := s.repo.ByID(id)
 	if err != nil {
 		return nil, err
@@ -70,15 +71,24 @@ func (s *Service) SendToNOC(id uint64, note string) (*entities.TroubleTicket, er
 		return nil, fmt.Errorf("noc role ID is empty for role name: %s", nocRoleName)
 	}
 	t.CurrentAssignee = nocRoleID
-	t.NOCNote = &note
+	t.CustomerNote = &note
+	log.Printf("SendToNOC: Setting CustomerNote to: %s", note)
+	if imageFilename != nil && *imageFilename != "" {
+		t.ImgCS = imageFilename
+		log.Printf("SendToNOC: Setting ImgCS to: %s", *imageFilename)
+	} else {
+		log.Printf("SendToNOC: No image provided")
+	}
+	log.Printf("SendToNOC: About to save ticket with CustomerNote=%v, ImgCS=%v", t.CustomerNote, t.ImgCS)
 	if err := s.repo.Save(t); err != nil {
 		return nil, err
 	}
+	log.Printf("SendToNOC: Successfully saved ticket")
 	return t, nil
 }
 
-// SendToCS moves the ticket back to Customer Service with an optional NOC note
-func (s *Service) SendToCS(id uint64, note string, tType *string) (*entities.TroubleTicket, error) {
+// SendToCS moves the ticket back to Customer Service with an optional NOC note and image
+func (s *Service) SendToCS(id uint64, note string, tType *string, imageFilename *string) (*entities.TroubleTicket, error) {
 	t, err := s.repo.ByID(id)
 	if err != nil {
 		return nil, err
@@ -102,6 +112,12 @@ func (s *Service) SendToCS(id uint64, note string, tType *string) (*entities.Tro
 	t.CurrentAssignee = csRoleID
 	// reuse NOC note field for context when NOC sends back to CS
 	t.NOCNote = &note
+
+	// Save image filename if provided
+	if imageFilename != nil && *imageFilename != "" {
+		t.ImgNOC = imageFilename
+	}
+
 	if err := s.repo.Save(t); err != nil {
 		return nil, err
 	}
@@ -152,12 +168,13 @@ func (s *Service) NOCPhysical(id uint64, note string) (*entities.TroubleTicket, 
 	return t, nil
 }
 
-func (s *Service) AssignTechnician(id uint64, techUserID string) (*entities.TroubleTicket, error) {
+func (s *Service) AssignTechnician(id uint64) (*entities.TroubleTicket, error) {
 	t, err := s.repo.ByID(id)
 	if err != nil {
 		return nil, err
 	}
-	t.AssignedTo = techUserID
+	// Don't assign to specific technician - leave AssignedTo empty so all technicians can see it
+	t.AssignedTo = ""
 	// Look up Technician role ID dynamically
 	techRoleID, err := s.repo.RoleIDByName(string(entities.AssignTech))
 	if err != nil {
@@ -198,6 +215,29 @@ func (s *Service) TechnicianResolve(id uint64, note string) (*entities.TroubleTi
 	return t, nil
 }
 
+// CSResolve allows Customer Service to resolve tickets with a customer note
+func (s *Service) CSResolve(id uint64, note string) (*entities.TroubleTicket, error) {
+	t, err := s.repo.ByID(id)
+	if err != nil {
+		return nil, err
+	}
+	t.Status = "finished"
+	// Keep assigned to CS since they're resolving it
+	csRoleID, err := s.repo.RoleIDByName(string(entities.AssignCS))
+	if err != nil {
+		return nil, err
+	}
+	if csRoleID == "" {
+		return nil, fmt.Errorf("cs role ID is empty")
+	}
+	t.CurrentAssignee = csRoleID
+	t.CustomerNote = &note
+	if err := s.repo.Save(t); err != nil {
+		return nil, err
+	}
+	return t, nil
+}
+
 // AddTechnicianNote adds a technician note to a ticket without changing status
 func (s *Service) AddTechnicianNote(id uint64, note string, imgTechBf *string, imgTechAf *string) (*entities.TroubleTicket, error) {
 	t, err := s.repo.ByID(id)
@@ -210,10 +250,10 @@ func (s *Service) AddTechnicianNote(id uint64, note string, imgTechBf *string, i
 
 	// Update image fields if provided
 	if imgTechBf != nil {
-		t.ImgTechBf = imgTechBf
+		t.ImgTechBF = imgTechBf
 	}
 	if imgTechAf != nil {
-		t.ImgTechAf = imgTechAf
+		t.ImgTechAF = imgTechAf
 	}
 
 	if err := s.repo.Save(t); err != nil {

@@ -27,8 +27,10 @@ func TicketRoutes(api fiber.Router) {
 	g.Post("/:id/noc-solved", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "NOC"), h.NOCSolved)
 	g.Post("/:id/noc-physical", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "NOC"), h.NOCPhysical)
 	g.Post("/:id/assign-technician", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "CUSTOMER_SERVICE"), h.AssignTechnician)
-	g.Post("/:id/resolve", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "TECHNICIAN"), h.TechnicianResolve)
+	g.Post("/:id/resolve", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "CUSTOMER_SERVICE", "CUSTOMER SERVICE"), h.CSResolve)
+	g.Post("/:id/technician-resolve", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "TECHNICIAN"), h.TechnicianResolve)
 	g.Post("/:id/technician-note", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "TECHNICIAN"), h.AddTechnicianNote)
+	g.Post("/upload-noc-image", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "NOC"), h.UploadNOCImage)
 
 	g.Get("/reports/by-type", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "CUSTOMER_SERVICE", "NOC", "TECHNICIAN"), h.ReportByType)
 	g.Get("/lookups/trouble-types", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "CUSTOMER_SERVICE", "NOC", "TECHNICIAN"), h.TroubleTypes)

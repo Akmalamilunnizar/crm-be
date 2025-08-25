@@ -27,6 +27,7 @@ import (
 
 func RouteFiber(app *fiber.App) {
 	app.Static("/", "./public")
+	app.Static("/uploads", "./uploads")
 
 	// Add a test endpoint to verify server is working
 	app.Get("/", func(c *fiber.Ctx) error {

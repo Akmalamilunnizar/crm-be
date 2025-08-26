@@ -4,11 +4,20 @@ import (
 	"fmt"
 	"log"
 	"skripsi-be/internal/models/entities"
+	"skripsi-be/internal/telegram"
 )
 
-type Service struct{ repo *Repo }
+type Service struct {
+	repo            *Repo
+	telegramService *telegram.Service
+}
 
-func NewService(r *Repo) *Service { return &Service{r} }
+func NewService(r *Repo) *Service {
+	return &Service{
+		repo:            r,
+		telegramService: telegram.NewService(),
+	}
+}
 
 func (s *Service) CreateCS(input entities.TroubleTicket) (*entities.TroubleTicket, error) {
 	// Force initial state to match DB enum values
@@ -27,6 +36,12 @@ func (s *Service) CreateCS(input entities.TroubleTicket) (*entities.TroubleTicke
 	if err := s.repo.Create(&input); err != nil {
 		return nil, err
 	}
+
+	// Send Telegram notification to CS channel
+	if err := s.telegramService.SendTicketNotification("CUSTOMER SERVICE", &input, "New Ticket Created"); err != nil {
+		log.Printf("Failed to send Telegram notification: %v", err)
+	}
+
 	return &input, nil
 }
 
@@ -83,6 +98,12 @@ func (s *Service) SendToNOC(id uint64, note string, imageFilename *string) (*ent
 	if err := s.repo.Save(t); err != nil {
 		return nil, err
 	}
+
+	// Send Telegram notification to NOC channel
+	if err := s.telegramService.SendTicketNotification("NOC", t, "Ticket Assigned to NOC"); err != nil {
+		log.Printf("Failed to send Telegram notification to NOC: %v", err)
+	}
+
 	log.Printf("SendToNOC: Successfully saved ticket")
 	return t, nil
 }
@@ -121,6 +142,12 @@ func (s *Service) SendToCS(id uint64, note string, tType *string, imageFilename 
 	if err := s.repo.Save(t); err != nil {
 		return nil, err
 	}
+
+	// Send Telegram notification to CS channel
+	if err := s.telegramService.SendTicketNotification("CUSTOMER SERVICE", t, "Ticket Returned to Customer Service"); err != nil {
+		log.Printf("Failed to send Telegram notification to CS: %v", err)
+	}
+
 	return t, nil
 }
 
@@ -143,6 +170,12 @@ func (s *Service) NOCSolved(id uint64, note string) (*entities.TroubleTicket, er
 	if err := s.repo.Save(t); err != nil {
 		return nil, err
 	}
+
+	// Send Telegram notification to CS channel
+	if err := s.telegramService.SendTicketNotification("CUSTOMER SERVICE", t, "Ticket Solved by NOC"); err != nil {
+		log.Printf("Failed to send Telegram notification to CS: %v", err)
+	}
+
 	return t, nil
 }
 
@@ -165,6 +198,12 @@ func (s *Service) NOCPhysical(id uint64, note string) (*entities.TroubleTicket, 
 	if err := s.repo.Save(t); err != nil {
 		return nil, err
 	}
+
+	// Send Telegram notification to CS channel
+	if err := s.telegramService.SendTicketNotification("CUSTOMER SERVICE", t, "Ticket Requires Physical Check"); err != nil {
+		log.Printf("Failed to send Telegram notification to CS: %v", err)
+	}
+
 	return t, nil
 }
 
@@ -190,6 +229,12 @@ func (s *Service) AssignTechnician(id uint64) (*entities.TroubleTicket, error) {
 	if err := s.repo.Save(t); err != nil {
 		return nil, err
 	}
+
+	// Send Telegram notification to Technician channel
+	if err := s.telegramService.SendTicketNotification("TECHNICIAN", t, "Ticket Assigned to Technician"); err != nil {
+		log.Printf("Failed to send Telegram notification to Technician: %v", err)
+	}
+
 	return t, nil
 }
 
@@ -212,6 +257,12 @@ func (s *Service) TechnicianResolve(id uint64, note string) (*entities.TroubleTi
 	if err := s.repo.Save(t); err != nil {
 		return nil, err
 	}
+
+	// Send Telegram notification to CS channel
+	if err := s.telegramService.SendTicketNotification("CUSTOMER SERVICE", t, "Ticket Resolved by Technician"); err != nil {
+		log.Printf("Failed to send Telegram notification to CS: %v", err)
+	}
+
 	return t, nil
 }
 
@@ -259,5 +310,11 @@ func (s *Service) AddTechnicianNote(id uint64, note string, imgTechBf *string, i
 	if err := s.repo.Save(t); err != nil {
 		return nil, err
 	}
+
+	// Send Telegram notification to CS channel about technician note
+	if err := s.telegramService.SendTicketNotification("CUSTOMER SERVICE", t, "Technician Note Added"); err != nil {
+		log.Printf("Failed to send Telegram notification to CS: %v", err)
+	}
+
 	return t, nil
 }

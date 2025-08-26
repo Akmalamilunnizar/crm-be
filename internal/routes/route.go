@@ -18,6 +18,7 @@ import (
 	authapi "skripsi-be/internal/api/auth"
 	upload_file "skripsi-be/internal/api/common/upload_file"
 	customerdashboard "skripsi-be/internal/api/customer/dashboard"
+	telegramapi "skripsi-be/internal/api/telegram"
 	ticketapi "skripsi-be/internal/api/ticket"
 	midtrans "skripsi-be/internal/api/webhook/midtrans"
 	"skripsi-be/internal/api/webhook/moota"
@@ -66,6 +67,11 @@ func RouteFiber(app *fiber.App) {
 	log.Println("Registering ticket routes...")
 	ticketapi.TicketRoutes(api)
 	log.Println("Ticket routes registered successfully")
+
+	// telegram module for testing notifications
+	log.Println("Registering telegram routes...")
+	telegramapi.TelegramRoutes(api)
+	log.Println("Telegram routes registered successfully")
 
 	webhook := api.Group("/webhook")
 	moota.WebhookMootaRoute(webhook.Group("/moota"))

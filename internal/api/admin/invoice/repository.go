@@ -37,10 +37,25 @@ func (r AdminInvoiceRepositoryStruct) FindAdminInvoiceRepository() ([]entities.I
 
 func (r AdminInvoiceRepositoryStruct) FindByIdAdminInvoiceRepository(request IdAdminInvoiceRequest) (entities.Invoice, error) {
 	invoice := entities.Invoice{}
-	tx := r.db.Preload("Customer.Product").Preload("InvoiceItems.Invoice").First(&invoice, "id = ?", request.Id)
+	tx := r.db.Preload("Customer.Product").Preload("InvoiceItems.Invoice").Preload("Transaction").First(&invoice, "id = ?", request.Id)
 
 	if tx.Error != nil {
 		return invoice, tx.Error
+	}
+
+	// Calculate total amount from invoice items if not set or incorrect
+	if len(invoice.InvoiceItems) > 0 {
+		var totalAmount int64 = 0
+		for _, item := range invoice.InvoiceItems {
+			totalAmount += item.Total
+		}
+
+		// Update invoice amount if it's different from calculated total
+		if invoice.Amount != totalAmount {
+			invoice.Amount = totalAmount
+			// Update in database
+			r.db.Model(&invoice).Update("amount", totalAmount)
+		}
 	}
 
 	return invoice, nil
@@ -56,17 +71,21 @@ func (r AdminInvoiceRepositoryStruct) CreateAdminInvoiceRepository(request Creat
 		return entities.Invoice{}, tx.Error
 	}
 
+	// Calculate total amount from all invoice items
+	var totalAmount int64 = 0
 	for _, invoiceItem := range invoice.InvoiceItems {
 		invoiceItem.InvoiceID = invoice.ID
 		invoiceItem.Total = invoiceItem.Price * invoiceItem.Qty
+		totalAmount += invoiceItem.Total
 		// txInvoiceItem := tx.Create(&invoiceItem)
 		// if txInvoiceItem.Error != nil {
 		// 	tx.Rollback()
 		// 	return entities.Invoice{}, tx.Error
 		// }
-
-		invoice.Amount = invoiceItem.Total
 	}
+
+	// Set total amount to sum of all items
+	invoice.Amount = totalAmount
 	txInvoice = tx.Model(&invoice).Updates(entities.Invoice{Amount: invoice.Amount})
 	if txInvoice.Error != nil {
 		tx.Rollback()

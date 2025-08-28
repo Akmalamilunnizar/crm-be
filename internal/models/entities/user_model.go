@@ -11,10 +11,10 @@ import (
 type UserRole string
 
 const (
-	RoleAdmin      UserRole = "ADMIN"
-	RoleTechnician UserRole = "TECHNICIAN"
-	RoleFinance    UserRole = "FINANCE"
-	RoleCustomerService    UserRole = "CUSTOMER_SERVICE"
+	RoleAdmin           UserRole = "ADMIN"
+	RoleTechnician      UserRole = "TECHNICIAN"
+	RoleFinance         UserRole = "FINANCE"
+	RoleCustomerService UserRole = "CUSTOMER_SERVICE"
 )
 
 // Accounts model

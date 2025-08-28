@@ -54,7 +54,7 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 		Title:       in.Title,
 		Description: in.Description,
 		Type:        in.Type,
-		AssignedTo:  uid,
+		AssignedTo:  &uid,
 	}
 	out, err := h.svc.CreateCS(t)
 	if err != nil {

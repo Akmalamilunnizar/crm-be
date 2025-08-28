@@ -212,8 +212,8 @@ func (s *Service) AssignTechnician(id uint64) (*entities.TroubleTicket, error) {
 	if err != nil {
 		return nil, err
 	}
-	// Don't assign to specific technician - leave AssignedTo empty so all technicians can see it
-	t.AssignedTo = ""
+	// Don't assign to specific technician - leave AssignedTo as NULL so all technicians can see it
+	t.AssignedTo = nil // Set to NULL so all technicians can see it
 	// Look up Technician role ID dynamically
 	techRoleID, err := s.repo.RoleIDByName(string(entities.AssignTech))
 	if err != nil {

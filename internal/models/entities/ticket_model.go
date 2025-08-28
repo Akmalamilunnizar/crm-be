@@ -31,7 +31,7 @@ type TroubleTicket struct {
 	Title           string  `gorm:"type:longtext" json:"title"`
 	Description     *string `gorm:"type:text" json:"description,omitempty"`
 	Status          string  `gorm:"type:varchar(191);default:'unfinished'" json:"status"`
-	AssignedTo      string  `gorm:"type:varchar(191);not null" json:"assigned_to"`
+	AssignedTo      *string `gorm:"type:varchar(191)" json:"assigned_to,omitempty"`
 	CurrentAssignee string  `gorm:"column:current_assignee_role;type:varchar(191)" json:"current_assignee_role"`
 	CustomerNote    *string `gorm:"type:text" json:"customer_note,omitempty"`
 	NOCNote         *string `gorm:"type:text" json:"noc_note,omitempty"`

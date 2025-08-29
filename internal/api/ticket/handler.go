@@ -403,7 +403,10 @@ func (h *Handler) AddTechnicianNote(c *fiber.Ctx) error {
 }
 
 func (h *Handler) ReportByType(c *fiber.Ctx) error {
-	rows, err := h.svc.repo.CountByType()
+	startDate := c.Query("start_date")
+	endDate := c.Query("end_date")
+	
+	rows, err := h.svc.repo.CountByType(startDate, endDate)
 	if err != nil {
 		return helpers.ResponseUtils(c, 500, false, err.Error(), nil)
 	}

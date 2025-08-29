@@ -17,10 +17,14 @@ func NewRepo(db *gorm.DB) *Repo { return &Repo{db} }
 // TicketWithAssignee includes assignee name and customer name for display
 type TicketWithAssignee struct {
 	entities.TroubleTicket
-	AssigneeName        string `json:"assignee_name"`
-	CurrentAssigneeName string `json:"current_assignee_name"`
-	TypeName            string `json:"type_name"`
-	CustomerName        string `json:"customer_name"`
+	AssigneeName        string   `json:"assignee_name" gorm:"column:assignee_name"`
+	CurrentAssigneeName string   `json:"current_assignee_name" gorm:"column:current_assignee_name"`
+	TypeName            string   `json:"type_name" gorm:"column:type_name"`
+	CustomerName        string   `json:"customer_name" gorm:"column:customer_name"`
+	GPSLat              *float64 `json:"gps_lat" gorm:"column:gps_lat"`
+	GPSLng              *float64 `json:"gps_lng" gorm:"column:gps_lng"`
+	CustomerAddress     *string  `json:"customer_address" gorm:"column:customer_address"`
+	CustomerPhone       *string  `json:"customer_phone" gorm:"column:customer_phone"`
 }
 
 func (r *Repo) ListAll() ([]TicketWithAssignee, error) {
@@ -34,7 +38,7 @@ func (r *Repo) ListAll() ([]TicketWithAssignee, error) {
 
 	var items []TicketWithAssignee
 	err := r.DB.Table("trouble_tickets t").
-		Select("t.*, r1.name as assignee_name, r2.name as current_assignee_name, tt.name as type_name, c.name as customer_name").
+		Select("t.*, r1.name as assignee_name, r2.name as current_assignee_name, tt.name as type_name, c.name as customer_name, c.latitude as gps_lat, c.longitude as gps_lng, c.address as customer_address, c.phone as customer_phone").
 		Joins("LEFT JOIN users r1 ON r1.id = t.assigned_to").
 		Joins("LEFT JOIN roles r2 ON r2.id = t.current_assignee_role").
 		Joins("LEFT JOIN trouble_type tt ON tt.id = t.type").
@@ -97,12 +101,12 @@ type ReportSlice struct {
 func (r *Repo) CountByType(startDate, endDate string) ([]ReportSlice, error) {
 	var rows []ReportSlice
 	query := r.DB.Table("trouble_tickets")
-	
+
 	// Add date filtering if dates are provided
 	if startDate != "" && endDate != "" {
 		query = query.Where("DATE(created_at) BETWEEN ? AND ?", startDate, endDate)
 	}
-	
+
 	err := query.Select("type, COUNT(*) as cnt").
 		Group("type").Scan(&rows).Error
 	return rows, err

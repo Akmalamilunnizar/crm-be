@@ -94,10 +94,16 @@ type ReportSlice struct {
 	Cnt  int64  `json:"count"`
 }
 
-func (r *Repo) CountByType() ([]ReportSlice, error) {
+func (r *Repo) CountByType(startDate, endDate string) ([]ReportSlice, error) {
 	var rows []ReportSlice
-	err := r.DB.Table("trouble_tickets").
-		Select("type, COUNT(*) as cnt").
+	query := r.DB.Table("trouble_tickets")
+	
+	// Add date filtering if dates are provided
+	if startDate != "" && endDate != "" {
+		query = query.Where("DATE(created_at) BETWEEN ? AND ?", startDate, endDate)
+	}
+	
+	err := query.Select("type, COUNT(*) as cnt").
 		Group("type").Scan(&rows).Error
 	return rows, err
 }

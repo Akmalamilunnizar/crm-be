@@ -137,14 +137,11 @@ func (s *NetwatchService) handleDeviceDownEvent(event *entities.NetwatchEvent, d
 
 	// Create new ticket
 	ticket := &entities.TroubleTicket{
-		CustomerID:        *device.CustomerID,
-		Type:              stringPtr("network"),
-		Title:             fmt.Sprintf("Network Issue - Device %s Down", device.Name),
-		Description:       stringPtr(fmt.Sprintf("Device %s (%s) went DOWN at %s. This ticket was automatically created by Netwatch monitoring.", device.Name, device.IPAddress, event.EventTime.Format("2006-01-02 15:04:05"))),
-		Status:            "ongoing",
-		CreatedByNetwatch: true,
-		NetwatchEventID:   &event.ID,
-		DeviceID:          &device.ID,
+		CustomerID:  *device.CustomerID,
+		Type:        stringPtr("network"),
+		Title:       fmt.Sprintf("Network Issue - Device %s Down", device.Name),
+		Description: stringPtr(fmt.Sprintf("Device %s (%s) went DOWN at %s. This ticket was automatically created by Netwatch monitoring.", device.Name, device.IPAddress, event.EventTime.Format("2006-01-02 15:04:05"))),
+		Status:      "ongoing",
 	}
 
 	// Create ticket using existing service

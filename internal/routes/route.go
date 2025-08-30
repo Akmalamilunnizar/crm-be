@@ -10,6 +10,7 @@ import (
 	customerinstallation "skripsi-be/internal/api/admin/customer/installation"
 	"skripsi-be/internal/api/admin/dashboard"
 	"skripsi-be/internal/api/admin/invoice"
+	"skripsi-be/internal/api/admin/mikrotik"
 	"skripsi-be/internal/api/admin/product"
 	"skripsi-be/internal/api/admin/report"
 	"skripsi-be/internal/api/admin/role"
@@ -59,6 +60,7 @@ func RouteFiber(app *fiber.App) {
 	asset.AdminAssetRoute(admin.Group("/asset"))
 	transaction.AdminTrasactionRoute(admin.Group("/transaction"))
 	invoice.AdminInvoiceRoute(admin.Group("/invoice"))
+	mikrotik.MikroTikRoutes(admin.Group("/mikrotik"))
 
 	customer := api.Group("/customer")
 	customerdashboard.CustomerDashboardRoute(customer.Group("/dashboard"))

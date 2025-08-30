@@ -1,7 +1,6 @@
 package netwatchapi
 
 import (
-	"skripsi-be/internal/api/netwatch/service"
 	"skripsi-be/internal/helpers"
 	"skripsi-be/internal/models/entities"
 
@@ -9,10 +8,10 @@ import (
 )
 
 type Handler struct {
-	svc *service.Service
+	svc *Service
 }
 
-func NewHandler(s *service.Service) *Handler {
+func NewHandler(s *Service) *Handler {
 	return &Handler{s}
 }
 

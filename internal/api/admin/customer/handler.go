@@ -38,6 +38,23 @@ func (h AdminCustomerHandlerStruct) GetByIdAdminCustomerHandler(c *fiber.Ctx) er
 	}
 	return helpers.ResponseUtils(c, fiber.StatusOK, true, "Success Get Id Customer!", customer)
 }
+
+func (h AdminCustomerHandlerStruct) GetByIdDetailAdminCustomerHandler(c *fiber.Ctx) error {
+	request := IdAdminCustomerRequest{}
+	request.Id = c.Params("id")
+
+	errValidation := validation.ValidationRequest(request)
+	if errValidation != nil {
+		return helpers.ResponseUtils(c, fiber.StatusBadRequest, false, strings.Join(errValidation, ", "), "")
+	}
+
+	customerDetail, err := h.service.GetByIdDetailAdminCustomerService(request)
+	if err != nil {
+		return helpers.ResponseUtils(c, fiber.StatusBadRequest, false, err.Error(), "")
+	}
+
+	return helpers.ResponseUtils(c, fiber.StatusOK, true, "Success Get Customer Detail!", customerDetail)
+}
 func (h AdminCustomerHandlerStruct) CreateAdminCustomerHandler(c *fiber.Ctx) error {
 	request := CreateAdminCustomerRequest{}
 	err := c.BodyParser(&request)

@@ -11,8 +11,9 @@ import (
 )
 
 type AdminCustomerServiceInterface interface {
-	GetAllAdminCustomerService() ([]entities.Customer, error)
+	GetAllAdminCustomerService() ([]CustomerListResponse, error)
 	GetByIdAdminCustomerService(request IdAdminCustomerRequest) (entities.Customer, error)
+	GetByIdDetailAdminCustomerService(request IdAdminCustomerRequest) (*CustomerDetailResponse, error)
 	CreateAdminCustomerService(request CreateAdminCustomerRequest) (entities.Customer, error)
 	UpdateAdminCustomerService(request UpdateAdminCustomerRequest) (entities.Customer, error)
 	DeleteAdminCustomerService(request IdAdminCustomerRequest) (entities.Customer, error)
@@ -26,7 +27,7 @@ func NewAdminCustomerService(repository AdminCustomerRepositoryInterface) AdminC
 	return AdminCustomerServiceStruct{repository}
 }
 
-func (s AdminCustomerServiceStruct) GetAllAdminCustomerService() ([]entities.Customer, error) {
+func (s AdminCustomerServiceStruct) GetAllAdminCustomerService() ([]CustomerListResponse, error) {
 	customer, err := s.repository.FindAdminCustomerRepository()
 	if err != nil {
 		return customer, err
@@ -42,6 +43,15 @@ func (s AdminCustomerServiceStruct) GetByIdAdminCustomerService(request IdAdminC
 	}
 
 	return customer, err
+}
+
+func (s AdminCustomerServiceStruct) GetByIdDetailAdminCustomerService(request IdAdminCustomerRequest) (*CustomerDetailResponse, error) {
+	detail, err := s.repository.FindByIdDetailAdminCustomerRepository(request)
+	if err != nil {
+		return nil, err
+	}
+
+	return detail, nil
 }
 
 func (s AdminCustomerServiceStruct) CreateAdminCustomerService(request CreateAdminCustomerRequest) (entities.Customer, error) {

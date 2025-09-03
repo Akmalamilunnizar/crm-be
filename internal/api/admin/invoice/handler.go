@@ -121,3 +121,25 @@ func (h AdminInvoiceHandlerStruct) DeleteAdminInvoiceHandler(c *fiber.Ctx) error
 	return helpers.ResponseUtils(c, fiber.StatusOK, true, "Success Delete Invoice", area)
 
 }
+
+func (h AdminInvoiceHandlerStruct) ProcessPartialPaymentHandler(c *fiber.Ctx) error {
+	request := &PartialPaymentRequest{}
+	request.Id = c.Params("id")
+
+	err := c.BodyParser(request)
+	if err != nil {
+		return helpers.ResponseUtils(c, fiber.StatusBadRequest, false, err.Error(), nil)
+	}
+
+	errValidation := validation.ValidationRequest(request)
+	if errValidation != nil {
+		return helpers.ResponseUtils(c, fiber.StatusBadRequest, false, strings.Join(errValidation, ", "), nil)
+	}
+
+	invoice, err := h.service.ProcessPartialPaymentService(*request)
+	if err != nil {
+		return helpers.ResponseUtils(c, fiber.StatusBadRequest, false, err.Error(), nil)
+	}
+
+	return helpers.ResponseUtils(c, fiber.StatusOK, true, "Partial payment processed successfully", invoice)
+}

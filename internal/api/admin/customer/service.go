@@ -1,12 +1,8 @@
 package customer
 
 import (
-	"encoding/json"
-	"fmt"
-
 	"github.com/jinzhu/copier"
 
-	"skripsi-be/internal/helpers"
 	"skripsi-be/internal/models/entities"
 )
 
@@ -81,6 +77,9 @@ func (s AdminCustomerServiceStruct) CreateAdminCustomerService(request CreateAdm
 	// "type": "bypassed"
 	// }`
 
+	// TODO: Update Mikrotik integration to work with network_devices table
+	// For now, commenting out to fix database schema mismatch
+	/*
 	payloadStruct := PayloadMikrotik{
 		MacAddress: customer.MacAddress,
 		ToAddress:  customer.Address,
@@ -96,6 +95,7 @@ func (s AdminCustomerServiceStruct) CreateAdminCustomerService(request CreateAdm
 	}
 
 	helpers.HttpRequestHelpers("http://10.3.2.33/rest/ip/hotspot/ip-binding", "PUT", string(payload))
+	*/
 
 	return customer, err
 

@@ -13,6 +13,7 @@ type AdminInvoiceServiceInterface interface {
 	UpdateAdminInvoiceService(request UpdateAdminInvoiceRequest) (entities.Invoice, error)
 	UpdateStatusAdminInvoiceService(request UpdateStatusAdminInvoiceRequest) (entities.Invoice, error)
 	DeleteAdminInvoiceService(request IdAdminInvoiceRequest) (entities.Invoice, error)
+	ProcessPartialPaymentService(request PartialPaymentRequest) (entities.Invoice, error)
 }
 type AdminInvoiceServiceStruct struct {
 	repository AdminInvoiceRepositoryInterface
@@ -86,4 +87,14 @@ func (s AdminInvoiceServiceStruct) DeleteAdminInvoiceService(request IdAdminInvo
 	}
 
 	return area, nil
+}
+
+func (s AdminInvoiceServiceStruct) ProcessPartialPaymentService(request PartialPaymentRequest) (entities.Invoice, error) {
+	invoice, err := s.repository.ProcessPartialPaymentRepository(request)
+
+	if err != nil {
+		return invoice, err
+	}
+
+	return invoice, nil
 }

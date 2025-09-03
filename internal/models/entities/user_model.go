@@ -130,14 +130,14 @@ type Customer struct {
 	Company          *Company  `gorm:"foreignKey:CompanyID" json:"company"`
 	Email            string    `gorm:"column:email;unique" json:"email"`
 	Gender           string    `gorm:"column:gender" json:"gender"`
+	StatusUser       string    `gorm:"column:status_user" json:"status_user"`
 	ProductID        string    `gorm:"column:product_id" json:"product_id"`
 	Product          *Products `gorm:"foreignKey:ProductID" json:"product"`
-	IPStatic         string    `gorm:"column:ip_static" json:"ip_static"`
 	Job              string    `gorm:"column:job" json:"job"`
 	Latitude         float64   `gorm:"column:latitude" json:"latitude"`
 	Longitude        float64   `gorm:"column:longitude" json:"longitude"`
-	MacAddress       string    `gorm:"column:mac_address" json:"mac_address"`
 	Name             string    `gorm:"column:name" json:"name"`
+	Alias            string    `gorm:"column:alias" json:"alias"`
 	NoIdentition     int       `gorm:"column:no_identition" json:"no_identition"`
 	Password         string    `gorm:"column:password" json:"password"`
 	Phone            string    `gorm:"column:phone" json:"phone"`

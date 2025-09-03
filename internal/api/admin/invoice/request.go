@@ -26,3 +26,8 @@ type UpdateAdminInvoiceRequest struct {
 	IdAdminInvoiceRequest
 	CreateAdminInvoiceRequest
 }
+
+type PartialPaymentRequest struct {
+	IdAdminInvoiceRequest
+	Amount int64 `json:"amount" validate:"required,min=1"`
+}

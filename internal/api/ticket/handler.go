@@ -35,10 +35,11 @@ func (h *Handler) List(c *fiber.Ctx) error {
 
 func (h *Handler) Create(c *fiber.Ctx) error {
 	var in struct {
-		CustomerID  string  `json:"customer_id"`
-		Title       string  `json:"title"`
-		Description *string `json:"description"`
-		Type        *string `json:"type"`
+		CustomerID   string  `json:"customer_id"`
+		Title        string  `json:"title"`
+		Description  *string `json:"description"`
+		Type         *string `json:"type"`
+		AutoClassify bool    `json:"auto_classify"` // New field for auto-classification
 	}
 	if err := c.BodyParser(&in); err != nil {
 		return helpers.ResponseUtils(c, 400, false, err.Error(), nil)
@@ -49,6 +50,7 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 	if uid == "" {
 		return helpers.ResponseUtils(c, 401, false, "unauthorized", nil)
 	}
+
 	t := entities.TroubleTicket{
 		CustomerID:  in.CustomerID,
 		Title:       in.Title,
@@ -56,11 +58,64 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 		Type:        in.Type,
 		AssignedTo:  &uid,
 	}
+
+	// Auto-classify using SVM if requested or if no type provided
+	if in.AutoClassify || in.Type == nil {
+		log.Printf("Auto-classifying trouble ticket: %s", in.Title)
+
+		// Initialize ML service
+		mlService := NewMLService()
+
+		// Classify the ticket
+		classification, err := mlService.ClassifyTroubleTicket(in.Title)
+		if err != nil {
+			log.Printf("SVM classification failed: %v", err)
+			// Continue without classification if ML fails
+		} else {
+			// Update ticket type with SVM result
+			t.Type = &classification.Type
+			log.Printf("SVM classified ticket as: %s (confidence: %.2f)", classification.Type, classification.Confidence)
+		}
+	}
+
 	out, err := h.svc.CreateCS(t)
 	if err != nil {
 		return helpers.ResponseUtils(c, 500, false, err.Error(), nil)
 	}
 	return helpers.ResponseUtils(c, 201, true, "created", out)
+}
+
+// ClassifyTicket classifies a trouble ticket using SVM
+func (h *Handler) ClassifyTicket(c *fiber.Ctx) error {
+	var in struct {
+		Title string `json:"title"`
+	}
+	if err := c.BodyParser(&in); err != nil {
+		return helpers.ResponseUtils(c, 400, false, err.Error(), nil)
+	}
+
+	if in.Title == "" {
+		return helpers.ResponseUtils(c, 400, false, "Title is required", nil)
+	}
+
+	// Initialize ML service
+	mlService := NewMLService()
+
+	// Classify the ticket
+	classification, err := mlService.ClassifyTroubleTicket(in.Title)
+	if err != nil {
+		return helpers.ResponseUtils(c, 500, false, err.Error(), nil)
+	}
+
+	return helpers.ResponseUtils(c, 200, true, "Classification successful", classification)
+}
+
+// GetMLStats returns ML classifier statistics
+func (h *Handler) GetMLStats(c *fiber.Ctx) error {
+	mlService := NewMLService()
+	stats := mlService.GetClassificationStats()
+
+	return helpers.ResponseUtils(c, 200, true, "ML stats retrieved", stats)
 }
 
 func idParam(c *fiber.Ctx) (uint64, error) { return strconv.ParseUint(c.Params("id"), 10, 64) }

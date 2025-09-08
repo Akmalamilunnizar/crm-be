@@ -2,6 +2,7 @@ package invoice
 
 import (
 	"fmt"
+
 	"github.com/jinzhu/copier"
 	"gorm.io/gorm"
 
@@ -38,7 +39,7 @@ func (r AdminInvoiceRepositoryStruct) FindAdminInvoiceRepository() ([]entities.I
 	for i := range invoices {
 		var totalPaid int64
 		r.db.Model(&entities.Transaction{}).Where("invoice_id = ?", invoices[i].ID).Select("COALESCE(SUM(amount), 0)").Scan(&totalPaid)
-		
+
 		// Create a virtual transaction object to hold total paid
 		if totalPaid > 0 {
 			invoices[i].Transaction = entities.Transaction{
@@ -76,7 +77,7 @@ func (r AdminInvoiceRepositoryStruct) FindByIdAdminInvoiceRepository(request IdA
 	// Calculate total paid from all transactions for this invoice
 	var totalPaid int64
 	r.db.Model(&entities.Transaction{}).Where("invoice_id = ?", request.Id).Select("COALESCE(SUM(amount), 0)").Scan(&totalPaid)
-	
+
 	// Create a virtual transaction object to hold total paid
 	if totalPaid > 0 {
 		invoice.Transaction = entities.Transaction{
@@ -143,9 +144,16 @@ func (r AdminInvoiceRepositoryStruct) UpdateStatusAdminInvoiceRepository(request
 	if tx.Error != nil {
 		return invoice, tx.Error
 	}
-	copier.Copy(&invoice, &request)
 
-	r.db.Save(&invoice)
+	// Update only the status field directly
+	tx = r.db.Model(&invoice).Update("status", request.Status)
+	if tx.Error != nil {
+		return invoice, tx.Error
+	}
+
+	// Reload the invoice to get updated data
+	r.db.Preload("Customer.Product").Preload("InvoiceItems.Invoice").Preload("Transaction").First(&invoice, "id = ?", request.Id)
+
 	return invoice, nil
 }
 

@@ -19,7 +19,7 @@ type IdAdminInvoiceRequest struct {
 
 type UpdateStatusAdminInvoiceRequest struct {
 	IdAdminInvoiceRequest
-	Status string `json:"status" validate:"required"`
+	Status string `json:"status" validate:"required,oneof=paid unpaid pending"`
 }
 
 type UpdateAdminInvoiceRequest struct {

@@ -2,6 +2,7 @@ package invoice
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/jinzhu/copier"
 	"gorm.io/gorm"
@@ -17,6 +18,7 @@ type AdminInvoiceRepositoryInterface interface {
 	UpdateStatusAdminInvoiceRepository(request UpdateStatusAdminInvoiceRequest) (entities.Invoice, error)
 	DeleteAdminInvoiceRepository(request IdAdminInvoiceRequest) (entities.Invoice, error)
 	ProcessPartialPaymentRepository(request PartialPaymentRequest) (entities.Invoice, error)
+	MarkPdfViewedRepository(request IdAdminInvoiceRequest) (entities.Invoice, error)
 }
 
 type AdminInvoiceRepositoryStruct struct {
@@ -238,6 +240,37 @@ func (r AdminInvoiceRepositoryStruct) ProcessPartialPaymentRepository(request Pa
 
 	// Commit transaction
 	tx.Commit()
+
+	// Reload invoice with updated data
+	r.db.Preload("Customer").Preload("InvoiceItems").Preload("Transaction").First(&invoice, "id = ?", request.Id)
+
+	return invoice, nil
+}
+
+func (r AdminInvoiceRepositoryStruct) MarkPdfViewedRepository(request IdAdminInvoiceRequest) (entities.Invoice, error) {
+	var invoice entities.Invoice
+
+	// Check if invoice exists
+	err := r.db.Preload("Customer").Preload("InvoiceItems").Preload("Transaction").First(&invoice, "id = ?", request.Id).Error
+	if err != nil {
+		return invoice, err
+	}
+
+	// Check if PDF has already been viewed
+	if invoice.PdfViewed {
+		return invoice, fmt.Errorf("PDF has already been viewed and cannot be accessed again")
+	}
+
+	// Mark PDF as viewed with current timestamp
+	now := time.Now()
+	err = r.db.Model(&invoice).Updates(map[string]interface{}{
+		"pdf_viewed":    true,
+		"pdf_viewed_at": &now,
+	}).Error
+
+	if err != nil {
+		return invoice, err
+	}
 
 	// Reload invoice with updated data
 	r.db.Preload("Customer").Preload("InvoiceItems").Preload("Transaction").First(&invoice, "id = ?", request.Id)

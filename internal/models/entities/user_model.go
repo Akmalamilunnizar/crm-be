@@ -382,6 +382,8 @@ type Invoice struct {
 	Customer     Customer       `gorm:"foreignKey:CustomerID;references:id;constraint:OnUpdate:RESTRICT" json:"customer"`
 	Link         string         `gorm:"column:link;type:varchar;not null" json:"link"`
 	Status       InvoiceStatus  `gorm:"column:status;type:varchar;not null" json:"status"`
+	PdfViewed    bool           `gorm:"column:pdf_viewed;type:boolean;default:false" json:"pdf_viewed"`
+	PdfViewedAt  *time.Time     `gorm:"column:pdf_viewed_at;type:timestamp" json:"pdf_viewed_at"`
 	CreatedAt    time.Time      `gorm:"column:createdAt;default:current_timestamp" json:"created_at"`
 	UpdatedAt    time.Time      `gorm:"column:updatedAt;not null" json:"updated_at"`
 	InvoiceItems []InvoiceItems `gorm:"foreignKey:invoices_id;constraint:OnUpdate:RESTRICT" json:"invoice_items"`

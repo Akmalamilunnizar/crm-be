@@ -143,3 +143,20 @@ func (h AdminInvoiceHandlerStruct) ProcessPartialPaymentHandler(c *fiber.Ctx) er
 
 	return helpers.ResponseUtils(c, fiber.StatusOK, true, "Partial payment processed successfully", invoice)
 }
+
+func (h AdminInvoiceHandlerStruct) MarkPdfViewedHandler(c *fiber.Ctx) error {
+	request := &IdAdminInvoiceRequest{}
+	request.Id = c.Params("id")
+
+	errValidation := validation.ValidationRequest(request)
+	if errValidation != nil {
+		return helpers.ResponseUtils(c, fiber.StatusBadRequest, false, strings.Join(errValidation, ", "), nil)
+	}
+
+	invoice, err := h.service.MarkPdfViewedService(*request)
+	if err != nil {
+		return helpers.ResponseUtils(c, fiber.StatusBadRequest, false, err.Error(), nil)
+	}
+
+	return helpers.ResponseUtils(c, fiber.StatusOK, true, "PDF marked as viewed", invoice)
+}

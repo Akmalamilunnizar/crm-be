@@ -11,6 +11,7 @@ import (
 	"skripsi-be/internal/api/admin/dashboard"
 	"skripsi-be/internal/api/admin/invoice"
 	"skripsi-be/internal/api/admin/mikrotik"
+	networkdevice "skripsi-be/internal/api/admin/network-device"
 	"skripsi-be/internal/api/admin/product"
 	"skripsi-be/internal/api/admin/report"
 	"skripsi-be/internal/api/admin/role"
@@ -23,6 +24,7 @@ import (
 	ticketapi "skripsi-be/internal/api/ticket"
 	midtrans "skripsi-be/internal/api/webhook/midtrans"
 	"skripsi-be/internal/api/webhook/moota"
+	"skripsi-be/internal/config/database"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -61,6 +63,14 @@ func RouteFiber(app *fiber.App) {
 	transaction.AdminTrasactionRoute(admin.Group("/transaction"))
 	invoice.AdminInvoiceRoute(admin.Group("/invoice"))
 	mikrotik.MikroTikRoutes(admin.Group("/mikrotik"))
+
+	// Network Device routes
+	networkdeviceHandler := networkdevice.NewAdminNetworkDeviceHandler(
+		networkdevice.NewAdminNetworkDeviceService(
+			networkdevice.NewAdminNetworkDeviceRepository(database.GetDB()),
+		),
+	)
+	networkdevice.AdminNetworkDeviceRoutes(app, networkdeviceHandler)
 
 	customer := api.Group("/customer")
 	customerdashboard.CustomerDashboardRoute(customer.Group("/dashboard"))

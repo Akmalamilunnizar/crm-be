@@ -35,6 +35,10 @@ func TicketRoutes(api fiber.Router) {
 	g.Get("/reports/by-type", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "CUSTOMER_SERVICE", "NOC", "TECHNICIAN"), h.ReportByType)
 	g.Get("/lookups/trouble-types", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "CUSTOMER_SERVICE", "NOC", "TECHNICIAN"), h.TroubleTypes)
 	g.Post("/lookups/trouble-types", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "CUSTOMER_SERVICE", "NOC"), h.CreateTroubleType)
+
+	// ML Classification endpoints
+	g.Post("/classify", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "CUSTOMER_SERVICE", "NOC", "TECHNICIAN"), h.ClassifyTicket)
+	g.Get("/ml/stats", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "CUSTOMER_SERVICE", "NOC", "TECHNICIAN"), h.GetMLStats)
 	g.Get("/reports/hotspots", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "CUSTOMER_SERVICE"), h.HotLocations)
 	// Polling endpoint for updates
 	g.Get("/updates", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "CUSTOMER_SERVICE", "NOC", "TECHNICIAN"), h.UpdatesSince)

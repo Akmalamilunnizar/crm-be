@@ -20,6 +20,7 @@ import (
 	authapi "skripsi-be/internal/api/auth"
 	upload_file "skripsi-be/internal/api/common/upload_file"
 	customerdashboard "skripsi-be/internal/api/customer/dashboard"
+	"skripsi-be/internal/api/customer/monitoring"
 	telegramapi "skripsi-be/internal/api/telegram"
 	ticketapi "skripsi-be/internal/api/ticket"
 	midtrans "skripsi-be/internal/api/webhook/midtrans"
@@ -70,10 +71,13 @@ func RouteFiber(app *fiber.App) {
 			networkdevice.NewAdminNetworkDeviceRepository(database.GetDB()),
 		),
 	)
-	networkdevice.AdminNetworkDeviceRoutes(app, networkdeviceHandler)
+	networkdevice.AdminNetworkDeviceRoutes(admin, networkdeviceHandler)
 
 	customer := api.Group("/customer")
 	customerdashboard.CustomerDashboardRoute(customer.Group("/dashboard"))
+	
+	// Customer monitoring routes
+	monitoring.RouteCustomerMonitoring(app)
 
 	// tickets module (shared access beneath /api)
 	log.Println("Registering ticket routes...")

@@ -19,9 +19,14 @@ func NewHandler(s *Service) *Handler {
 // GetConnectionHistory returns connection history for the authenticated customer
 func (h *Handler) GetConnectionHistory(c *fiber.Ctx) error {
 	// Get customer ID from JWT token
-	customerID := c.Locals("customer_id").(string)
-	if customerID == "" {
+	customerIDVal := c.Locals("customer_id")
+	if customerIDVal == nil {
 		return helpers.ResponseUtils(c, 401, false, "Customer ID not found in token", nil)
+	}
+	
+	customerID, ok := customerIDVal.(string)
+	if !ok || customerID == "" {
+		return helpers.ResponseUtils(c, 401, false, "Invalid customer ID in token", nil)
 	}
 
 	// Get time range from query parameter

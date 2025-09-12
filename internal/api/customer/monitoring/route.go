@@ -12,7 +12,6 @@ import (
 func RouteCustomerMonitoring(app *fiber.App) {
 	// Initialize dependencies
 	db := database.GetDB()
-	repo := NewRepo(db)
 	service := NewService(db)
 	handler := NewHandler(service)
 

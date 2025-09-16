@@ -14,8 +14,6 @@ type CreateAdminCustomerRequest struct {
 	Latitude       float64 `json:"latitude" validate:"required"`
 	Longitude      float64 `json:"longitude" validate:"required"`
 	ProductID      string  `json:"product_id" validate:"required"`
-	IpStatic       string  `json:"ip_static" validate:"required"`
-	MacAddress     string  `json:"mac_address" validate:"required"`
 	Job            string  `json:"job"`
 }
 

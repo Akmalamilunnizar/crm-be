@@ -6,8 +6,8 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-func AdminNetworkDeviceRoutes(app *fiber.App, handler *AdminNetworkDeviceHandlerStruct) {
-	api := app.Group("/api/admin/network-device")
+func AdminNetworkDeviceRoutes(admin fiber.Router, handler *AdminNetworkDeviceHandlerStruct) {
+	api := admin.Group("/network-device")
 
 	// Apply role-based middleware
 	api.Use(helpers.RequireRoles("ADMIN", "CUSTOMER_SERVICE"))

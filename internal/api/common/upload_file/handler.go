@@ -60,14 +60,24 @@ func (h CommonUploadFileHandlerStruct) CreateCommonUploadFileHandler(c *fiber.Ct
 		})
 	}
 
-	destination := fmt.Sprintf("./public/uploads/%s/%s.%s", request.Path, request.Name, extension)
-	err := c.SaveFile(request.File, destination)
-	if err != nil {
-		err := os.MkdirAll(fmt.Sprintf("./public/uploads/%s", request.Path), 0755)
-		err = c.SaveFile(request.File, destination)
-		if err != nil {
-			return helpers.ResponseUtils(c, fiber.StatusBadRequest, false, err.Error(), nil)
-		}
+	// Normalize legacy path to requested cs-images folder
+	if request.Path == "tickets/cs" || strings.HasPrefix(request.Path, "tickets/cs/") {
+		request.Path = strings.Replace(request.Path, "tickets/cs", "cs-images", 1)
+	}
+
+	// Use configurable base dir; default to ./uploads
+	baseDir := os.Getenv("UPLOAD_BASE_DIR")
+	if baseDir == "" {
+		baseDir = "./uploads"
+	}
+	// Ensure directory exists
+	if mkErr := os.MkdirAll(fmt.Sprintf("%s/%s", baseDir, request.Path), 0755); mkErr != nil {
+		return helpers.ResponseUtils(c, fiber.StatusBadRequest, false, mkErr.Error(), nil)
+	}
+	// Save file
+	destination := fmt.Sprintf("%s/%s/%s.%s", baseDir, request.Path, request.Name, extension)
+	if err := c.SaveFile(request.File, destination); err != nil {
+		return helpers.ResponseUtils(c, fiber.StatusBadRequest, false, err.Error(), nil)
 	}
 
 	image, err := h.service.CreateCommonUploadFileService(request)

@@ -386,7 +386,7 @@ type Invoice struct {
 	PdfViewedAt  *time.Time     `gorm:"column:pdf_viewed_at;type:timestamp" json:"pdf_viewed_at"`
 	CreatedAt    time.Time      `gorm:"column:createdAt;default:current_timestamp" json:"created_at"`
 	UpdatedAt    time.Time      `gorm:"column:updatedAt;not null" json:"updated_at"`
-	InvoiceItems []InvoiceItems `gorm:"foreignKey:invoices_id;constraint:OnUpdate:RESTRICT" json:"invoice_items"`
+	InvoiceItems []InvoiceItems `gorm:"foreignKey:InvoiceID;constraint:OnUpdate:RESTRICT" json:"invoice_items"`
 	Transaction  Transaction    `gorm:"foreignKey:invoice_id;constraint:OnUpdate:RESTRICT" json:"transaction""`
 }
 
@@ -403,10 +403,10 @@ func (u *Invoice) BeforeCreate(tx *gorm.DB) error {
 
 type InvoiceItems struct {
 	ID        string    `gorm:"column:id;type:varchar;primaryKey" json:"id"`
-	Name      string    `gorm:"column:name;type:int;not null" json:"name"`
-	Qty       int64     `gorm:"column:qty;type:varchar;not null" json:"qty"`
-	Price     int64     `gorm:"column:price;type:varchar;not null" json:"price"`
-	Total     int64     `gorm:"column:total;type:varchar;not null" json:"total"`
+	Name      string    `gorm:"column:name;type:varchar;not null" json:"name"`
+	Qty       int64     `gorm:"column:qty;type:int;not null" json:"qty"`
+	Price     int64     `gorm:"column:price;type:int;not null" json:"price"`
+	Total     int64     `gorm:"column:total;type:int;not null" json:"total"`
 	InvoiceID string    `gorm:"column:invoices_id;type:varchar;not null" json:"invoice_id"`
 	Invoice   Invoice   `gorm:"foreignKey:InvoiceID;references:id" json:"invoice"`
 	CreatedAt time.Time `gorm:"column:createdAt;default:current_timestamp" json:"created_at"`

@@ -100,17 +100,19 @@ func (r AdminInvoiceRepositoryStruct) CreateAdminInvoiceRepository(request Creat
 		return entities.Invoice{}, tx.Error
 	}
 
-	// Calculate total amount from all invoice items
+	// Calculate total amount from all invoice items and save them
 	var totalAmount int64 = 0
-	for _, invoiceItem := range invoice.InvoiceItems {
-		invoiceItem.InvoiceID = invoice.ID
-		invoiceItem.Total = invoiceItem.Price * invoiceItem.Qty
-		totalAmount += invoiceItem.Total
-		// txInvoiceItem := tx.Create(&invoiceItem)
-		// if txInvoiceItem.Error != nil {
-		// 	tx.Rollback()
-		// 	return entities.Invoice{}, tx.Error
-		// }
+	for i := range invoice.InvoiceItems {
+		invoice.InvoiceItems[i].InvoiceID = invoice.ID
+		invoice.InvoiceItems[i].Total = invoice.InvoiceItems[i].Price * invoice.InvoiceItems[i].Qty
+		totalAmount += invoice.InvoiceItems[i].Total
+
+		// Save each invoice item
+		txInvoiceItem := tx.Create(&invoice.InvoiceItems[i])
+		if txInvoiceItem.Error != nil {
+			tx.Rollback()
+			return entities.Invoice{}, txInvoiceItem.Error
+		}
 	}
 
 	// Set total amount to sum of all items

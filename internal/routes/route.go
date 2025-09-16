@@ -24,6 +24,7 @@ import (
 	ticketapi "skripsi-be/internal/api/ticket"
 	midtrans "skripsi-be/internal/api/webhook/midtrans"
 	"skripsi-be/internal/api/webhook/moota"
+	waapi "skripsi-be/internal/api/webhook/wa"
 	"skripsi-be/internal/config/database"
 
 	"github.com/gofiber/fiber/v2"
@@ -90,5 +91,8 @@ func RouteFiber(app *fiber.App) {
 
 	webhookPlain := app.Group("/webhook")
 	midtrans.WebhookMidtransRoute(webhookPlain.Group("/midtrans"))
+
+	// WhatsApp routes
+	waapi.WARoutes(app)
 
 }

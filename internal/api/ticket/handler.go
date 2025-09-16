@@ -40,6 +40,7 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 		Description  *string `json:"description"`
 		Type         *string `json:"type"`
 		AutoClassify bool    `json:"auto_classify"` // New field for auto-classification
+		ImgCS        *string `json:"img_cs"`        // Optional: CS image filename from upload API
 	}
 	if err := c.BodyParser(&in); err != nil {
 		return helpers.ResponseUtils(c, 400, false, err.Error(), nil)
@@ -57,6 +58,11 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 		Description: in.Description,
 		Type:        in.Type,
 		AssignedTo:  &uid,
+	}
+
+	// Persist CS image filename if provided
+	if in.ImgCS != nil && *in.ImgCS != "" {
+		t.ImgCS = in.ImgCS
 	}
 
 	// Auto-classify using SVM if requested or if no type provided
@@ -150,7 +156,7 @@ func (h *Handler) SendToNOC(c *fiber.Ctx) error {
 		log.Printf("SendToNOC Handler: Processing image file")
 		file := files[0]
 		log.Printf("SendToNOC Handler: Image file name: %s, size: %d", file.Filename, file.Size)
-		if file.Size > 10*1024*1024 {
+		if file.Size > 20*1024*1024 {
 			return helpers.ResponseUtils(c, 400, false, "image file too large (max 10MB)", nil)
 		}
 		uploadDir := "uploads/cs-images"
@@ -226,7 +232,7 @@ func (h *Handler) SendToCS(c *fiber.Ctx) error {
 	// Handle image file
 	if files := form.File["image"]; len(files) > 0 {
 		file := files[0]
-		if file.Size > 10*1024*1024 { // 10MB limit
+		if file.Size > 20*1024*1024 { // 10MB limit
 			return helpers.ResponseUtils(c, 400, false, "image file too large (max 10MB)", nil)
 		}
 
@@ -380,7 +386,7 @@ func (h *Handler) AddTechnicianNote(c *fiber.Ctx) error {
 		log.Printf("AddTechnicianNote: img_tech_bf file size: %d bytes", file.Size)
 		log.Printf("AddTechnicianNote: img_tech_bf filename: %s", file.Filename)
 
-		if file.Size > 10*1024*1024 { // 10MB limit
+		if file.Size > 20*1024*1024 { // 10MB limit
 			log.Printf("AddTechnicianNote: img_tech_bf file too large: %d bytes", file.Size)
 			return helpers.ResponseUtils(c, 400, false, "img_tech_bf file too large (max 10MB)", nil)
 		}
@@ -414,7 +420,7 @@ func (h *Handler) AddTechnicianNote(c *fiber.Ctx) error {
 	// Handle img_tech_af file - using exact same logic as SendToCS
 	if files := form.File["img_tech_af"]; len(files) > 0 {
 		file := files[0]
-		if file.Size > 10*1024*1024 { // 10MB limit
+		if file.Size > 20*1024*1024 { // 10MB limit
 			return helpers.ResponseUtils(c, 400, false, "img_tech_af file too large (max 10MB)", nil)
 		}
 
@@ -460,7 +466,7 @@ func (h *Handler) AddTechnicianNote(c *fiber.Ctx) error {
 func (h *Handler) ReportByType(c *fiber.Ctx) error {
 	startDate := c.Query("start_date")
 	endDate := c.Query("end_date")
-	
+
 	rows, err := h.svc.repo.CountByType(startDate, endDate)
 	if err != nil {
 		return helpers.ResponseUtils(c, 500, false, err.Error(), nil)
@@ -553,7 +559,7 @@ func (h *Handler) UploadNOCImage(c *fiber.Ctx) error {
 	}
 
 	// Validate file size (10MB limit)
-	if file.Size > 10*1024*1024 {
+	if file.Size > 20*1024*1024 {
 		return helpers.ResponseUtils(c, 400, false, "file size too large. maximum 10MB allowed", nil)
 	}
 

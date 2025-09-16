@@ -119,6 +119,23 @@ func main() {
 		return c.JSON(response)
 	})
 
-	log.Println("Mock server starting on :3001")
-	log.Fatal(app.Listen(":3001"))
+	// Mock WhatsApp send-message endpoint for development
+	app.Post("/send-message", func(c *fiber.Ctx) error {
+		type Req struct {
+			Number  string `json:"number"`
+			Message string `json:"message"`
+		}
+		var req Req
+		if err := c.BodyParser(&req); err != nil {
+			return c.Status(400).JSON(fiber.Map{"message": "Invalid request body"})
+		}
+		if req.Number == "" || req.Message == "" {
+			return c.Status(400).JSON(fiber.Map{"message": "number and message are required"})
+		}
+		log.Printf("[MOCK] Would send WA to %s: %s", req.Number, req.Message)
+		return c.JSON(fiber.Map{"message": "Mock message sent"})
+	})
+
+	log.Println("Mock server starting on :3010")
+	log.Fatal(app.Listen(":3010"))
 }

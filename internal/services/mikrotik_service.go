@@ -110,7 +110,7 @@ func (s *MikroTikService) GetLogs(timeRange string) ([]MikroTikLog, error) {
 	case "1h":
 		timeFilter = "1h"
 	case "6h":
-		timeFilter = "6h" 
+		timeFilter = "6h"
 	case "1d":
 		timeFilter = "1d"
 	case "7d":
@@ -166,14 +166,14 @@ func (s *MikroTikService) parseLogLine(line string) *MikroTikLog {
 	// Parse Netwatch logs - they typically contain UP/DOWN status
 	// Example format: "netwatch host 192.168.1.100 DOWN"
 	// or more detailed format with timestamp and message
-	
+
 	// Check if this is a Netwatch UP/DOWN log
 	if strings.Contains(strings.ToLower(line), "netwatch") {
 		// Extract host/IP address
 		var host string
 		var status string
 		var message string = line
-		
+
 		// Try to extract IP address pattern
 		if strings.Contains(line, ".") {
 			// Look for IP address in the line
@@ -185,7 +185,7 @@ func (s *MikroTikService) parseLogLine(line string) *MikroTikLog {
 				}
 			}
 		}
-		
+
 		// Determine status from the log content
 		lineLower := strings.ToLower(line)
 		if strings.Contains(lineLower, "down") || strings.Contains(lineLower, "timeout") || strings.Contains(lineLower, "unreachable") {
@@ -200,11 +200,11 @@ func (s *MikroTikService) parseLogLine(line string) *MikroTikLog {
 				status = "UP"
 			}
 		}
-		
+
 		if host == "" {
 			host = "unknown"
 		}
-		
+
 		return &MikroTikLog{
 			Host:      host,
 			Comment:   message,
@@ -215,7 +215,7 @@ func (s *MikroTikService) parseLogLine(line string) *MikroTikLog {
 			Raw:       line,
 		}
 	}
-	
+
 	// Handle pipe-separated format (custom format)
 	if strings.Contains(line, "|") {
 		parts := strings.Split(line, "|")
@@ -238,7 +238,7 @@ func (s *MikroTikService) parseLogLine(line string) *MikroTikLog {
 
 	// Fallback for other log formats - but prioritize UP/DOWN detection
 	timestamp := time.Now() // In real implementation, parse actual timestamp
-	
+
 	// Extract status based on keywords
 	lineLower := strings.ToLower(line)
 	status := "INFO"
@@ -367,4 +367,190 @@ func (s *MikroTikService) GetSystemInfo() (map[string]interface{}, error) {
 	}
 
 	return info, nil
+}
+
+// GetNetwatchDevices gets all Netwatch devices from MikroTik
+func (s *MikroTikService) GetNetwatchDevices() ([]map[string]interface{}, error) {
+	if !s.IsConnected() {
+		return nil, fmt.Errorf("not connected to MikroTik")
+	}
+
+	command := "/tool netwatch print"
+	output, err := s.ExecuteCommand(command)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get netwatch devices: %v", err)
+	}
+
+	// Debug logging
+	log.Printf("Netwatch devices raw output: %s", output)
+
+	devices := s.parseNetwatchDevices(output)
+	log.Printf("Parsed netwatch devices: %+v", devices)
+
+	return devices, nil
+}
+
+// parseNetwatchDevices parses the netwatch devices output
+func (s *MikroTikService) parseNetwatchDevices(output string) []map[string]interface{} {
+	var devices []map[string]interface{}
+	lines := strings.Split(output, "\n")
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		device := make(map[string]interface{})
+
+		// Parse netwatch device information
+		// Example format: "0 host=192.168.1.1 interval=30s timeout=5s status=up"
+		parts := strings.Fields(line)
+		for _, part := range parts {
+			if strings.Contains(part, "=") {
+				kv := strings.SplitN(part, "=", 2)
+				if len(kv) == 2 {
+					key := strings.TrimSpace(kv[0])
+					value := strings.TrimSpace(kv[1])
+
+					// Convert status to uppercase for consistency
+					if key == "status" {
+						value = strings.ToUpper(value)
+					}
+
+					device[key] = value
+				}
+			}
+		}
+
+		// Only add if we have essential fields
+		if _, hasHost := device["host"]; hasHost {
+			devices = append(devices, device)
+		}
+	}
+
+	return devices
+}
+
+// GetNetwatchLogs gets real-time netwatch logs
+func (s *MikroTikService) GetNetwatchLogs(timeRange string) ([]MikroTikLog, error) {
+	if !s.IsConnected() {
+		return nil, fmt.Errorf("not connected to MikroTik")
+	}
+
+	// Convert timeRange to MikroTik time format
+	var timeFilter string
+	switch timeRange {
+	case "1h":
+		timeFilter = "1h"
+	case "6h":
+		timeFilter = "6h"
+	case "1d":
+		timeFilter = "1d"
+	case "7d":
+		timeFilter = "7d"
+	case "30d":
+		timeFilter = "30d"
+	default:
+		timeFilter = "1d"
+	}
+
+	// Get Netwatch logs specifically - focus on UP/DOWN status changes
+	command := fmt.Sprintf("/log print where topics~\"netwatch\" and time>%s", timeFilter)
+
+	session, err := s.sshClient.NewSession()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create SSH session: %v", err)
+	}
+	defer session.Close()
+
+	output, err := session.Output(command)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute command: %v", err)
+	}
+
+	return s.parseNetwatchLogs(string(output)), nil
+}
+
+// parseNetwatchLogs parses netwatch-specific logs
+func (s *MikroTikService) parseNetwatchLogs(logData string) []MikroTikLog {
+	lines := strings.Split(logData, "\n")
+	var logs []MikroTikLog
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+
+		log := s.parseNetwatchLogLine(line)
+		if log != nil {
+			logs = append(logs, *log)
+		}
+	}
+
+	// Reverse to show newest first
+	for i, j := 0, len(logs)-1; i < j; i, j = i+1, j-1 {
+		logs[i], logs[j] = logs[j], logs[i]
+	}
+
+	return logs
+}
+
+// parseNetwatchLogLine parses a single netwatch log line
+func (s *MikroTikService) parseNetwatchLogLine(line string) *MikroTikLog {
+	// Parse Netwatch logs - they typically contain UP/DOWN status
+	// Example format: "netwatch host 192.168.1.100 DOWN"
+	// or more detailed format with timestamp and message
+
+	// Check if this is a Netwatch UP/DOWN log
+	if strings.Contains(strings.ToLower(line), "netwatch") {
+		// Extract host/IP address
+		var host string
+		var status string
+		var message string = line
+
+		// Try to extract IP address pattern
+		if strings.Contains(line, ".") {
+			// Look for IP address in the line
+			parts := strings.Fields(line)
+			for _, part := range parts {
+				if strings.Count(part, ".") == 3 {
+					host = part
+					break
+				}
+			}
+		}
+
+		// Determine status from the log content
+		lineLower := strings.ToLower(line)
+		if strings.Contains(lineLower, "down") || strings.Contains(lineLower, "timeout") || strings.Contains(lineLower, "unreachable") {
+			status = "DOWN"
+		} else if strings.Contains(lineLower, "up") || strings.Contains(lineLower, "reachable") || strings.Contains(lineLower, "alive") {
+			status = "UP"
+		} else {
+			// Default based on log level
+			if strings.Contains(lineLower, "error") || strings.Contains(lineLower, "critical") {
+				status = "DOWN"
+			} else {
+				status = "UP"
+			}
+		}
+
+		if host == "" {
+			host = "unknown"
+		}
+
+		return &MikroTikLog{
+			Host:      host,
+			Comment:   message,
+			Status:    status,
+			Timestamp: time.Now(), // In real implementation, parse actual timestamp
+			Type:      s.getLogType(status),
+			Category:  "netwatch",
+			Raw:       line,
+		}
+	}
+
+	return nil
 }

@@ -88,7 +88,7 @@ func (h *MikroTikHandler) GetStatus(c *fiber.Ctx) error {
 	return helpers.ResponseUtils(c, http.StatusOK, true, "Status retrieved", status)
 }
 
-// Get MikroTik logs
+// Get MikroTik logs (Netwatch logs)
 func (h *MikroTikHandler) GetLogs(c *fiber.Ctx) error {
 	if h.mikroTikService == nil {
 		return helpers.ResponseUtils(c, http.StatusBadRequest, false, "Not connected to any MikroTik device", nil)
@@ -96,12 +96,13 @@ func (h *MikroTikHandler) GetLogs(c *fiber.Ctx) error {
 
 	timeRange := c.Query("timeRange", "1d")
 
-	logs, err := h.mikroTikService.GetLogs(timeRange)
+	// Use Netwatch logs instead of general logs
+	logs, err := h.mikroTikService.GetNetwatchLogs(timeRange)
 	if err != nil {
-		return helpers.ResponseUtils(c, http.StatusInternalServerError, false, "Failed to get logs: "+err.Error(), nil)
+		return helpers.ResponseUtils(c, http.StatusInternalServerError, false, "Failed to get netwatch logs: "+err.Error(), nil)
 	}
 
-	return helpers.ResponseUtils(c, http.StatusOK, true, "Logs retrieved successfully", map[string]interface{}{
+	return helpers.ResponseUtils(c, http.StatusOK, true, "Netwatch logs retrieved successfully", map[string]interface{}{
 		"logs":      logs,
 		"count":     len(logs),
 		"timeRange": timeRange,
@@ -151,6 +152,23 @@ func (h *MikroTikHandler) GetSystemInfo(c *fiber.Ctx) error {
 	return helpers.ResponseUtils(c, http.StatusOK, true, "System information retrieved successfully", info)
 }
 
+// Get Netwatch devices
+func (h *MikroTikHandler) GetNetwatchDevices(c *fiber.Ctx) error {
+	if h.mikroTikService == nil {
+		return helpers.ResponseUtils(c, http.StatusBadRequest, false, "Not connected to any MikroTik device", nil)
+	}
+
+	devices, err := h.mikroTikService.GetNetwatchDevices()
+	if err != nil {
+		return helpers.ResponseUtils(c, http.StatusInternalServerError, false, "Failed to get netwatch devices: "+err.Error(), nil)
+	}
+
+	return helpers.ResponseUtils(c, http.StatusOK, true, "Netwatch devices retrieved successfully", map[string]interface{}{
+		"devices": devices,
+		"count":   len(devices),
+	})
+}
+
 // Get real-time logs with WebSocket support
 func (h *MikroTikHandler) GetRealTimeLogs(c *fiber.Ctx) error {
 	if h.mikroTikService == nil {
@@ -161,7 +179,7 @@ func (h *MikroTikHandler) GetRealTimeLogs(c *fiber.Ctx) error {
 	// For now, we'll return the latest logs
 	timeRange := c.Query("timeRange", "1h")
 
-	logs, err := h.mikroTikService.GetLogs(timeRange)
+	logs, err := h.mikroTikService.GetNetwatchLogs(timeRange)
 	if err != nil {
 		return helpers.ResponseUtils(c, http.StatusInternalServerError, false, "Failed to get logs: "+err.Error(), nil)
 	}

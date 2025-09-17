@@ -22,6 +22,9 @@ func MikroTikRoutes(app fiber.Router) {
 	app.Get("/logs", handler.GetLogs)
 	app.Get("/logs/realtime", handler.GetRealTimeLogs)
 
+	// Netwatch devices
+	app.Get("/netwatch/devices", handler.GetNetwatchDevices)
+
 	// System information
 	app.Get("/system/info", handler.GetSystemInfo)
 

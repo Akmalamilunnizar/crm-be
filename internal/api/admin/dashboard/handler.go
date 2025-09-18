@@ -50,8 +50,21 @@ func (h AdminDashboardHandlerStruct) GetNetWorth(c *fiber.Ctx) error {
 		TotalNetWorth int64 `json:"total_net_worth"`
 	}
 
+	// Calculate net worth: Total Income - Total Expenses
+	totalIncome, err := h.service.GetTotalIncome()
+	if err != nil {
+		return helpers.ResponseUtils(c, fiber.StatusBadRequest, false, "Failed Get Data Total Income", nil)
+	}
+
+	totalExpenses, err := h.service.GetTotalExpenses()
+	if err != nil {
+		return helpers.ResponseUtils(c, fiber.StatusBadRequest, false, "Failed Get Data Total Expenses", nil)
+	}
+
+	netWorth := totalIncome - totalExpenses
+
 	data := GetNetWorth{
-		TotalNetWorth: 1000,
+		TotalNetWorth: netWorth,
 	}
 	return helpers.ResponseUtils(c, fiber.StatusOK, true, "Success Get Data", data)
 }
@@ -114,4 +127,53 @@ func (h AdminDashboardHandlerStruct) CardReportCash(c *fiber.Ctx) error {
 	}
 
 	return helpers.ResponseUtils(c, fiber.StatusOK, true, "Success Get Data", data)
+}
+
+func (h AdminDashboardHandlerStruct) GetDashboardStats(c *fiber.Ctx) error {
+	data, err := h.service.GetDashboardStats()
+	if err != nil {
+		return helpers.ResponseUtils(c, fiber.StatusBadRequest, false, "Failed Get Dashboard Stats", nil)
+	}
+
+	return helpers.ResponseUtils(c, fiber.StatusOK, true, "Success Get Dashboard Stats", data)
+}
+
+func (h AdminDashboardHandlerStruct) GetRecentInvoices(c *fiber.Ctx) error {
+	data, err := h.service.GetRecentInvoices()
+	if err != nil {
+		return helpers.ResponseUtils(c, fiber.StatusBadRequest, false, "Failed Get Recent Invoices", nil)
+	}
+
+	return helpers.ResponseUtils(c, fiber.StatusOK, true, "Success Get Recent Invoices", map[string]interface{}{
+		"invoices": data,
+	})
+}
+
+func (h AdminDashboardHandlerStruct) GetRecentTransactions(c *fiber.Ctx) error {
+	data, err := h.service.GetRecentTransactions()
+	if err != nil {
+		return helpers.ResponseUtils(c, fiber.StatusBadRequest, false, "Failed Get Recent Transactions", nil)
+	}
+
+	return helpers.ResponseUtils(c, fiber.StatusOK, true, "Success Get Recent Transactions", map[string]interface{}{
+		"transactions": data,
+	})
+}
+
+func (h AdminDashboardHandlerStruct) GetCustomerGrowth(c *fiber.Ctx) error {
+	data, err := h.service.GetCustomerGrowth()
+	if err != nil {
+		return helpers.ResponseUtils(c, fiber.StatusBadRequest, false, "Failed Get Customer Growth", nil)
+	}
+
+	return helpers.ResponseUtils(c, fiber.StatusOK, true, "Success Get Customer Growth", data)
+}
+
+func (h AdminDashboardHandlerStruct) GetRevenueChart(c *fiber.Ctx) error {
+	data, err := h.service.GetRevenueChart()
+	if err != nil {
+		return helpers.ResponseUtils(c, fiber.StatusBadRequest, false, "Failed Get Revenue Chart", nil)
+	}
+
+	return helpers.ResponseUtils(c, fiber.StatusOK, true, "Success Get Revenue Chart", data)
 }

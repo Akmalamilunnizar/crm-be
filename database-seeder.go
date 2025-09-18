@@ -45,11 +45,23 @@ func main() {
 
 	// 6. Seed Customers
 	log.Println("6. Seeding customers...")
-	seedCustomers(db, companies, areas, products)
+	customers := seedCustomers(db, companies, areas, products)
 
-	// 5. Seed Trouble Types
-	log.Println("5. Seeding trouble types...")
+	// 7. Seed Trouble Types
+	log.Println("7. Seeding trouble types...")
 	seedTroubleTypes(db)
+
+	// 8. Seed Accounts
+	log.Println("8. Seeding accounts...")
+	accounts := seedAccounts(db)
+
+	// 9. Seed Invoices
+	log.Println("9. Seeding invoices...")
+	invoices := seedInvoices(db, customers)
+
+	// 10. Seed Transactions
+	log.Println("10. Seeding transactions...")
+	seedTransactions(db, accounts, invoices)
 
 	log.Println("Database seeding completed successfully!")
 }
@@ -273,7 +285,7 @@ func seedUsers(db *gorm.DB, roles map[string]entities.Role) {
 	}
 }
 
-func seedCustomers(db *gorm.DB, companies map[string]entities.Company, areas map[string]entities.Areas, products map[string]entities.Products) {
+func seedCustomers(db *gorm.DB, companies map[string]entities.Company, areas map[string]entities.Areas, products map[string]entities.Products) []entities.Customer {
 	customers := []entities.Customer{
 		{
 			Name:      "PT Maju Bersama",
@@ -310,6 +322,7 @@ func seedCustomers(db *gorm.DB, companies map[string]entities.Company, areas map
 		},
 	}
 
+	var createdCustomers []entities.Customer
 	for _, customer := range customers {
 		var existingCustomer entities.Customer
 		if err := db.Where("email = ?", customer.Email).First(&existingCustomer).Error; err != nil {
@@ -318,11 +331,14 @@ func seedCustomers(db *gorm.DB, companies map[string]entities.Company, areas map
 				log.Printf("Error creating customer %s: %v", customer.Name, err)
 			} else {
 				log.Printf("Created customer: %s", customer.Name)
+				createdCustomers = append(createdCustomers, customer)
 			}
 		} else {
 			log.Printf("Customer %s already exists", customer.Name)
+			createdCustomers = append(createdCustomers, existingCustomer)
 		}
 	}
+	return createdCustomers
 }
 
 func seedTroubleTypes(db *gorm.DB) {
@@ -346,6 +362,140 @@ func seedTroubleTypes(db *gorm.DB) {
 			}
 		} else {
 			log.Printf("Trouble type %s already exists", *tt.Name)
+		}
+	}
+}
+
+func seedAccounts(db *gorm.DB) map[string]entities.Accounts {
+	accounts := []entities.Accounts{
+		{
+			Name:  "Bank BCA",
+			Saldo: 50000000, // 50 juta
+		},
+		{
+			Name:  "Bank Mandiri",
+			Saldo: 30000000, // 30 juta
+		},
+		{
+			Name:  "Kas Kecil",
+			Saldo: 5000000, // 5 juta
+		},
+	}
+
+	accountMap := make(map[string]entities.Accounts)
+
+	for _, account := range accounts {
+		var existingAccount entities.Accounts
+		if err := db.Where("name = ?", account.Name).First(&existingAccount).Error; err != nil {
+			// Account doesn't exist, create it
+			if err := db.Create(&account).Error; err != nil {
+				log.Printf("Error creating account %s: %v", account.Name, err)
+			} else {
+				log.Printf("Created account: %s", account.Name)
+				accountMap[account.Name] = account
+			}
+		} else {
+			log.Printf("Account %s already exists", account.Name)
+			accountMap[account.Name] = existingAccount
+		}
+	}
+
+	return accountMap
+}
+
+func seedInvoices(db *gorm.DB, customers []entities.Customer) []entities.Invoice {
+	var invoices []entities.Invoice
+
+	for i, customer := range customers {
+		invoice := entities.Invoice{
+			Amount:     1000000 + int64(i*500000), // 1M, 1.5M, 2M
+			CustomerID: customer.ID,
+			Link:       "https://example.com/invoice/" + customer.ID,
+			Status:     entities.InvoiceStatusPaid,
+		}
+
+		var existingInvoice entities.Invoice
+		if err := db.Where("customer_id = ?", customer.ID).First(&existingInvoice).Error; err != nil {
+			// Invoice doesn't exist, create it
+			if err := db.Create(&invoice).Error; err != nil {
+				log.Printf("Error creating invoice for customer %s: %v", customer.Name, err)
+			} else {
+				log.Printf("Created invoice for customer: %s", customer.Name)
+				invoices = append(invoices, invoice)
+			}
+		} else {
+			log.Printf("Invoice for customer %s already exists", customer.Name)
+			invoices = append(invoices, existingInvoice)
+		}
+	}
+
+	return invoices
+}
+
+func seedTransactions(db *gorm.DB, accounts map[string]entities.Accounts, invoices []entities.Invoice) {
+	// Income transactions (from invoices)
+	for _, invoice := range invoices {
+		transaction := entities.Transaction{
+			AccountID:   accounts["Bank BCA"].ID,
+			InvoiceID:   invoice.ID,
+			TypeCash:    entities.TransactionsTypeCashInternet,
+			TypeInOut:   entities.TransactionsTypeInOutIn,
+			Date:        "2024-01-15 10:00:00",
+			Description: "Payment from customer invoice",
+			Amount:      invoice.Amount,
+			Category:    "Revenue",
+			Method:      "Bank Transfer",
+		}
+
+		var existingTransaction entities.Transaction
+		if err := db.Where("invoice_id = ?", invoice.ID).First(&existingTransaction).Error; err != nil {
+			// Transaction doesn't exist, create it
+			if err := db.Create(&transaction).Error; err != nil {
+				log.Printf("Error creating transaction for invoice %s: %v", invoice.ID, err)
+			} else {
+				log.Printf("Created income transaction: %d", transaction.Amount)
+			}
+		} else {
+			log.Printf("Transaction for invoice %s already exists", invoice.ID)
+		}
+	}
+
+	// Expense transactions
+	expenses := []struct {
+		description string
+		amount      int64
+		category    string
+		method      string
+	}{
+		{"Office rent payment", 5000000, "Rent", "Bank Transfer"},
+		{"Internet provider bill", 2000000, "Utilities", "Bank Transfer"},
+		{"Equipment purchase", 3000000, "Equipment", "Bank Transfer"},
+		{"Employee salary", 15000000, "Salary", "Bank Transfer"},
+		{"Marketing expenses", 1000000, "Marketing", "Cash"},
+	}
+
+	for _, expense := range expenses {
+		transaction := entities.Transaction{
+			AccountID:   accounts["Bank Mandiri"].ID,
+			TypeCash:    entities.TransactionsTypeCashInternet,
+			TypeInOut:   entities.TransactionsTypeInOutOut,
+			Date:        "2024-01-20 14:00:00",
+			Description: expense.description,
+			Amount:      expense.amount,
+			Category:    expense.category,
+			Method:      expense.method,
+		}
+
+		var existingTransaction entities.Transaction
+		if err := db.Where("description = ?", expense.description).First(&existingTransaction).Error; err != nil {
+			// Transaction doesn't exist, create it
+			if err := db.Create(&transaction).Error; err != nil {
+				log.Printf("Error creating expense transaction %s: %v", expense.description, err)
+			} else {
+				log.Printf("Created expense transaction: %s - %d", expense.description, transaction.Amount)
+			}
+		} else {
+			log.Printf("Expense transaction %s already exists", expense.description)
 		}
 	}
 }

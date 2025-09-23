@@ -8,6 +8,11 @@ type AdminDashboardServiceInterface interface {
 	GetTotalIncome() (int64, error)
 	GetTotalExpenses() (int64, error)
 	GetTotalCustomer() (int64, error)
+	GetDashboardStats() (map[string]interface{}, error)
+	GetRecentInvoices() ([]map[string]interface{}, error)
+	GetRecentTransactions() ([]map[string]interface{}, error)
+	GetCustomerGrowth() (map[string]interface{}, error)
+	GetRevenueChart() (map[string]interface{}, error)
 }
 
 type AdminDashboardServiceStruct struct {
@@ -76,6 +81,51 @@ func (s AdminDashboardServiceStruct) GetTotalCustomer() (int64, error) {
 	data, err := s.repository.GetTotalCustomer()
 	if err != nil {
 		return 0, err
+	}
+
+	return data, nil
+}
+
+func (s AdminDashboardServiceStruct) GetDashboardStats() (map[string]interface{}, error) {
+	data, err := s.repository.GetDashboardStats()
+	if err != nil {
+		return nil, err
+	}
+
+	return data, nil
+}
+
+func (s AdminDashboardServiceStruct) GetRecentInvoices() ([]map[string]interface{}, error) {
+	data, err := s.repository.GetRecentInvoices()
+	if err != nil {
+		return nil, err
+	}
+
+	return data, nil
+}
+
+func (s AdminDashboardServiceStruct) GetRecentTransactions() ([]map[string]interface{}, error) {
+	data, err := s.repository.GetRecentTransactions()
+	if err != nil {
+		return nil, err
+	}
+
+	return data, nil
+}
+
+func (s AdminDashboardServiceStruct) GetCustomerGrowth() (map[string]interface{}, error) {
+	data, err := s.repository.GetCustomerGrowth()
+	if err != nil {
+		return nil, err
+	}
+
+	return data, nil
+}
+
+func (s AdminDashboardServiceStruct) GetRevenueChart() (map[string]interface{}, error) {
+	data, err := s.repository.GetRevenueChart()
+	if err != nil {
+		return nil, err
 	}
 
 	return data, nil

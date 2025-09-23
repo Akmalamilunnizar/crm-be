@@ -16,6 +16,11 @@ type AdminDashboardRepositoryInterface interface {
 	GetTotalIncome() (int64, error)
 	GetTotalExpenses() (int64, error)
 	GetTotalCustomer() (int64, error)
+	GetDashboardStats() (map[string]interface{}, error)
+	GetRecentInvoices() ([]map[string]interface{}, error)
+	GetRecentTransactions() ([]map[string]interface{}, error)
+	GetCustomerGrowth() (map[string]interface{}, error)
+	GetRevenueChart() (map[string]interface{}, error)
 }
 
 type AdminDashboardRepositoryStruct struct {
@@ -209,4 +214,189 @@ func (r AdminDashboardRepositoryStruct) GetTotalCustomer() (int64, error) {
 	}
 
 	return total, nil
+}
+
+func (r AdminDashboardRepositoryStruct) GetDashboardStats() (map[string]interface{}, error) {
+	// Get total customers
+	var totalCustomers int64
+	if err := r.db.Model(&entities.Customer{}).Count(&totalCustomers).Error; err != nil {
+		return nil, err
+	}
+
+	// Get total income
+	var totalIncome int64
+	if err := r.db.Model(&entities.Transaction{}).
+		Where("type_in_out = ?", entities.TransactionsTypeInOutIn).
+		Select("COALESCE(SUM(amount), 0)").
+		Scan(&totalIncome).Error; err != nil {
+		return nil, err
+	}
+
+	// Get total expenses
+	var totalExpenses int64
+	if err := r.db.Model(&entities.Transaction{}).
+		Where("type_in_out = ?", entities.TransactionsTypeInOutOut).
+		Select("COALESCE(SUM(amount), 0)").
+		Scan(&totalExpenses).Error; err != nil {
+		return nil, err
+	}
+
+	// Get total invoices
+	var totalInvoices int64
+	if err := r.db.Model(&entities.Invoice{}).Count(&totalInvoices).Error; err != nil {
+		return nil, err
+	}
+
+	// Get total areas
+	var totalAreas int64
+	if err := r.db.Model(&entities.Areas{}).Count(&totalAreas).Error; err != nil {
+		return nil, err
+	}
+
+	// Get total products
+	var totalProducts int64
+	if err := r.db.Model(&entities.Products{}).Count(&totalProducts).Error; err != nil {
+		return nil, err
+	}
+
+	// Get total tickets
+	var totalTickets int64
+	if err := r.db.Model(&entities.TroubleTicket{}).Count(&totalTickets).Error; err != nil {
+		return nil, err
+	}
+
+	// Calculate net worth
+	netWorth := totalIncome - totalExpenses
+
+	data := map[string]interface{}{
+		"total_customers": totalCustomers,
+		"total_income":    totalIncome,
+		"total_expenses":  totalExpenses,
+		"net_worth":       netWorth,
+		"total_invoices":  totalInvoices,
+		"total_areas":     totalAreas,
+		"total_products":  totalProducts,
+		"total_tickets":   totalTickets,
+	}
+
+	return data, nil
+}
+
+func (r AdminDashboardRepositoryStruct) GetRecentInvoices() ([]map[string]interface{}, error) {
+	var invoices []entities.Invoice
+	if err := r.db.Preload("Customer").
+		Order("created_at DESC").
+		Limit(10).
+		Find(&invoices).Error; err != nil {
+		return nil, err
+	}
+
+	var result []map[string]interface{}
+	for _, invoice := range invoices {
+		result = append(result, map[string]interface{}{
+			"id":         invoice.ID,
+			"invoice_no": invoice.ID, // Using ID as invoice number since InvoiceNo field doesn't exist
+			"amount":     invoice.Amount,
+			"status":     invoice.Status,
+			"customer":   invoice.Customer.Name,
+			"created_at": invoice.CreatedAt,
+		})
+	}
+
+	return result, nil
+}
+
+func (r AdminDashboardRepositoryStruct) GetRecentTransactions() ([]map[string]interface{}, error) {
+	var transactions []entities.Transaction
+	if err := r.db.Order("date DESC").
+		Limit(10).
+		Find(&transactions).Error; err != nil {
+		return nil, err
+	}
+
+	var result []map[string]interface{}
+	for _, transaction := range transactions {
+		result = append(result, map[string]interface{}{
+			"id":          transaction.ID,
+			"amount":      transaction.Amount,
+			"type_in_out": transaction.TypeInOut,
+			"description": transaction.Description,
+			"date":        transaction.Date,
+			"created_at":  transaction.CreatedAt,
+		})
+	}
+
+	return result, nil
+}
+
+func (r AdminDashboardRepositoryStruct) GetCustomerGrowth() (map[string]interface{}, error) {
+	var results []DailyCount
+	err := r.db.
+		Model(&entities.Customer{}).
+		Select("DATE(created_at) as date, COUNT(*) as count").
+		Where("created_at >= ?", time.Now().AddDate(0, 0, -29).Truncate(24*time.Hour)).
+		Group("DATE(created_at)").
+		Order("date").
+		Scan(&results).Error
+	if err != nil {
+		return nil, err
+	}
+
+	// Map the results by date
+	dateMap := make(map[string]int)
+	for _, r := range results {
+		dateMap[r.Date.Format("2006-01-02")] = r.Count
+	}
+
+	// Build 30-day graph data
+	graphData := make([]map[string]interface{}, 0)
+	for i := 29; i >= 0; i-- {
+		date := time.Now().AddDate(0, 0, -i).Format("2006-01-02")
+		graphData = append(graphData, map[string]interface{}{
+			"date":  date,
+			"count": dateMap[date],
+		})
+	}
+
+	data := map[string]interface{}{
+		"customer_growth": graphData,
+	}
+
+	return data, nil
+}
+
+func (r AdminDashboardRepositoryStruct) GetRevenueChart() (map[string]interface{}, error) {
+	var results []DailyCount
+	err := r.db.
+		Model(&entities.Transaction{}).
+		Select("DATE(date) as date, SUM(amount) as count").
+		Where("type_in_out = ? AND date >= ?", entities.TransactionsTypeInOutIn, time.Now().AddDate(0, 0, -29).Truncate(24*time.Hour)).
+		Group("DATE(date)").
+		Order("date").
+		Scan(&results).Error
+	if err != nil {
+		return nil, err
+	}
+
+	// Map the results by date
+	dateMap := make(map[string]int)
+	for _, r := range results {
+		dateMap[r.Date.Format("2006-01-02")] = r.Count
+	}
+
+	// Build 30-day graph data
+	graphData := make([]map[string]interface{}, 0)
+	for i := 29; i >= 0; i-- {
+		date := time.Now().AddDate(0, 0, -i).Format("2006-01-02")
+		graphData = append(graphData, map[string]interface{}{
+			"date":   date,
+			"amount": dateMap[date],
+		})
+	}
+
+	data := map[string]interface{}{
+		"revenue_chart": graphData,
+	}
+
+	return data, nil
 }

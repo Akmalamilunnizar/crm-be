@@ -24,6 +24,13 @@ func AdminDashboardRoute(app fiber.Router) {
 	app.Get("card-area-popular", handler.CardAreaPopular)
 	app.Get("card-report-cash", handler.CardReportCash)
 
+	// New dashboard endpoints
+	app.Get("stats", handler.GetDashboardStats)
+	app.Get("recent-invoices", handler.GetRecentInvoices)
+	app.Get("recent-transactions", handler.GetRecentTransactions)
+	app.Get("customer-growth", handler.GetCustomerGrowth)
+	app.Get("revenue-chart", handler.GetRevenueChart)
+
 	// analityc := app.Group("analytic-graph")
 	// analityc.Get("customer")
 	// analityc.Get("packet-popular")

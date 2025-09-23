@@ -29,7 +29,7 @@ func CreateToken(username string, role string) (string, error) {
 		"sub": username,                         // Subject (user identifier)
 		"iss": "lillyapps",                      // Issuer
 		"aud": role,                             // Audience (user role)
-		"exp": time.Now().Add(time.Hour).Unix(), // Expiration time
+		"exp": time.Now().Add(2 * time.Hour).Unix(), // Expiration time
 		"iat": time.Now().Unix(),                // Issued at
 	})
 

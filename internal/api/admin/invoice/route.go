@@ -21,5 +21,6 @@ func AdminInvoiceRoute(app fiber.Router) {
 	app.Put("/:id/status", handler.UpdateStatusAdminInvoiceHandler)
 	app.Post("/:id/partial-payment", handler.ProcessPartialPaymentHandler)
 	app.Post("/:id/mark-pdf-viewed", handler.MarkPdfViewedHandler)
+	app.Post("/print-all-unpaid", handler.PrintAllUnpaidInvoicesHandler)
 	app.Delete("/:id", handler.DeleteAdminInvoiceHandler)
 }

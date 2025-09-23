@@ -382,6 +382,7 @@ type Invoice struct {
 	Customer     Customer       `gorm:"foreignKey:CustomerID;references:id;constraint:OnUpdate:RESTRICT" json:"customer"`
 	Link         string         `gorm:"column:link;type:varchar;not null" json:"link"`
 	Status       InvoiceStatus  `gorm:"column:status;type:varchar;not null" json:"status"`
+	DueDate      *time.Time     `gorm:"column:due_date;type:date" json:"due_date"`
 	PdfViewed    bool           `gorm:"column:pdf_viewed;type:boolean;default:false" json:"pdf_viewed"`
 	PdfViewedAt  *time.Time     `gorm:"column:pdf_viewed_at;type:timestamp" json:"pdf_viewed_at"`
 	CreatedAt    time.Time      `gorm:"column:createdAt;default:current_timestamp" json:"created_at"`
@@ -416,9 +417,6 @@ type InvoiceItems struct {
 func (InvoiceItems) TableName() string {
 	return "invoice_items"
 }
-func (u *InvoiceItems) BeforeCreate(tx *gorm.DB) error {
-	if u.ID == "" {
-		u.ID = uuid.New().String()
-	}
-	return nil
-}
+
+// Removed BeforeCreate hook to prevent UUID conflicts
+// UUID generation is now handled explicitly in the repository layer

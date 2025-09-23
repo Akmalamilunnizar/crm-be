@@ -110,7 +110,7 @@ func (s *MikroTikService) GetLogs(timeRange string) ([]MikroTikLog, error) {
 	case "1h":
 		timeFilter = "1h"
 	case "6h":
-		timeFilter = "6h" 
+		timeFilter = "6h"
 	case "1d":
 		timeFilter = "1d"
 	case "7d":
@@ -166,14 +166,14 @@ func (s *MikroTikService) parseLogLine(line string) *MikroTikLog {
 	// Parse Netwatch logs - they typically contain UP/DOWN status
 	// Example format: "netwatch host 192.168.1.100 DOWN"
 	// or more detailed format with timestamp and message
-	
+
 	// Check if this is a Netwatch UP/DOWN log
 	if strings.Contains(strings.ToLower(line), "netwatch") {
 		// Extract host/IP address
 		var host string
 		var status string
 		var message string = line
-		
+
 		// Try to extract IP address pattern
 		if strings.Contains(line, ".") {
 			// Look for IP address in the line
@@ -185,7 +185,7 @@ func (s *MikroTikService) parseLogLine(line string) *MikroTikLog {
 				}
 			}
 		}
-		
+
 		// Determine status from the log content
 		lineLower := strings.ToLower(line)
 		if strings.Contains(lineLower, "down") || strings.Contains(lineLower, "timeout") || strings.Contains(lineLower, "unreachable") {
@@ -200,11 +200,11 @@ func (s *MikroTikService) parseLogLine(line string) *MikroTikLog {
 				status = "UP"
 			}
 		}
-		
+
 		if host == "" {
 			host = "unknown"
 		}
-		
+
 		return &MikroTikLog{
 			Host:      host,
 			Comment:   message,
@@ -215,7 +215,7 @@ func (s *MikroTikService) parseLogLine(line string) *MikroTikLog {
 			Raw:       line,
 		}
 	}
-	
+
 	// Handle pipe-separated format (custom format)
 	if strings.Contains(line, "|") {
 		parts := strings.Split(line, "|")
@@ -238,7 +238,7 @@ func (s *MikroTikService) parseLogLine(line string) *MikroTikLog {
 
 	// Fallback for other log formats - but prioritize UP/DOWN detection
 	timestamp := time.Now() // In real implementation, parse actual timestamp
-	
+
 	// Extract status based on keywords
 	lineLower := strings.ToLower(line)
 	status := "INFO"
@@ -315,6 +315,115 @@ func (s *MikroTikService) ExecuteCommand(command string) (string, error) {
 	}
 
 	return string(output), nil
+}
+
+// Hotspot IP Binding Management
+type HotspotIPBinding struct {
+	ID       string `json:"id"`
+	MAC      string `json:"mac"`
+	Address  string `json:"address"`
+	Type     string `json:"type"`
+	Server   string `json:"server"`
+	Comment  string `json:"comment"`
+	Disabled bool   `json:"disabled"`
+}
+
+// SetHotspotIPBindingType changes the type of a hotspot IP binding
+func (s *MikroTikService) SetHotspotIPBindingType(macAddress, bindingType string) error {
+	if !s.IsConnected() {
+		return fmt.Errorf("not connected to MikroTik")
+	}
+
+	// Command to set the IP binding type
+	command := fmt.Sprintf("/ip hotspot ip-binding set [find mac-address=%s] type=%s", macAddress, bindingType)
+
+	output, err := s.ExecuteCommand(command)
+	if err != nil {
+		return fmt.Errorf("failed to set hotspot IP binding type: %v", err)
+	}
+
+	// Check if the command was successful
+	if strings.Contains(strings.ToLower(output), "no such item") {
+		return fmt.Errorf("no IP binding found for MAC address: %s", macAddress)
+	}
+
+	log.Printf("Successfully set IP binding type to %s for MAC %s", bindingType, macAddress)
+	return nil
+}
+
+// GetHotspotIPBindings retrieves all hotspot IP bindings
+func (s *MikroTikService) GetHotspotIPBindings() ([]HotspotIPBinding, error) {
+	if !s.IsConnected() {
+		return nil, fmt.Errorf("not connected to MikroTik")
+	}
+
+	command := "/ip hotspot ip-binding print"
+	output, err := s.ExecuteCommand(command)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get hotspot IP bindings: %v", err)
+	}
+
+	var bindings []HotspotIPBinding
+	lines := strings.Split(output, "\n")
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "Flags:") || strings.HasPrefix(line, "Columns:") {
+			continue
+		}
+
+		// Parse the binding information
+		// Format: "0 X 40:EE:15:C8:67:5D 10.10.21.10 10.10.21.10 all bypassed"
+		parts := strings.Fields(line)
+		if len(parts) >= 6 {
+			binding := HotspotIPBinding{
+				ID:       parts[0],
+				MAC:      parts[2],
+				Address:  parts[3],
+				Type:     parts[5],
+				Server:   parts[4],
+				Disabled: strings.Contains(parts[1], "X"),
+			}
+			bindings = append(bindings, binding)
+		}
+	}
+
+	return bindings, nil
+}
+
+// GetHotspotIPBindingByMAC retrieves a specific hotspot IP binding by MAC address
+func (s *MikroTikService) GetHotspotIPBindingByMAC(macAddress string) (*HotspotIPBinding, error) {
+	if !s.IsConnected() {
+		return nil, fmt.Errorf("not connected to MikroTik")
+	}
+
+	command := fmt.Sprintf("/ip hotspot ip-binding print where mac-address=%s", macAddress)
+	output, err := s.ExecuteCommand(command)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get hotspot IP binding: %v", err)
+	}
+
+	lines := strings.Split(output, "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "Flags:") || strings.HasPrefix(line, "Columns:") {
+			continue
+		}
+
+		parts := strings.Fields(line)
+		if len(parts) >= 6 {
+			return &HotspotIPBinding{
+				ID:       parts[0],
+				MAC:      parts[2],
+				Address:  parts[3],
+				Type:     parts[5],
+				Server:   parts[4],
+				Disabled: strings.Contains(parts[1], "X"),
+			}, nil
+		}
+	}
+
+	return nil, fmt.Errorf("no IP binding found for MAC address: %s", macAddress)
 }
 
 func (s *MikroTikService) GetSystemInfo() (map[string]interface{}, error) {

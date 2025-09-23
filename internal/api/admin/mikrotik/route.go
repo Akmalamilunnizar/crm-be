@@ -27,4 +27,9 @@ func MikroTikRoutes(app fiber.Router) {
 
 	// Command execution
 	app.Post("/execute", handler.ExecuteCommand)
+
+	// Hotspot IP binding management
+	app.Post("/hotspot/ip-binding/set-type", handler.SetHotspotIPBindingType)
+	app.Get("/hotspot/ip-bindings", handler.GetHotspotIPBindings)
+	app.Get("/hotspot/ip-binding/:mac", handler.GetHotspotIPBindingByMAC)
 }

@@ -43,6 +43,30 @@ func TicketRoutes(api fiber.Router) {
 	// Polling endpoint for updates
 	g.Get("/updates", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "CUSTOMER_SERVICE", "NOC", "TECHNICIAN"), h.UpdatesSince)
 
+	// Technician workflow
+	g.Post("/:id/accept", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "TECHNICIAN"), h.Accept)
+	// Consolidated team assignment endpoint with validation
+	g.Post("/:id/team", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "TECHNICIAN"), h.UpsertTechnicianTeam)
+	// Fetch current team members for a ticket
+	g.Get("/:id/team-members", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "TECHNICIAN", "CUSTOMER_SERVICE"), h.GetTechnicianTeamMembers)
+	g.Post("/:id/steps", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "TECHNICIAN"), h.AddStep)
+	g.Post("/:id/technician-completed", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "TECHNICIAN"), h.MarkTechnicianCompleted)
+
+	// Network architecture
+	g.Post("/:id/network-architecture", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "TECHNICIAN"), h.SetNetworkArchitecture)
+
+	// Technician workflow routes
+	g.Get("/technician-steps", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "TECHNICIAN"), h.GetTechnicianSteps)
+	g.Get("/spare-parts", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "TECHNICIAN"), h.GetSpareParts)
+	g.Get("/:id/technician-checklist", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "TECHNICIAN"), h.GetTechnicianChecklist)
+	g.Get("/:id/technician-steps", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "TECHNICIAN"), h.GetTicketTechnicianSteps)
+	g.Post("/:id/technician-step", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "TECHNICIAN"), h.UpdateTechnicianStep)
+	g.Get("/:id/technician-progress", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "TECHNICIAN"), h.GetTechnicianStepProgress)
+	g.Post("/:id/technician-complete", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "TECHNICIAN"), h.MarkTechnicianJobCompleted)
+
+	// CS verification/close
+	g.Post("/:id/verify-close", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "CUSTOMER_SERVICE"), h.VerifyAndClose)
+
 	// Debug endpoint to test role extraction
 	g.Get("/debug/role", helpers.VerifyToken, func(c *fiber.Ctx) error {
 		log.Println("Debug endpoint accessed")

@@ -118,6 +118,51 @@ func (r *Repo) AllTroubleTypes() ([]entities.TroubleTypeRow, error) {
 	return rows, r.DB.Table("trouble_type").Order("name asc").Find(&rows).Error
 }
 
+// Technician Team operations
+func (r *Repo) ReplaceTeamMembers(ticketID uint64, members []entities.TechnicianTeamMember) error {
+	tx := r.DB.Begin()
+	if err := tx.Table((entities.TechnicianTeamMember{}).TableName()).Where("ticket_id = ?", ticketID).Delete(nil).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+	for i := range members {
+		members[i].TicketID = ticketID
+		if err := tx.Create(&members[i]).Error; err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+	return tx.Commit().Error
+}
+
+func (r *Repo) ListTeamMembers(ticketID uint64) ([]entities.TechnicianTeamMember, error) {
+	var rows []entities.TechnicianTeamMember
+	err := r.DB.Table((entities.TechnicianTeamMember{}).TableName()).Where("ticket_id = ?", ticketID).Find(&rows).Error
+	return rows, err
+}
+
+// Ticket Steps operations
+func (r *Repo) AddTicketStep(step *entities.TicketStep) error {
+	return r.DB.Table((entities.TicketStep{}).TableName()).Create(step).Error
+}
+
+func (r *Repo) ListTicketSteps(ticketID uint64) ([]entities.TicketStep, error) {
+	var rows []entities.TicketStep
+	err := r.DB.Table((entities.TicketStep{}).TableName()).Where("ticket_id = ?", ticketID).Order("step_order asc").Find(&rows).Error
+	return rows, err
+}
+
+func (r *Repo) CountTicketSteps(ticketID uint64) (int64, error) {
+	var cnt int64
+	err := r.DB.Table((entities.TicketStep{}).TableName()).Where("ticket_id = ?", ticketID).Count(&cnt).Error
+	return cnt, err
+}
+
+// Step images
+func (r *Repo) AddStepImage(img *entities.TicketStepImage) error {
+	return r.DB.Table((entities.TicketStepImage{}).TableName()).Create(img).Error
+}
+
 // Hotspot aggregation by customer geolocation
 type Hotspot struct {
 	GPSLat *float64 `json:"gps_lat"`
@@ -206,4 +251,59 @@ func (r *Repo) UpdatesSinceForRole(since time.Time, normalizedRole string, userI
 		return nil, err
 	}
 	return items, nil
+}
+
+// MarkTechnicianCompleted marks a ticket as completed by technician and reassigns to CS
+func (r *Repo) MarkTechnicianCompleted(ticketID uint64, technicianUserID string) (*entities.TroubleTicket, error) {
+	// Get CS role ID
+	csRoleID, err := r.RoleIDByName("CUSTOMER SERVICE")
+	if err != nil {
+		return nil, fmt.Errorf("failed to get CS role ID: %v", err)
+	}
+
+	// Update ticket: mark as completed and reassign to CS
+	var ticket entities.TroubleTicket
+	if err := r.DB.Model(&ticket).Where("id = ? AND assigned_to = ?", ticketID, technicianUserID).
+		Updates(map[string]interface{}{
+			"technician_completed":  true,
+			"current_assignee_role": csRoleID,
+			"assigned_to":           nil, // Remove technician assignment
+			"updated_at":            time.Now(),
+		}).Error; err != nil {
+		return nil, fmt.Errorf("failed to mark technician completed: %v", err)
+	}
+
+	// Get updated ticket
+	if err := r.DB.First(&ticket, ticketID).Error; err != nil {
+		return nil, fmt.Errorf("failed to get updated ticket: %v", err)
+	}
+
+	return &ticket, nil
+}
+
+// (removed duplicate SetNetworkArchitecture; see technician_repository.go)
+
+// ValidateTechnicianAssignment validates that a technician is not assigned to multiple roles in the same ticket
+func (r *Repo) ValidateTechnicianAssignment(ticketID uint64, technicianUserID string) error {
+	var count int64
+	if err := r.DB.Model(&entities.TechnicianTeamMember{}).
+		Where("ticket_id = ? AND user_id = ?", ticketID, technicianUserID).
+		Count(&count).Error; err != nil {
+		return fmt.Errorf("failed to validate technician assignment: %v", err)
+	}
+
+	if count > 0 {
+		return fmt.Errorf("technician %s is already assigned to this ticket", technicianUserID)
+	}
+
+	return nil
+}
+
+// GetTechnicianTeamMembers gets all team members for a ticket
+func (r *Repo) GetTechnicianTeamMembers(ticketID uint64) ([]entities.TechnicianTeamMember, error) {
+	var members []entities.TechnicianTeamMember
+	if err := r.DB.Where("ticket_id = ?", ticketID).Find(&members).Error; err != nil {
+		return nil, fmt.Errorf("failed to get team members: %v", err)
+	}
+	return members, nil
 }

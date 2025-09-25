@@ -20,7 +20,7 @@ const (
 
 	// Use role names instead of hardcoded UUIDs - these will be looked up dynamically
 	AssignCS   Assignee = "CUSTOMER SERVICE"
-	AssignNOC  Assignee = "NOC"
+	AssignNOC  Assignee = "CUSTOMER SERVICE" // NOC now uses CUSTOMER_SERVICE role
 	AssignTech Assignee = "TECHNICIAN"
 )
 
@@ -52,6 +52,9 @@ type TroubleTicket struct {
 
 	// Network architecture type selection
 	NetworkArchitecture *string `gorm:"type:varchar(50)" json:"network_architecture,omitempty"` // FTTH or HTB
+
+	// Accumulation tracking - number of customers affected by the same problem
+	Accumulation int `gorm:"type:int;default:1" json:"accumulation"` // Default 1 for single customer
 
 	// Netwatch integration fields - DISABLED FOR TESTING
 	// CreatedByNetwatch bool            `gorm:"default:false" json:"created_by_netwatch"`

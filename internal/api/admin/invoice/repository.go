@@ -446,37 +446,88 @@ func (r AdminInvoiceRepositoryStruct) PrintAllUnpaidInvoicesRepository() (map[st
 func generateThermalPrinterData(invoices []entities.Invoice) string {
 	var output strings.Builder
 
-	output.WriteString("=== UNPAID INVOICES REPORT ===\n")
-	output.WriteString("Generated: " + time.Now().Format("2006-01-02 15:04:05") + "\n")
-	output.WriteString("=" + strings.Repeat("=", 30) + "\n\n")
+	// Compact header printed once
+	output.WriteString(centerText("PT JR Nusa Menara Networks", 30) + "\n")
+	output.WriteString(centerText("Jl Raya Talangsuko 373 Turen", 30) + "\n")
+	output.WriteString(centerText("PH: 08123511147, (0341)8224357", 30) + "\n")
+	output.WriteString(centerText("EMAIL: info@menara.net.id", 30) + "\n")
+	output.WriteString(centerText("LINK: www.menara.net.id", 30) + "\n")
+	output.WriteString(strings.Repeat("=", 30) + "\n")
 
 	for i, invoice := range invoices {
-		output.WriteString(fmt.Sprintf("INVOICE #%d\n", i+1))
-		output.WriteString(fmt.Sprintf("ID: %s\n", invoice.ID))
-		output.WriteString(fmt.Sprintf("Customer: %s\n", invoice.Customer.Name))
-		output.WriteString(fmt.Sprintf("Amount: Rp %s\n", formatCurrency(invoice.Amount)))
-		output.WriteString(fmt.Sprintf("Status: %s\n", invoice.Status))
+		output.WriteString(centerText("*** Tanda Terima ***", 30) + "\n")
+		output.WriteString("----- DITERBITKAN UNTUK -----\n")
+		output.WriteString(fmt.Sprintf("%s\n", invoice.Customer.Name))
+		output.WriteString("------------------------------\n")
 
-		if invoice.DueDate != nil {
-			output.WriteString(fmt.Sprintf("Due Date: %s\n", invoice.DueDate.Format("2006-01-02")))
-		}
+		// Aligned key-values
+		output.WriteString(formatKV("Nomor", invoice.ID, 30) + "\n")
+		output.WriteString(formatKV("Tanggal", invoice.CreatedAt.Format("02-01-2006"), 30) + "\n")
 
-		output.WriteString("Items:\n")
+		output.WriteString("------------------------------\n")
+		output.WriteString(centerText("DETAIL", 30) + "\n")
+
+		// Compact item list
 		for _, item := range invoice.InvoiceItems {
-			output.WriteString(fmt.Sprintf("  - %s (Qty: %d) @ Rp %s = Rp %s\n",
-				item.Name, item.Qty, formatCurrency(item.Price), formatCurrency(item.Total)))
+			output.WriteString("- " + item.Name + "\n")
 		}
 
-		output.WriteString("-" + strings.Repeat("-", 30) + "\n\n")
+		output.WriteString("------------------------------\n")
+		output.WriteString(formatKV("Total", "Rp "+formatCurrency(invoice.Amount), 30) + "\n")
+		output.WriteString(formatKV("Dibayar", "Rp 0", 30) + "\n")
+		output.WriteString(formatKV("Saldo", "Rp "+formatCurrency(invoice.Amount), 30) + "\n")
+
+		// Keep a single blank line between invoices, none at the end
+		if i < len(invoices)-1 {
+			output.WriteString("\n")
+		}
 	}
 
-	output.WriteString("END OF REPORT\n")
-	output.WriteString("=" + strings.Repeat("=", 30) + "\n")
-
-	return output.String()
+	// Trim trailing whitespace/newlines to reduce extra blank page risk
+	return strings.TrimRight(output.String(), "\n\r\t ")
 }
 
 // formatCurrency formats currency in Indonesian Rupiah format
 func formatCurrency(amount int64) string {
 	return fmt.Sprintf("%.0f", float64(amount))
+}
+
+// padRight pads s with spaces to the right up to width
+
+// padLeft pads s with spaces to the left up to width
+func padLeft(s string, width int) string {
+	if len(s) >= width {
+		return s
+	}
+	return strings.Repeat(" ", width-len(s)) + s
+}
+
+func centerText(text string, width int) string {
+	l := len(text)
+	if l >= width || width <= 0 {
+		return text
+	}
+	pad := (width - l) / 2
+	if pad < 0 {
+		pad = 0
+	}
+	return strings.Repeat(" ", pad) + text
+}
+
+func padRight(s string, width int) string {
+	if len(s) >= width {
+		return s
+	}
+	return s + strings.Repeat(" ", width-len(s))
+}
+
+func formatKV(label, value string, width int) string {
+	maxLabel := width - len(value) - 1
+	if maxLabel < 1 {
+		maxLabel = 1
+	}
+	if len(label) > maxLabel {
+		label = label[:maxLabel]
+	}
+	return padRight(label, maxLabel) + " " + value
 }

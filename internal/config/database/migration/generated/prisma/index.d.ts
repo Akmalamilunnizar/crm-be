@@ -93,6 +93,11 @@ export type transactions = $Result.DefaultSelection<Prisma.$transactionsPayload>
  * Prisma model mapping to the existing `trouble_tickets` table
  */
 export type TroubleTicket = $Result.DefaultSelection<Prisma.$TroubleTicketPayload>
+/**
+ * Model trouble_type
+ * 
+ */
+export type trouble_type = $Result.DefaultSelection<Prisma.$trouble_typePayload>
 
 /**
  * Enums
@@ -122,6 +127,15 @@ export const invoices_status: {
 
 export type invoices_status = (typeof invoices_status)[keyof typeof invoices_status]
 
+
+export const trouble_ticket_status: {
+  finished: 'finished',
+  ongoing: 'ongoing',
+  unfinished: 'unfinished'
+};
+
+export type trouble_ticket_status = (typeof trouble_ticket_status)[keyof typeof trouble_ticket_status]
+
 }
 
 export type transactions_type_in_out = $Enums.transactions_type_in_out
@@ -135,6 +149,10 @@ export const transactions_type_cash: typeof $Enums.transactions_type_cash
 export type invoices_status = $Enums.invoices_status
 
 export const invoices_status: typeof $Enums.invoices_status
+
+export type trouble_ticket_status = $Enums.trouble_ticket_status
+
+export const trouble_ticket_status: typeof $Enums.trouble_ticket_status
 
 /**
  * ##  Prisma Client ʲˢ
@@ -420,6 +438,16 @@ export class PrismaClient<
     * ```
     */
   get troubleTicket(): Prisma.TroubleTicketDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.trouble_type`: Exposes CRUD operations for the **trouble_type** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more Trouble_types
+    * const trouble_types = await prisma.trouble_type.findMany()
+    * ```
+    */
+  get trouble_type(): Prisma.trouble_typeDelegate<ExtArgs, ClientOptions>;
 }
 
 export namespace Prisma {
@@ -875,7 +903,8 @@ export namespace Prisma {
     invoices: 'invoices',
     invoice_items: 'invoice_items',
     transactions: 'transactions',
-    TroubleTicket: 'TroubleTicket'
+    TroubleTicket: 'TroubleTicket',
+    trouble_type: 'trouble_type'
   };
 
   export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -894,7 +923,7 @@ export namespace Prisma {
       omit: GlobalOmitOptions
     }
     meta: {
-      modelProps: "accounts" | "assets" | "company" | "customer" | "device" | "areas" | "logs" | "products" | "users" | "roles" | "images" | "customer_installations" | "invoices" | "invoice_items" | "transactions" | "troubleTicket"
+      modelProps: "accounts" | "assets" | "company" | "customer" | "device" | "areas" | "logs" | "products" | "users" | "roles" | "images" | "customer_installations" | "invoices" | "invoice_items" | "transactions" | "troubleTicket" | "trouble_type"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -1954,6 +1983,72 @@ export namespace Prisma {
           }
         }
       }
+      trouble_type: {
+        payload: Prisma.$trouble_typePayload<ExtArgs>
+        fields: Prisma.trouble_typeFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.trouble_typeFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$trouble_typePayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.trouble_typeFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$trouble_typePayload>
+          }
+          findFirst: {
+            args: Prisma.trouble_typeFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$trouble_typePayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.trouble_typeFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$trouble_typePayload>
+          }
+          findMany: {
+            args: Prisma.trouble_typeFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$trouble_typePayload>[]
+          }
+          create: {
+            args: Prisma.trouble_typeCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$trouble_typePayload>
+          }
+          createMany: {
+            args: Prisma.trouble_typeCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          delete: {
+            args: Prisma.trouble_typeDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$trouble_typePayload>
+          }
+          update: {
+            args: Prisma.trouble_typeUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$trouble_typePayload>
+          }
+          deleteMany: {
+            args: Prisma.trouble_typeDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.trouble_typeUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          upsert: {
+            args: Prisma.trouble_typeUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$trouble_typePayload>
+          }
+          aggregate: {
+            args: Prisma.Trouble_typeAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateTrouble_type>
+          }
+          groupBy: {
+            args: Prisma.trouble_typeGroupByArgs<ExtArgs>
+            result: $Utils.Optional<Trouble_typeGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.trouble_typeCountArgs<ExtArgs>
+            result: $Utils.Optional<Trouble_typeCountAggregateOutputType> | number
+          }
+        }
+      }
     }
   } & {
     other: {
@@ -2054,6 +2149,7 @@ export namespace Prisma {
     invoice_items?: invoice_itemsOmit
     transactions?: transactionsOmit
     troubleTicket?: TroubleTicketOmit
+    trouble_type?: trouble_typeOmit
   }
 
   /* Types for Logging */
@@ -2149,10 +2245,12 @@ export namespace Prisma {
 
   export type CompanyCountOutputType = {
     customer: number
+    assets: number
   }
 
   export type CompanyCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     customer?: boolean | CompanyCountOutputTypeCountCustomerArgs
+    assets?: boolean | CompanyCountOutputTypeCountAssetsArgs
   }
 
   // Custom InputTypes
@@ -2173,6 +2271,13 @@ export namespace Prisma {
     where?: customerWhereInput
   }
 
+  /**
+   * CompanyCountOutputType without action
+   */
+  export type CompanyCountOutputTypeCountAssetsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: assetsWhereInput
+  }
+
 
   /**
    * Count Type CustomerCountOutputType
@@ -2180,10 +2285,12 @@ export namespace Prisma {
 
   export type CustomerCountOutputType = {
     customer_installations: number
+    TroubleTicket: number
   }
 
   export type CustomerCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     customer_installations?: boolean | CustomerCountOutputTypeCountCustomer_installationsArgs
+    TroubleTicket?: boolean | CustomerCountOutputTypeCountTroubleTicketArgs
   }
 
   // Custom InputTypes
@@ -2202,6 +2309,13 @@ export namespace Prisma {
    */
   export type CustomerCountOutputTypeCountCustomer_installationsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: customer_installationsWhereInput
+  }
+
+  /**
+   * CustomerCountOutputType without action
+   */
+  export type CustomerCountOutputTypeCountTroubleTicketArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: TroubleTicketWhereInput
   }
 
 
@@ -2273,10 +2387,12 @@ export namespace Prisma {
 
   export type UsersCountOutputType = {
     customer_installations: number
+    TroubleTicket: number
   }
 
   export type UsersCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     customer_installations?: boolean | UsersCountOutputTypeCountCustomer_installationsArgs
+    TroubleTicket?: boolean | UsersCountOutputTypeCountTroubleTicketArgs
   }
 
   // Custom InputTypes
@@ -2297,6 +2413,13 @@ export namespace Prisma {
     where?: customer_installationsWhereInput
   }
 
+  /**
+   * UsersCountOutputType without action
+   */
+  export type UsersCountOutputTypeCountTroubleTicketArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: TroubleTicketWhereInput
+  }
+
 
   /**
    * Count Type RolesCountOutputType
@@ -2304,10 +2427,12 @@ export namespace Prisma {
 
   export type RolesCountOutputType = {
     users: number
+    TroubleTicket: number
   }
 
   export type RolesCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     users?: boolean | RolesCountOutputTypeCountUsersArgs
+    TroubleTicket?: boolean | RolesCountOutputTypeCountTroubleTicketArgs
   }
 
   // Custom InputTypes
@@ -2326,6 +2451,13 @@ export namespace Prisma {
    */
   export type RolesCountOutputTypeCountUsersArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: usersWhereInput
+  }
+
+  /**
+   * RolesCountOutputType without action
+   */
+  export type RolesCountOutputTypeCountTroubleTicketArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: TroubleTicketWhereInput
   }
 
 
@@ -2357,6 +2489,37 @@ export namespace Prisma {
    */
   export type InvoicesCountOutputTypeCountInvoice_itemsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: invoice_itemsWhereInput
+  }
+
+
+  /**
+   * Count Type Trouble_typeCountOutputType
+   */
+
+  export type Trouble_typeCountOutputType = {
+    tickets: number
+  }
+
+  export type Trouble_typeCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    tickets?: boolean | Trouble_typeCountOutputTypeCountTicketsArgs
+  }
+
+  // Custom InputTypes
+  /**
+   * Trouble_typeCountOutputType without action
+   */
+  export type Trouble_typeCountOutputTypeDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Trouble_typeCountOutputType
+     */
+    select?: Trouble_typeCountOutputTypeSelect<ExtArgs> | null
+  }
+
+  /**
+   * Trouble_typeCountOutputType without action
+   */
+  export type Trouble_typeCountOutputTypeCountTicketsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: TroubleTicketWhereInput
   }
 
 
@@ -3309,12 +3472,11 @@ export namespace Prisma {
     brand: string | null
     date: string | null
     description: string | null
-    mac_address: string | null
     model: string | null
     price: number | null
     quantity: number | null
     serial_number: string | null
-    site: string | null
+    company_id: string | null
     status: string | null
     status_in_out: string | null
     type: string | null
@@ -3327,12 +3489,11 @@ export namespace Prisma {
     brand: string | null
     date: string | null
     description: string | null
-    mac_address: string | null
     model: string | null
     price: number | null
     quantity: number | null
     serial_number: string | null
-    site: string | null
+    company_id: string | null
     status: string | null
     status_in_out: string | null
     type: string | null
@@ -3345,12 +3506,11 @@ export namespace Prisma {
     brand: number
     date: number
     description: number
-    mac_address: number
     model: number
     price: number
     quantity: number
     serial_number: number
-    site: number
+    company_id: number
     status: number
     status_in_out: number
     type: number
@@ -3375,12 +3535,11 @@ export namespace Prisma {
     brand?: true
     date?: true
     description?: true
-    mac_address?: true
     model?: true
     price?: true
     quantity?: true
     serial_number?: true
-    site?: true
+    company_id?: true
     status?: true
     status_in_out?: true
     type?: true
@@ -3393,12 +3552,11 @@ export namespace Prisma {
     brand?: true
     date?: true
     description?: true
-    mac_address?: true
     model?: true
     price?: true
     quantity?: true
     serial_number?: true
-    site?: true
+    company_id?: true
     status?: true
     status_in_out?: true
     type?: true
@@ -3411,12 +3569,11 @@ export namespace Prisma {
     brand?: true
     date?: true
     description?: true
-    mac_address?: true
     model?: true
     price?: true
     quantity?: true
     serial_number?: true
-    site?: true
+    company_id?: true
     status?: true
     status_in_out?: true
     type?: true
@@ -3516,12 +3673,11 @@ export namespace Prisma {
     brand: string
     date: string
     description: string
-    mac_address: string
     model: string
     price: number
     quantity: number
     serial_number: string
-    site: string
+    company_id: string | null
     status: string
     status_in_out: string
     type: string
@@ -3553,15 +3709,15 @@ export namespace Prisma {
     brand?: boolean
     date?: boolean
     description?: boolean
-    mac_address?: boolean
     model?: boolean
     price?: boolean
     quantity?: boolean
     serial_number?: boolean
-    site?: boolean
+    company_id?: boolean
     status?: boolean
     status_in_out?: boolean
     type?: boolean
+    company?: boolean | assets$companyArgs<ExtArgs>
   }, ExtArgs["result"]["assets"]>
 
 
@@ -3573,22 +3729,26 @@ export namespace Prisma {
     brand?: boolean
     date?: boolean
     description?: boolean
-    mac_address?: boolean
     model?: boolean
     price?: boolean
     quantity?: boolean
     serial_number?: boolean
-    site?: boolean
+    company_id?: boolean
     status?: boolean
     status_in_out?: boolean
     type?: boolean
   }
 
-  export type assetsOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "createdAt" | "updatedAt" | "brand" | "date" | "description" | "mac_address" | "model" | "price" | "quantity" | "serial_number" | "site" | "status" | "status_in_out" | "type", ExtArgs["result"]["assets"]>
+  export type assetsOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "createdAt" | "updatedAt" | "brand" | "date" | "description" | "model" | "price" | "quantity" | "serial_number" | "company_id" | "status" | "status_in_out" | "type", ExtArgs["result"]["assets"]>
+  export type assetsInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    company?: boolean | assets$companyArgs<ExtArgs>
+  }
 
   export type $assetsPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     name: "assets"
-    objects: {}
+    objects: {
+      company: Prisma.$companyPayload<ExtArgs> | null
+    }
     scalars: $Extensions.GetPayloadResult<{
       id: string
       createdAt: Date
@@ -3596,12 +3756,11 @@ export namespace Prisma {
       brand: string
       date: string
       description: string
-      mac_address: string
       model: string
       price: number
       quantity: number
       serial_number: string
-      site: string
+      company_id: string | null
       status: string
       status_in_out: string
       type: string
@@ -3945,6 +4104,7 @@ export namespace Prisma {
    */
   export interface Prisma__assetsClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise"
+    company<T extends assets$companyArgs<ExtArgs> = {}>(args?: Subset<T, assets$companyArgs<ExtArgs>>): Prisma__companyClient<$Result.GetResult<Prisma.$companyPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -3980,12 +4140,11 @@ export namespace Prisma {
     readonly brand: FieldRef<"assets", 'String'>
     readonly date: FieldRef<"assets", 'String'>
     readonly description: FieldRef<"assets", 'String'>
-    readonly mac_address: FieldRef<"assets", 'String'>
     readonly model: FieldRef<"assets", 'String'>
     readonly price: FieldRef<"assets", 'Float'>
     readonly quantity: FieldRef<"assets", 'Float'>
     readonly serial_number: FieldRef<"assets", 'String'>
-    readonly site: FieldRef<"assets", 'String'>
+    readonly company_id: FieldRef<"assets", 'String'>
     readonly status: FieldRef<"assets", 'String'>
     readonly status_in_out: FieldRef<"assets", 'String'>
     readonly type: FieldRef<"assets", 'String'>
@@ -4006,6 +4165,10 @@ export namespace Prisma {
      */
     omit?: assetsOmit<ExtArgs> | null
     /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: assetsInclude<ExtArgs> | null
+    /**
      * Filter, which assets to fetch.
      */
     where: assetsWhereUniqueInput
@@ -4024,6 +4187,10 @@ export namespace Prisma {
      */
     omit?: assetsOmit<ExtArgs> | null
     /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: assetsInclude<ExtArgs> | null
+    /**
      * Filter, which assets to fetch.
      */
     where: assetsWhereUniqueInput
@@ -4041,6 +4208,10 @@ export namespace Prisma {
      * Omit specific fields from the assets
      */
     omit?: assetsOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: assetsInclude<ExtArgs> | null
     /**
      * Filter, which assets to fetch.
      */
@@ -4090,6 +4261,10 @@ export namespace Prisma {
      */
     omit?: assetsOmit<ExtArgs> | null
     /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: assetsInclude<ExtArgs> | null
+    /**
      * Filter, which assets to fetch.
      */
     where?: assetsWhereInput
@@ -4138,6 +4313,10 @@ export namespace Prisma {
      */
     omit?: assetsOmit<ExtArgs> | null
     /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: assetsInclude<ExtArgs> | null
+    /**
      * Filter, which assets to fetch.
      */
     where?: assetsWhereInput
@@ -4181,6 +4360,10 @@ export namespace Prisma {
      */
     omit?: assetsOmit<ExtArgs> | null
     /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: assetsInclude<ExtArgs> | null
+    /**
      * The data needed to create a assets.
      */
     data: XOR<assetsCreateInput, assetsUncheckedCreateInput>
@@ -4209,6 +4392,10 @@ export namespace Prisma {
      * Omit specific fields from the assets
      */
     omit?: assetsOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: assetsInclude<ExtArgs> | null
     /**
      * The data needed to update a assets.
      */
@@ -4250,6 +4437,10 @@ export namespace Prisma {
      */
     omit?: assetsOmit<ExtArgs> | null
     /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: assetsInclude<ExtArgs> | null
+    /**
      * The filter to search for the assets to update in case it exists.
      */
     where: assetsWhereUniqueInput
@@ -4276,6 +4467,10 @@ export namespace Prisma {
      */
     omit?: assetsOmit<ExtArgs> | null
     /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: assetsInclude<ExtArgs> | null
+    /**
      * Filter which assets to delete.
      */
     where: assetsWhereUniqueInput
@@ -4296,6 +4491,25 @@ export namespace Prisma {
   }
 
   /**
+   * assets.company
+   */
+  export type assets$companyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the company
+     */
+    select?: companySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the company
+     */
+    omit?: companyOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: companyInclude<ExtArgs> | null
+    where?: companyWhereInput
+  }
+
+  /**
    * assets without action
    */
   export type assetsDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -4307,6 +4521,10 @@ export namespace Prisma {
      * Omit specific fields from the assets
      */
     omit?: assetsOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: assetsInclude<ExtArgs> | null
   }
 
 
@@ -4523,6 +4741,7 @@ export namespace Prisma {
     updatedAt?: boolean
     description?: boolean
     customer?: boolean | company$customerArgs<ExtArgs>
+    assets?: boolean | company$assetsArgs<ExtArgs>
     _count?: boolean | CompanyCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["company"]>
 
@@ -4545,6 +4764,7 @@ export namespace Prisma {
   export type companyOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "url" | "email" | "phone" | "logo_url" | "npwp" | "address" | "createdAt" | "updatedAt" | "description", ExtArgs["result"]["company"]>
   export type companyInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     customer?: boolean | company$customerArgs<ExtArgs>
+    assets?: boolean | company$assetsArgs<ExtArgs>
     _count?: boolean | CompanyCountOutputTypeDefaultArgs<ExtArgs>
   }
 
@@ -4552,6 +4772,7 @@ export namespace Prisma {
     name: "company"
     objects: {
       customer: Prisma.$customerPayload<ExtArgs>[]
+      assets: Prisma.$assetsPayload<ExtArgs>[]
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
@@ -4906,6 +5127,7 @@ export namespace Prisma {
   export interface Prisma__companyClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise"
     customer<T extends company$customerArgs<ExtArgs> = {}>(args?: Subset<T, company$customerArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$customerPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    assets<T extends company$assetsArgs<ExtArgs> = {}>(args?: Subset<T, company$assetsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$assetsPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -5313,6 +5535,30 @@ export namespace Prisma {
   }
 
   /**
+   * company.assets
+   */
+  export type company$assetsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the assets
+     */
+    select?: assetsSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the assets
+     */
+    omit?: assetsOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: assetsInclude<ExtArgs> | null
+    where?: assetsWhereInput
+    orderBy?: assetsOrderByWithRelationInput | assetsOrderByWithRelationInput[]
+    cursor?: assetsWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: AssetsScalarFieldEnum | AssetsScalarFieldEnum[]
+  }
+
+  /**
    * company without action
    */
   export type companyDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -5677,6 +5923,7 @@ export namespace Prisma {
     company?: boolean | companyDefaultArgs<ExtArgs>
     products?: boolean | productsDefaultArgs<ExtArgs>
     customer_installations?: boolean | customer$customer_installationsArgs<ExtArgs>
+    TroubleTicket?: boolean | customer$TroubleTicketArgs<ExtArgs>
     _count?: boolean | CustomerCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["customer"]>
 
@@ -5713,6 +5960,7 @@ export namespace Prisma {
     company?: boolean | companyDefaultArgs<ExtArgs>
     products?: boolean | productsDefaultArgs<ExtArgs>
     customer_installations?: boolean | customer$customer_installationsArgs<ExtArgs>
+    TroubleTicket?: boolean | customer$TroubleTicketArgs<ExtArgs>
     _count?: boolean | CustomerCountOutputTypeDefaultArgs<ExtArgs>
   }
 
@@ -5723,6 +5971,7 @@ export namespace Prisma {
       company: Prisma.$companyPayload<ExtArgs>
       products: Prisma.$productsPayload<ExtArgs>
       customer_installations: Prisma.$customer_installationsPayload<ExtArgs>[]
+      TroubleTicket: Prisma.$TroubleTicketPayload<ExtArgs>[]
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
@@ -6091,6 +6340,7 @@ export namespace Prisma {
     company<T extends companyDefaultArgs<ExtArgs> = {}>(args?: Subset<T, companyDefaultArgs<ExtArgs>>): Prisma__companyClient<$Result.GetResult<Prisma.$companyPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
     products<T extends productsDefaultArgs<ExtArgs> = {}>(args?: Subset<T, productsDefaultArgs<ExtArgs>>): Prisma__productsClient<$Result.GetResult<Prisma.$productsPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
     customer_installations<T extends customer$customer_installationsArgs<ExtArgs> = {}>(args?: Subset<T, customer$customer_installationsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$customer_installationsPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    TroubleTicket<T extends customer$TroubleTicketArgs<ExtArgs> = {}>(args?: Subset<T, customer$TroubleTicketArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TroubleTicketPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -6506,6 +6756,30 @@ export namespace Prisma {
     take?: number
     skip?: number
     distinct?: Customer_installationsScalarFieldEnum | Customer_installationsScalarFieldEnum[]
+  }
+
+  /**
+   * customer.TroubleTicket
+   */
+  export type customer$TroubleTicketArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TroubleTicket
+     */
+    select?: TroubleTicketSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TroubleTicket
+     */
+    omit?: TroubleTicketOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TroubleTicketInclude<ExtArgs> | null
+    where?: TroubleTicketWhereInput
+    orderBy?: TroubleTicketOrderByWithRelationInput | TroubleTicketOrderByWithRelationInput[]
+    cursor?: TroubleTicketWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: TroubleTicketScalarFieldEnum | TroubleTicketScalarFieldEnum[]
   }
 
   /**
@@ -10452,6 +10726,7 @@ export namespace Prisma {
     phone?: boolean
     customer_installations?: boolean | users$customer_installationsArgs<ExtArgs>
     role?: boolean | users$roleArgs<ExtArgs>
+    TroubleTicket?: boolean | users$TroubleTicketArgs<ExtArgs>
     _count?: boolean | UsersCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["users"]>
 
@@ -10474,6 +10749,7 @@ export namespace Prisma {
   export type usersInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     customer_installations?: boolean | users$customer_installationsArgs<ExtArgs>
     role?: boolean | users$roleArgs<ExtArgs>
+    TroubleTicket?: boolean | users$TroubleTicketArgs<ExtArgs>
     _count?: boolean | UsersCountOutputTypeDefaultArgs<ExtArgs>
   }
 
@@ -10482,6 +10758,7 @@ export namespace Prisma {
     objects: {
       customer_installations: Prisma.$customer_installationsPayload<ExtArgs>[]
       role: Prisma.$rolesPayload<ExtArgs> | null
+      TroubleTicket: Prisma.$TroubleTicketPayload<ExtArgs>[]
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
@@ -10836,6 +11113,7 @@ export namespace Prisma {
     readonly [Symbol.toStringTag]: "PrismaPromise"
     customer_installations<T extends users$customer_installationsArgs<ExtArgs> = {}>(args?: Subset<T, users$customer_installationsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$customer_installationsPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     role<T extends users$roleArgs<ExtArgs> = {}>(args?: Subset<T, users$roleArgs<ExtArgs>>): Prisma__rolesClient<$Result.GetResult<Prisma.$rolesPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    TroubleTicket<T extends users$TroubleTicketArgs<ExtArgs> = {}>(args?: Subset<T, users$TroubleTicketArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TroubleTicketPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -11261,6 +11539,30 @@ export namespace Prisma {
   }
 
   /**
+   * users.TroubleTicket
+   */
+  export type users$TroubleTicketArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TroubleTicket
+     */
+    select?: TroubleTicketSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TroubleTicket
+     */
+    omit?: TroubleTicketOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TroubleTicketInclude<ExtArgs> | null
+    where?: TroubleTicketWhereInput
+    orderBy?: TroubleTicketOrderByWithRelationInput | TroubleTicketOrderByWithRelationInput[]
+    cursor?: TroubleTicketWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: TroubleTicketScalarFieldEnum | TroubleTicketScalarFieldEnum[]
+  }
+
+  /**
    * users without action
    */
   export type usersDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -11436,6 +11738,7 @@ export namespace Prisma {
     createdAt?: boolean
     updatedAt?: boolean
     users?: boolean | roles$usersArgs<ExtArgs>
+    TroubleTicket?: boolean | roles$TroubleTicketArgs<ExtArgs>
     _count?: boolean | RolesCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["roles"]>
 
@@ -11451,6 +11754,7 @@ export namespace Prisma {
   export type rolesOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "createdAt" | "updatedAt", ExtArgs["result"]["roles"]>
   export type rolesInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     users?: boolean | roles$usersArgs<ExtArgs>
+    TroubleTicket?: boolean | roles$TroubleTicketArgs<ExtArgs>
     _count?: boolean | RolesCountOutputTypeDefaultArgs<ExtArgs>
   }
 
@@ -11458,6 +11762,7 @@ export namespace Prisma {
     name: "roles"
     objects: {
       users: Prisma.$usersPayload<ExtArgs>[]
+      TroubleTicket: Prisma.$TroubleTicketPayload<ExtArgs>[]
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
@@ -11805,6 +12110,7 @@ export namespace Prisma {
   export interface Prisma__rolesClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise"
     users<T extends roles$usersArgs<ExtArgs> = {}>(args?: Subset<T, roles$usersArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$usersPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    TroubleTicket<T extends roles$TroubleTicketArgs<ExtArgs> = {}>(args?: Subset<T, roles$TroubleTicketArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TroubleTicketPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -12202,6 +12508,30 @@ export namespace Prisma {
     take?: number
     skip?: number
     distinct?: UsersScalarFieldEnum | UsersScalarFieldEnum[]
+  }
+
+  /**
+   * roles.TroubleTicket
+   */
+  export type roles$TroubleTicketArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TroubleTicket
+     */
+    select?: TroubleTicketSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TroubleTicket
+     */
+    omit?: TroubleTicketOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TroubleTicketInclude<ExtArgs> | null
+    where?: TroubleTicketWhereInput
+    orderBy?: TroubleTicketOrderByWithRelationInput | TroubleTicketOrderByWithRelationInput[]
+    cursor?: TroubleTicketWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: TroubleTicketScalarFieldEnum | TroubleTicketScalarFieldEnum[]
   }
 
   /**
@@ -17112,26 +17442,20 @@ export namespace Prisma {
 
   export type TroubleTicketAvgAggregateOutputType = {
     id: number | null
-    customer_id: number | null
-    type: number | null
-    assigned_to: number | null
   }
 
   export type TroubleTicketSumAggregateOutputType = {
     id: bigint | null
-    customer_id: bigint | null
-    type: number | null
-    assigned_to: number | null
   }
 
   export type TroubleTicketMinAggregateOutputType = {
     id: bigint | null
-    customer_id: bigint | null
-    type: number | null
+    customer_id: string | null
+    type: string | null
     title: string | null
     description: string | null
-    status: string | null
-    assigned_to: number | null
+    status: $Enums.trouble_ticket_status | null
+    assigned_to: string | null
     current_assignee_role: string | null
     customer_note: string | null
     noc_note: string | null
@@ -17142,12 +17466,12 @@ export namespace Prisma {
 
   export type TroubleTicketMaxAggregateOutputType = {
     id: bigint | null
-    customer_id: bigint | null
-    type: number | null
+    customer_id: string | null
+    type: string | null
     title: string | null
     description: string | null
-    status: string | null
-    assigned_to: number | null
+    status: $Enums.trouble_ticket_status | null
+    assigned_to: string | null
     current_assignee_role: string | null
     customer_note: string | null
     noc_note: string | null
@@ -17176,16 +17500,10 @@ export namespace Prisma {
 
   export type TroubleTicketAvgAggregateInputType = {
     id?: true
-    customer_id?: true
-    type?: true
-    assigned_to?: true
   }
 
   export type TroubleTicketSumAggregateInputType = {
     id?: true
-    customer_id?: true
-    type?: true
-    assigned_to?: true
   }
 
   export type TroubleTicketMinAggregateInputType = {
@@ -17325,12 +17643,12 @@ export namespace Prisma {
 
   export type TroubleTicketGroupByOutputType = {
     id: bigint
-    customer_id: bigint
-    type: number | null
+    customer_id: string
+    type: string | null
     title: string
     description: string | null
-    status: string
-    assigned_to: number | null
+    status: $Enums.trouble_ticket_status
+    assigned_to: string | null
     current_assignee_role: string
     customer_note: string | null
     noc_note: string | null
@@ -17372,6 +17690,10 @@ export namespace Prisma {
     technician_note?: boolean
     created_at?: boolean
     updated_at?: boolean
+    customer?: boolean | customerDefaultArgs<ExtArgs>
+    assigned_user?: boolean | TroubleTicket$assigned_userArgs<ExtArgs>
+    current_assignee?: boolean | rolesDefaultArgs<ExtArgs>
+    troubleType?: boolean | TroubleTicket$troubleTypeArgs<ExtArgs>
   }, ExtArgs["result"]["troubleTicket"]>
 
 
@@ -17393,23 +17715,34 @@ export namespace Prisma {
   }
 
   export type TroubleTicketOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "customer_id" | "type" | "title" | "description" | "status" | "assigned_to" | "current_assignee_role" | "customer_note" | "noc_note" | "technician_note" | "created_at" | "updated_at", ExtArgs["result"]["troubleTicket"]>
+  export type TroubleTicketInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    customer?: boolean | customerDefaultArgs<ExtArgs>
+    assigned_user?: boolean | TroubleTicket$assigned_userArgs<ExtArgs>
+    current_assignee?: boolean | rolesDefaultArgs<ExtArgs>
+    troubleType?: boolean | TroubleTicket$troubleTypeArgs<ExtArgs>
+  }
 
   export type $TroubleTicketPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     name: "TroubleTicket"
-    objects: {}
+    objects: {
+      customer: Prisma.$customerPayload<ExtArgs>
+      assigned_user: Prisma.$usersPayload<ExtArgs> | null
+      current_assignee: Prisma.$rolesPayload<ExtArgs>
+      troubleType: Prisma.$trouble_typePayload<ExtArgs> | null
+    }
     scalars: $Extensions.GetPayloadResult<{
       /**
        * BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY
        */
       id: bigint
       /**
-       * BIGINT UNSIGNED (FK to customers; kept scalar to avoid cross-type relation)
+       * VARCHAR(191) FK -> customer.id
        */
-      customer_id: bigint
+      customer_id: string
       /**
-       * INT NULLABLE
+       * VARCHAR(191) FK -> trouble_type.id (nullable)
        */
-      type: number | null
+      type: string | null
       /**
        * LONGTEXT NOT NULL
        */
@@ -17419,15 +17752,15 @@ export namespace Prisma {
        */
       description: string | null
       /**
-       * VARCHAR(191) NOT NULL DEFAULT 'received'
+       * Ticket status enum in DB
        */
-      status: string
+      status: $Enums.trouble_ticket_status
       /**
-       * INT NULLABLE
+       * VARCHAR(191) FK -> users.id (nullable)
        */
-      assigned_to: number | null
+      assigned_to: string | null
       /**
-       * VARCHAR(191) NOT NULL DEFAULT 'customer_service'
+       * VARCHAR(191) FK -> roles.id
        */
       current_assignee_role: string
       /**
@@ -17790,6 +18123,10 @@ export namespace Prisma {
    */
   export interface Prisma__TroubleTicketClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise"
+    customer<T extends customerDefaultArgs<ExtArgs> = {}>(args?: Subset<T, customerDefaultArgs<ExtArgs>>): Prisma__customerClient<$Result.GetResult<Prisma.$customerPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    assigned_user<T extends TroubleTicket$assigned_userArgs<ExtArgs> = {}>(args?: Subset<T, TroubleTicket$assigned_userArgs<ExtArgs>>): Prisma__usersClient<$Result.GetResult<Prisma.$usersPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    current_assignee<T extends rolesDefaultArgs<ExtArgs> = {}>(args?: Subset<T, rolesDefaultArgs<ExtArgs>>): Prisma__rolesClient<$Result.GetResult<Prisma.$rolesPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    troubleType<T extends TroubleTicket$troubleTypeArgs<ExtArgs> = {}>(args?: Subset<T, TroubleTicket$troubleTypeArgs<ExtArgs>>): Prisma__trouble_typeClient<$Result.GetResult<Prisma.$trouble_typePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -17820,12 +18157,12 @@ export namespace Prisma {
    */
   interface TroubleTicketFieldRefs {
     readonly id: FieldRef<"TroubleTicket", 'BigInt'>
-    readonly customer_id: FieldRef<"TroubleTicket", 'BigInt'>
-    readonly type: FieldRef<"TroubleTicket", 'Int'>
+    readonly customer_id: FieldRef<"TroubleTicket", 'String'>
+    readonly type: FieldRef<"TroubleTicket", 'String'>
     readonly title: FieldRef<"TroubleTicket", 'String'>
     readonly description: FieldRef<"TroubleTicket", 'String'>
-    readonly status: FieldRef<"TroubleTicket", 'String'>
-    readonly assigned_to: FieldRef<"TroubleTicket", 'Int'>
+    readonly status: FieldRef<"TroubleTicket", 'trouble_ticket_status'>
+    readonly assigned_to: FieldRef<"TroubleTicket", 'String'>
     readonly current_assignee_role: FieldRef<"TroubleTicket", 'String'>
     readonly customer_note: FieldRef<"TroubleTicket", 'String'>
     readonly noc_note: FieldRef<"TroubleTicket", 'String'>
@@ -17849,6 +18186,10 @@ export namespace Prisma {
      */
     omit?: TroubleTicketOmit<ExtArgs> | null
     /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TroubleTicketInclude<ExtArgs> | null
+    /**
      * Filter, which TroubleTicket to fetch.
      */
     where: TroubleTicketWhereUniqueInput
@@ -17867,6 +18208,10 @@ export namespace Prisma {
      */
     omit?: TroubleTicketOmit<ExtArgs> | null
     /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TroubleTicketInclude<ExtArgs> | null
+    /**
      * Filter, which TroubleTicket to fetch.
      */
     where: TroubleTicketWhereUniqueInput
@@ -17884,6 +18229,10 @@ export namespace Prisma {
      * Omit specific fields from the TroubleTicket
      */
     omit?: TroubleTicketOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TroubleTicketInclude<ExtArgs> | null
     /**
      * Filter, which TroubleTicket to fetch.
      */
@@ -17933,6 +18282,10 @@ export namespace Prisma {
      */
     omit?: TroubleTicketOmit<ExtArgs> | null
     /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TroubleTicketInclude<ExtArgs> | null
+    /**
      * Filter, which TroubleTicket to fetch.
      */
     where?: TroubleTicketWhereInput
@@ -17981,6 +18334,10 @@ export namespace Prisma {
      */
     omit?: TroubleTicketOmit<ExtArgs> | null
     /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TroubleTicketInclude<ExtArgs> | null
+    /**
      * Filter, which TroubleTickets to fetch.
      */
     where?: TroubleTicketWhereInput
@@ -18024,6 +18381,10 @@ export namespace Prisma {
      */
     omit?: TroubleTicketOmit<ExtArgs> | null
     /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TroubleTicketInclude<ExtArgs> | null
+    /**
      * The data needed to create a TroubleTicket.
      */
     data: XOR<TroubleTicketCreateInput, TroubleTicketUncheckedCreateInput>
@@ -18052,6 +18413,10 @@ export namespace Prisma {
      * Omit specific fields from the TroubleTicket
      */
     omit?: TroubleTicketOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TroubleTicketInclude<ExtArgs> | null
     /**
      * The data needed to update a TroubleTicket.
      */
@@ -18093,6 +18458,10 @@ export namespace Prisma {
      */
     omit?: TroubleTicketOmit<ExtArgs> | null
     /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TroubleTicketInclude<ExtArgs> | null
+    /**
      * The filter to search for the TroubleTicket to update in case it exists.
      */
     where: TroubleTicketWhereUniqueInput
@@ -18119,6 +18488,10 @@ export namespace Prisma {
      */
     omit?: TroubleTicketOmit<ExtArgs> | null
     /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TroubleTicketInclude<ExtArgs> | null
+    /**
      * Filter which TroubleTicket to delete.
      */
     where: TroubleTicketWhereUniqueInput
@@ -18139,6 +18512,44 @@ export namespace Prisma {
   }
 
   /**
+   * TroubleTicket.assigned_user
+   */
+  export type TroubleTicket$assigned_userArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the users
+     */
+    select?: usersSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the users
+     */
+    omit?: usersOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: usersInclude<ExtArgs> | null
+    where?: usersWhereInput
+  }
+
+  /**
+   * TroubleTicket.troubleType
+   */
+  export type TroubleTicket$troubleTypeArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the trouble_type
+     */
+    select?: trouble_typeSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the trouble_type
+     */
+    omit?: trouble_typeOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: trouble_typeInclude<ExtArgs> | null
+    where?: trouble_typeWhereInput
+  }
+
+  /**
    * TroubleTicket without action
    */
   export type TroubleTicketDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -18150,6 +18561,932 @@ export namespace Prisma {
      * Omit specific fields from the TroubleTicket
      */
     omit?: TroubleTicketOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TroubleTicketInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model trouble_type
+   */
+
+  export type AggregateTrouble_type = {
+    _count: Trouble_typeCountAggregateOutputType | null
+    _min: Trouble_typeMinAggregateOutputType | null
+    _max: Trouble_typeMaxAggregateOutputType | null
+  }
+
+  export type Trouble_typeMinAggregateOutputType = {
+    id: string | null
+    name: string | null
+  }
+
+  export type Trouble_typeMaxAggregateOutputType = {
+    id: string | null
+    name: string | null
+  }
+
+  export type Trouble_typeCountAggregateOutputType = {
+    id: number
+    name: number
+    _all: number
+  }
+
+
+  export type Trouble_typeMinAggregateInputType = {
+    id?: true
+    name?: true
+  }
+
+  export type Trouble_typeMaxAggregateInputType = {
+    id?: true
+    name?: true
+  }
+
+  export type Trouble_typeCountAggregateInputType = {
+    id?: true
+    name?: true
+    _all?: true
+  }
+
+  export type Trouble_typeAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which trouble_type to aggregate.
+     */
+    where?: trouble_typeWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of trouble_types to fetch.
+     */
+    orderBy?: trouble_typeOrderByWithRelationInput | trouble_typeOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: trouble_typeWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` trouble_types from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` trouble_types.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned trouble_types
+    **/
+    _count?: true | Trouble_typeCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: Trouble_typeMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: Trouble_typeMaxAggregateInputType
+  }
+
+  export type GetTrouble_typeAggregateType<T extends Trouble_typeAggregateArgs> = {
+        [P in keyof T & keyof AggregateTrouble_type]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateTrouble_type[P]>
+      : GetScalarType<T[P], AggregateTrouble_type[P]>
+  }
+
+
+
+
+  export type trouble_typeGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: trouble_typeWhereInput
+    orderBy?: trouble_typeOrderByWithAggregationInput | trouble_typeOrderByWithAggregationInput[]
+    by: Trouble_typeScalarFieldEnum[] | Trouble_typeScalarFieldEnum
+    having?: trouble_typeScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: Trouble_typeCountAggregateInputType | true
+    _min?: Trouble_typeMinAggregateInputType
+    _max?: Trouble_typeMaxAggregateInputType
+  }
+
+  export type Trouble_typeGroupByOutputType = {
+    id: string
+    name: string | null
+    _count: Trouble_typeCountAggregateOutputType | null
+    _min: Trouble_typeMinAggregateOutputType | null
+    _max: Trouble_typeMaxAggregateOutputType | null
+  }
+
+  type GetTrouble_typeGroupByPayload<T extends trouble_typeGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<Trouble_typeGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof Trouble_typeGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], Trouble_typeGroupByOutputType[P]>
+            : GetScalarType<T[P], Trouble_typeGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type trouble_typeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    name?: boolean
+    tickets?: boolean | trouble_type$ticketsArgs<ExtArgs>
+    _count?: boolean | Trouble_typeCountOutputTypeDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["trouble_type"]>
+
+
+
+  export type trouble_typeSelectScalar = {
+    id?: boolean
+    name?: boolean
+  }
+
+  export type trouble_typeOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name", ExtArgs["result"]["trouble_type"]>
+  export type trouble_typeInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    tickets?: boolean | trouble_type$ticketsArgs<ExtArgs>
+    _count?: boolean | Trouble_typeCountOutputTypeDefaultArgs<ExtArgs>
+  }
+
+  export type $trouble_typePayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "trouble_type"
+    objects: {
+      tickets: Prisma.$TroubleTicketPayload<ExtArgs>[]
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      name: string | null
+    }, ExtArgs["result"]["trouble_type"]>
+    composites: {}
+  }
+
+  type trouble_typeGetPayload<S extends boolean | null | undefined | trouble_typeDefaultArgs> = $Result.GetResult<Prisma.$trouble_typePayload, S>
+
+  type trouble_typeCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<trouble_typeFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: Trouble_typeCountAggregateInputType | true
+    }
+
+  export interface trouble_typeDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['trouble_type'], meta: { name: 'trouble_type' } }
+    /**
+     * Find zero or one Trouble_type that matches the filter.
+     * @param {trouble_typeFindUniqueArgs} args - Arguments to find a Trouble_type
+     * @example
+     * // Get one Trouble_type
+     * const trouble_type = await prisma.trouble_type.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends trouble_typeFindUniqueArgs>(args: SelectSubset<T, trouble_typeFindUniqueArgs<ExtArgs>>): Prisma__trouble_typeClient<$Result.GetResult<Prisma.$trouble_typePayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one Trouble_type that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {trouble_typeFindUniqueOrThrowArgs} args - Arguments to find a Trouble_type
+     * @example
+     * // Get one Trouble_type
+     * const trouble_type = await prisma.trouble_type.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends trouble_typeFindUniqueOrThrowArgs>(args: SelectSubset<T, trouble_typeFindUniqueOrThrowArgs<ExtArgs>>): Prisma__trouble_typeClient<$Result.GetResult<Prisma.$trouble_typePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first Trouble_type that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {trouble_typeFindFirstArgs} args - Arguments to find a Trouble_type
+     * @example
+     * // Get one Trouble_type
+     * const trouble_type = await prisma.trouble_type.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends trouble_typeFindFirstArgs>(args?: SelectSubset<T, trouble_typeFindFirstArgs<ExtArgs>>): Prisma__trouble_typeClient<$Result.GetResult<Prisma.$trouble_typePayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first Trouble_type that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {trouble_typeFindFirstOrThrowArgs} args - Arguments to find a Trouble_type
+     * @example
+     * // Get one Trouble_type
+     * const trouble_type = await prisma.trouble_type.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends trouble_typeFindFirstOrThrowArgs>(args?: SelectSubset<T, trouble_typeFindFirstOrThrowArgs<ExtArgs>>): Prisma__trouble_typeClient<$Result.GetResult<Prisma.$trouble_typePayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more Trouble_types that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {trouble_typeFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all Trouble_types
+     * const trouble_types = await prisma.trouble_type.findMany()
+     * 
+     * // Get first 10 Trouble_types
+     * const trouble_types = await prisma.trouble_type.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const trouble_typeWithIdOnly = await prisma.trouble_type.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends trouble_typeFindManyArgs>(args?: SelectSubset<T, trouble_typeFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$trouble_typePayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a Trouble_type.
+     * @param {trouble_typeCreateArgs} args - Arguments to create a Trouble_type.
+     * @example
+     * // Create one Trouble_type
+     * const Trouble_type = await prisma.trouble_type.create({
+     *   data: {
+     *     // ... data to create a Trouble_type
+     *   }
+     * })
+     * 
+     */
+    create<T extends trouble_typeCreateArgs>(args: SelectSubset<T, trouble_typeCreateArgs<ExtArgs>>): Prisma__trouble_typeClient<$Result.GetResult<Prisma.$trouble_typePayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many Trouble_types.
+     * @param {trouble_typeCreateManyArgs} args - Arguments to create many Trouble_types.
+     * @example
+     * // Create many Trouble_types
+     * const trouble_type = await prisma.trouble_type.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends trouble_typeCreateManyArgs>(args?: SelectSubset<T, trouble_typeCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Delete a Trouble_type.
+     * @param {trouble_typeDeleteArgs} args - Arguments to delete one Trouble_type.
+     * @example
+     * // Delete one Trouble_type
+     * const Trouble_type = await prisma.trouble_type.delete({
+     *   where: {
+     *     // ... filter to delete one Trouble_type
+     *   }
+     * })
+     * 
+     */
+    delete<T extends trouble_typeDeleteArgs>(args: SelectSubset<T, trouble_typeDeleteArgs<ExtArgs>>): Prisma__trouble_typeClient<$Result.GetResult<Prisma.$trouble_typePayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one Trouble_type.
+     * @param {trouble_typeUpdateArgs} args - Arguments to update one Trouble_type.
+     * @example
+     * // Update one Trouble_type
+     * const trouble_type = await prisma.trouble_type.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends trouble_typeUpdateArgs>(args: SelectSubset<T, trouble_typeUpdateArgs<ExtArgs>>): Prisma__trouble_typeClient<$Result.GetResult<Prisma.$trouble_typePayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more Trouble_types.
+     * @param {trouble_typeDeleteManyArgs} args - Arguments to filter Trouble_types to delete.
+     * @example
+     * // Delete a few Trouble_types
+     * const { count } = await prisma.trouble_type.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends trouble_typeDeleteManyArgs>(args?: SelectSubset<T, trouble_typeDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more Trouble_types.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {trouble_typeUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many Trouble_types
+     * const trouble_type = await prisma.trouble_type.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends trouble_typeUpdateManyArgs>(args: SelectSubset<T, trouble_typeUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create or update one Trouble_type.
+     * @param {trouble_typeUpsertArgs} args - Arguments to update or create a Trouble_type.
+     * @example
+     * // Update or create a Trouble_type
+     * const trouble_type = await prisma.trouble_type.upsert({
+     *   create: {
+     *     // ... data to create a Trouble_type
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the Trouble_type we want to update
+     *   }
+     * })
+     */
+    upsert<T extends trouble_typeUpsertArgs>(args: SelectSubset<T, trouble_typeUpsertArgs<ExtArgs>>): Prisma__trouble_typeClient<$Result.GetResult<Prisma.$trouble_typePayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of Trouble_types.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {trouble_typeCountArgs} args - Arguments to filter Trouble_types to count.
+     * @example
+     * // Count the number of Trouble_types
+     * const count = await prisma.trouble_type.count({
+     *   where: {
+     *     // ... the filter for the Trouble_types we want to count
+     *   }
+     * })
+    **/
+    count<T extends trouble_typeCountArgs>(
+      args?: Subset<T, trouble_typeCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], Trouble_typeCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a Trouble_type.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {Trouble_typeAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends Trouble_typeAggregateArgs>(args: Subset<T, Trouble_typeAggregateArgs>): Prisma.PrismaPromise<GetTrouble_typeAggregateType<T>>
+
+    /**
+     * Group by Trouble_type.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {trouble_typeGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends trouble_typeGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: trouble_typeGroupByArgs['orderBy'] }
+        : { orderBy?: trouble_typeGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, trouble_typeGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetTrouble_typeGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the trouble_type model
+   */
+  readonly fields: trouble_typeFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for trouble_type.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__trouble_typeClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    tickets<T extends trouble_type$ticketsArgs<ExtArgs> = {}>(args?: Subset<T, trouble_type$ticketsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TroubleTicketPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the trouble_type model
+   */
+  interface trouble_typeFieldRefs {
+    readonly id: FieldRef<"trouble_type", 'String'>
+    readonly name: FieldRef<"trouble_type", 'String'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * trouble_type findUnique
+   */
+  export type trouble_typeFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the trouble_type
+     */
+    select?: trouble_typeSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the trouble_type
+     */
+    omit?: trouble_typeOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: trouble_typeInclude<ExtArgs> | null
+    /**
+     * Filter, which trouble_type to fetch.
+     */
+    where: trouble_typeWhereUniqueInput
+  }
+
+  /**
+   * trouble_type findUniqueOrThrow
+   */
+  export type trouble_typeFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the trouble_type
+     */
+    select?: trouble_typeSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the trouble_type
+     */
+    omit?: trouble_typeOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: trouble_typeInclude<ExtArgs> | null
+    /**
+     * Filter, which trouble_type to fetch.
+     */
+    where: trouble_typeWhereUniqueInput
+  }
+
+  /**
+   * trouble_type findFirst
+   */
+  export type trouble_typeFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the trouble_type
+     */
+    select?: trouble_typeSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the trouble_type
+     */
+    omit?: trouble_typeOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: trouble_typeInclude<ExtArgs> | null
+    /**
+     * Filter, which trouble_type to fetch.
+     */
+    where?: trouble_typeWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of trouble_types to fetch.
+     */
+    orderBy?: trouble_typeOrderByWithRelationInput | trouble_typeOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for trouble_types.
+     */
+    cursor?: trouble_typeWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` trouble_types from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` trouble_types.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of trouble_types.
+     */
+    distinct?: Trouble_typeScalarFieldEnum | Trouble_typeScalarFieldEnum[]
+  }
+
+  /**
+   * trouble_type findFirstOrThrow
+   */
+  export type trouble_typeFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the trouble_type
+     */
+    select?: trouble_typeSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the trouble_type
+     */
+    omit?: trouble_typeOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: trouble_typeInclude<ExtArgs> | null
+    /**
+     * Filter, which trouble_type to fetch.
+     */
+    where?: trouble_typeWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of trouble_types to fetch.
+     */
+    orderBy?: trouble_typeOrderByWithRelationInput | trouble_typeOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for trouble_types.
+     */
+    cursor?: trouble_typeWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` trouble_types from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` trouble_types.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of trouble_types.
+     */
+    distinct?: Trouble_typeScalarFieldEnum | Trouble_typeScalarFieldEnum[]
+  }
+
+  /**
+   * trouble_type findMany
+   */
+  export type trouble_typeFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the trouble_type
+     */
+    select?: trouble_typeSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the trouble_type
+     */
+    omit?: trouble_typeOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: trouble_typeInclude<ExtArgs> | null
+    /**
+     * Filter, which trouble_types to fetch.
+     */
+    where?: trouble_typeWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of trouble_types to fetch.
+     */
+    orderBy?: trouble_typeOrderByWithRelationInput | trouble_typeOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing trouble_types.
+     */
+    cursor?: trouble_typeWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` trouble_types from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` trouble_types.
+     */
+    skip?: number
+    distinct?: Trouble_typeScalarFieldEnum | Trouble_typeScalarFieldEnum[]
+  }
+
+  /**
+   * trouble_type create
+   */
+  export type trouble_typeCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the trouble_type
+     */
+    select?: trouble_typeSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the trouble_type
+     */
+    omit?: trouble_typeOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: trouble_typeInclude<ExtArgs> | null
+    /**
+     * The data needed to create a trouble_type.
+     */
+    data: XOR<trouble_typeCreateInput, trouble_typeUncheckedCreateInput>
+  }
+
+  /**
+   * trouble_type createMany
+   */
+  export type trouble_typeCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many trouble_types.
+     */
+    data: trouble_typeCreateManyInput | trouble_typeCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * trouble_type update
+   */
+  export type trouble_typeUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the trouble_type
+     */
+    select?: trouble_typeSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the trouble_type
+     */
+    omit?: trouble_typeOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: trouble_typeInclude<ExtArgs> | null
+    /**
+     * The data needed to update a trouble_type.
+     */
+    data: XOR<trouble_typeUpdateInput, trouble_typeUncheckedUpdateInput>
+    /**
+     * Choose, which trouble_type to update.
+     */
+    where: trouble_typeWhereUniqueInput
+  }
+
+  /**
+   * trouble_type updateMany
+   */
+  export type trouble_typeUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update trouble_types.
+     */
+    data: XOR<trouble_typeUpdateManyMutationInput, trouble_typeUncheckedUpdateManyInput>
+    /**
+     * Filter which trouble_types to update
+     */
+    where?: trouble_typeWhereInput
+    /**
+     * Limit how many trouble_types to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * trouble_type upsert
+   */
+  export type trouble_typeUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the trouble_type
+     */
+    select?: trouble_typeSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the trouble_type
+     */
+    omit?: trouble_typeOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: trouble_typeInclude<ExtArgs> | null
+    /**
+     * The filter to search for the trouble_type to update in case it exists.
+     */
+    where: trouble_typeWhereUniqueInput
+    /**
+     * In case the trouble_type found by the `where` argument doesn't exist, create a new trouble_type with this data.
+     */
+    create: XOR<trouble_typeCreateInput, trouble_typeUncheckedCreateInput>
+    /**
+     * In case the trouble_type was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<trouble_typeUpdateInput, trouble_typeUncheckedUpdateInput>
+  }
+
+  /**
+   * trouble_type delete
+   */
+  export type trouble_typeDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the trouble_type
+     */
+    select?: trouble_typeSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the trouble_type
+     */
+    omit?: trouble_typeOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: trouble_typeInclude<ExtArgs> | null
+    /**
+     * Filter which trouble_type to delete.
+     */
+    where: trouble_typeWhereUniqueInput
+  }
+
+  /**
+   * trouble_type deleteMany
+   */
+  export type trouble_typeDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which trouble_types to delete
+     */
+    where?: trouble_typeWhereInput
+    /**
+     * Limit how many trouble_types to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * trouble_type.tickets
+   */
+  export type trouble_type$ticketsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the TroubleTicket
+     */
+    select?: TroubleTicketSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the TroubleTicket
+     */
+    omit?: TroubleTicketOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TroubleTicketInclude<ExtArgs> | null
+    where?: TroubleTicketWhereInput
+    orderBy?: TroubleTicketOrderByWithRelationInput | TroubleTicketOrderByWithRelationInput[]
+    cursor?: TroubleTicketWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: TroubleTicketScalarFieldEnum | TroubleTicketScalarFieldEnum[]
+  }
+
+  /**
+   * trouble_type without action
+   */
+  export type trouble_typeDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the trouble_type
+     */
+    select?: trouble_typeSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the trouble_type
+     */
+    omit?: trouble_typeOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: trouble_typeInclude<ExtArgs> | null
   }
 
 
@@ -18185,12 +19522,11 @@ export namespace Prisma {
     brand: 'brand',
     date: 'date',
     description: 'description',
-    mac_address: 'mac_address',
     model: 'model',
     price: 'price',
     quantity: 'quantity',
     serial_number: 'serial_number',
-    site: 'site',
+    company_id: 'company_id',
     status: 'status',
     status_in_out: 'status_in_out',
     type: 'type'
@@ -18404,6 +19740,14 @@ export namespace Prisma {
   export type TroubleTicketScalarFieldEnum = (typeof TroubleTicketScalarFieldEnum)[keyof typeof TroubleTicketScalarFieldEnum]
 
 
+  export const Trouble_typeScalarFieldEnum: {
+    id: 'id',
+    name: 'name'
+  };
+
+  export type Trouble_typeScalarFieldEnum = (typeof Trouble_typeScalarFieldEnum)[keyof typeof Trouble_typeScalarFieldEnum]
+
+
   export const SortOrder: {
     asc: 'asc',
     desc: 'desc'
@@ -18420,29 +19764,28 @@ export namespace Prisma {
   export type accountsOrderByRelevanceFieldEnum = (typeof accountsOrderByRelevanceFieldEnum)[keyof typeof accountsOrderByRelevanceFieldEnum]
 
 
-  export const assetsOrderByRelevanceFieldEnum: {
-    id: 'id',
-    brand: 'brand',
-    date: 'date',
-    description: 'description',
-    mac_address: 'mac_address',
-    model: 'model',
-    serial_number: 'serial_number',
-    site: 'site',
-    status: 'status',
-    status_in_out: 'status_in_out',
-    type: 'type'
-  };
-
-  export type assetsOrderByRelevanceFieldEnum = (typeof assetsOrderByRelevanceFieldEnum)[keyof typeof assetsOrderByRelevanceFieldEnum]
-
-
   export const NullsOrder: {
     first: 'first',
     last: 'last'
   };
 
   export type NullsOrder = (typeof NullsOrder)[keyof typeof NullsOrder]
+
+
+  export const assetsOrderByRelevanceFieldEnum: {
+    id: 'id',
+    brand: 'brand',
+    date: 'date',
+    description: 'description',
+    model: 'model',
+    serial_number: 'serial_number',
+    company_id: 'company_id',
+    status: 'status',
+    status_in_out: 'status_in_out',
+    type: 'type'
+  };
+
+  export type assetsOrderByRelevanceFieldEnum = (typeof assetsOrderByRelevanceFieldEnum)[keyof typeof assetsOrderByRelevanceFieldEnum]
 
 
   export const companyOrderByRelevanceFieldEnum: {
@@ -18590,9 +19933,11 @@ export namespace Prisma {
 
 
   export const TroubleTicketOrderByRelevanceFieldEnum: {
+    customer_id: 'customer_id',
+    type: 'type',
     title: 'title',
     description: 'description',
-    status: 'status',
+    assigned_to: 'assigned_to',
     current_assignee_role: 'current_assignee_role',
     customer_note: 'customer_note',
     noc_note: 'noc_note',
@@ -18600,6 +19945,14 @@ export namespace Prisma {
   };
 
   export type TroubleTicketOrderByRelevanceFieldEnum = (typeof TroubleTicketOrderByRelevanceFieldEnum)[keyof typeof TroubleTicketOrderByRelevanceFieldEnum]
+
+
+  export const trouble_typeOrderByRelevanceFieldEnum: {
+    id: 'id',
+    name: 'name'
+  };
+
+  export type trouble_typeOrderByRelevanceFieldEnum = (typeof trouble_typeOrderByRelevanceFieldEnum)[keyof typeof trouble_typeOrderByRelevanceFieldEnum]
 
 
   /**
@@ -18660,6 +20013,13 @@ export namespace Prisma {
    * Reference to a field of type 'transactions_type_in_out'
    */
   export type Enumtransactions_type_in_outFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'transactions_type_in_out'>
+    
+
+
+  /**
+   * Reference to a field of type 'trouble_ticket_status'
+   */
+  export type Enumtrouble_ticket_statusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'trouble_ticket_status'>
     
   /**
    * Deep Input Types
@@ -18731,15 +20091,15 @@ export namespace Prisma {
     brand?: StringFilter<"assets"> | string
     date?: StringFilter<"assets"> | string
     description?: StringFilter<"assets"> | string
-    mac_address?: StringFilter<"assets"> | string
     model?: StringFilter<"assets"> | string
     price?: FloatFilter<"assets"> | number
     quantity?: FloatFilter<"assets"> | number
     serial_number?: StringFilter<"assets"> | string
-    site?: StringFilter<"assets"> | string
+    company_id?: StringNullableFilter<"assets"> | string | null
     status?: StringFilter<"assets"> | string
     status_in_out?: StringFilter<"assets"> | string
     type?: StringFilter<"assets"> | string
+    company?: XOR<CompanyNullableScalarRelationFilter, companyWhereInput> | null
   }
 
   export type assetsOrderByWithRelationInput = {
@@ -18749,15 +20109,15 @@ export namespace Prisma {
     brand?: SortOrder
     date?: SortOrder
     description?: SortOrder
-    mac_address?: SortOrder
     model?: SortOrder
     price?: SortOrder
     quantity?: SortOrder
     serial_number?: SortOrder
-    site?: SortOrder
+    company_id?: SortOrderInput | SortOrder
     status?: SortOrder
     status_in_out?: SortOrder
     type?: SortOrder
+    company?: companyOrderByWithRelationInput
     _relevance?: assetsOrderByRelevanceInput
   }
 
@@ -18771,15 +20131,15 @@ export namespace Prisma {
     brand?: StringFilter<"assets"> | string
     date?: StringFilter<"assets"> | string
     description?: StringFilter<"assets"> | string
-    mac_address?: StringFilter<"assets"> | string
     model?: StringFilter<"assets"> | string
     price?: FloatFilter<"assets"> | number
     quantity?: FloatFilter<"assets"> | number
     serial_number?: StringFilter<"assets"> | string
-    site?: StringFilter<"assets"> | string
+    company_id?: StringNullableFilter<"assets"> | string | null
     status?: StringFilter<"assets"> | string
     status_in_out?: StringFilter<"assets"> | string
     type?: StringFilter<"assets"> | string
+    company?: XOR<CompanyNullableScalarRelationFilter, companyWhereInput> | null
   }, "id">
 
   export type assetsOrderByWithAggregationInput = {
@@ -18789,12 +20149,11 @@ export namespace Prisma {
     brand?: SortOrder
     date?: SortOrder
     description?: SortOrder
-    mac_address?: SortOrder
     model?: SortOrder
     price?: SortOrder
     quantity?: SortOrder
     serial_number?: SortOrder
-    site?: SortOrder
+    company_id?: SortOrderInput | SortOrder
     status?: SortOrder
     status_in_out?: SortOrder
     type?: SortOrder
@@ -18815,12 +20174,11 @@ export namespace Prisma {
     brand?: StringWithAggregatesFilter<"assets"> | string
     date?: StringWithAggregatesFilter<"assets"> | string
     description?: StringWithAggregatesFilter<"assets"> | string
-    mac_address?: StringWithAggregatesFilter<"assets"> | string
     model?: StringWithAggregatesFilter<"assets"> | string
     price?: FloatWithAggregatesFilter<"assets"> | number
     quantity?: FloatWithAggregatesFilter<"assets"> | number
     serial_number?: StringWithAggregatesFilter<"assets"> | string
-    site?: StringWithAggregatesFilter<"assets"> | string
+    company_id?: StringNullableWithAggregatesFilter<"assets"> | string | null
     status?: StringWithAggregatesFilter<"assets"> | string
     status_in_out?: StringWithAggregatesFilter<"assets"> | string
     type?: StringWithAggregatesFilter<"assets"> | string
@@ -18842,6 +20200,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFilter<"company"> | Date | string
     description?: StringNullableFilter<"company"> | string | null
     customer?: CustomerListRelationFilter
+    assets?: AssetsListRelationFilter
   }
 
   export type companyOrderByWithRelationInput = {
@@ -18857,6 +20216,7 @@ export namespace Prisma {
     updatedAt?: SortOrder
     description?: SortOrderInput | SortOrder
     customer?: customerOrderByRelationAggregateInput
+    assets?: assetsOrderByRelationAggregateInput
     _relevance?: companyOrderByRelevanceInput
   }
 
@@ -18876,6 +20236,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFilter<"company"> | Date | string
     description?: StringNullableFilter<"company"> | string | null
     customer?: CustomerListRelationFilter
+    assets?: AssetsListRelationFilter
   }, "id">
 
   export type companyOrderByWithAggregationInput = {
@@ -18942,6 +20303,7 @@ export namespace Prisma {
     company?: XOR<CompanyScalarRelationFilter, companyWhereInput>
     products?: XOR<ProductsScalarRelationFilter, productsWhereInput>
     customer_installations?: Customer_installationsListRelationFilter
+    TroubleTicket?: TroubleTicketListRelationFilter
   }
 
   export type customerOrderByWithRelationInput = {
@@ -18971,6 +20333,7 @@ export namespace Prisma {
     company?: companyOrderByWithRelationInput
     products?: productsOrderByWithRelationInput
     customer_installations?: customer_installationsOrderByRelationAggregateInput
+    TroubleTicket?: TroubleTicketOrderByRelationAggregateInput
     _relevance?: customerOrderByRelevanceInput
   }
 
@@ -19004,6 +20367,7 @@ export namespace Prisma {
     company?: XOR<CompanyScalarRelationFilter, companyWhereInput>
     products?: XOR<ProductsScalarRelationFilter, productsWhereInput>
     customer_installations?: Customer_installationsListRelationFilter
+    TroubleTicket?: TroubleTicketListRelationFilter
   }, "id">
 
   export type customerOrderByWithAggregationInput = {
@@ -19305,6 +20669,7 @@ export namespace Prisma {
     phone?: StringNullableFilter<"users"> | string | null
     customer_installations?: Customer_installationsListRelationFilter
     role?: XOR<RolesNullableScalarRelationFilter, rolesWhereInput> | null
+    TroubleTicket?: TroubleTicketListRelationFilter
   }
 
   export type usersOrderByWithRelationInput = {
@@ -19320,6 +20685,7 @@ export namespace Prisma {
     phone?: SortOrderInput | SortOrder
     customer_installations?: customer_installationsOrderByRelationAggregateInput
     role?: rolesOrderByWithRelationInput
+    TroubleTicket?: TroubleTicketOrderByRelationAggregateInput
     _relevance?: usersOrderByRelevanceInput
   }
 
@@ -19339,6 +20705,7 @@ export namespace Prisma {
     phone?: StringNullableFilter<"users"> | string | null
     customer_installations?: Customer_installationsListRelationFilter
     role?: XOR<RolesNullableScalarRelationFilter, rolesWhereInput> | null
+    TroubleTicket?: TroubleTicketListRelationFilter
   }, "id" | "email">
 
   export type usersOrderByWithAggregationInput = {
@@ -19382,6 +20749,7 @@ export namespace Prisma {
     createdAt?: DateTimeFilter<"roles"> | Date | string
     updatedAt?: DateTimeNullableFilter<"roles"> | Date | string | null
     users?: UsersListRelationFilter
+    TroubleTicket?: TroubleTicketListRelationFilter
   }
 
   export type rolesOrderByWithRelationInput = {
@@ -19390,6 +20758,7 @@ export namespace Prisma {
     createdAt?: SortOrder
     updatedAt?: SortOrderInput | SortOrder
     users?: usersOrderByRelationAggregateInput
+    TroubleTicket?: TroubleTicketOrderByRelationAggregateInput
     _relevance?: rolesOrderByRelevanceInput
   }
 
@@ -19402,6 +20771,7 @@ export namespace Prisma {
     createdAt?: DateTimeFilter<"roles"> | Date | string
     updatedAt?: DateTimeNullableFilter<"roles"> | Date | string | null
     users?: UsersListRelationFilter
+    TroubleTicket?: TroubleTicketListRelationFilter
   }, "id" | "name">
 
   export type rolesOrderByWithAggregationInput = {
@@ -19787,18 +21157,22 @@ export namespace Prisma {
     OR?: TroubleTicketWhereInput[]
     NOT?: TroubleTicketWhereInput | TroubleTicketWhereInput[]
     id?: BigIntFilter<"TroubleTicket"> | bigint | number
-    customer_id?: BigIntFilter<"TroubleTicket"> | bigint | number
-    type?: IntNullableFilter<"TroubleTicket"> | number | null
+    customer_id?: StringFilter<"TroubleTicket"> | string
+    type?: StringNullableFilter<"TroubleTicket"> | string | null
     title?: StringFilter<"TroubleTicket"> | string
     description?: StringNullableFilter<"TroubleTicket"> | string | null
-    status?: StringFilter<"TroubleTicket"> | string
-    assigned_to?: IntNullableFilter<"TroubleTicket"> | number | null
+    status?: Enumtrouble_ticket_statusFilter<"TroubleTicket"> | $Enums.trouble_ticket_status
+    assigned_to?: StringNullableFilter<"TroubleTicket"> | string | null
     current_assignee_role?: StringFilter<"TroubleTicket"> | string
     customer_note?: StringNullableFilter<"TroubleTicket"> | string | null
     noc_note?: StringNullableFilter<"TroubleTicket"> | string | null
     technician_note?: StringNullableFilter<"TroubleTicket"> | string | null
     created_at?: DateTimeNullableFilter<"TroubleTicket"> | Date | string | null
     updated_at?: DateTimeNullableFilter<"TroubleTicket"> | Date | string | null
+    customer?: XOR<CustomerScalarRelationFilter, customerWhereInput>
+    assigned_user?: XOR<UsersNullableScalarRelationFilter, usersWhereInput> | null
+    current_assignee?: XOR<RolesScalarRelationFilter, rolesWhereInput>
+    troubleType?: XOR<Trouble_typeNullableScalarRelationFilter, trouble_typeWhereInput> | null
   }
 
   export type TroubleTicketOrderByWithRelationInput = {
@@ -19815,6 +21189,10 @@ export namespace Prisma {
     technician_note?: SortOrderInput | SortOrder
     created_at?: SortOrderInput | SortOrder
     updated_at?: SortOrderInput | SortOrder
+    customer?: customerOrderByWithRelationInput
+    assigned_user?: usersOrderByWithRelationInput
+    current_assignee?: rolesOrderByWithRelationInput
+    troubleType?: trouble_typeOrderByWithRelationInput
     _relevance?: TroubleTicketOrderByRelevanceInput
   }
 
@@ -19823,18 +21201,22 @@ export namespace Prisma {
     AND?: TroubleTicketWhereInput | TroubleTicketWhereInput[]
     OR?: TroubleTicketWhereInput[]
     NOT?: TroubleTicketWhereInput | TroubleTicketWhereInput[]
-    customer_id?: BigIntFilter<"TroubleTicket"> | bigint | number
-    type?: IntNullableFilter<"TroubleTicket"> | number | null
+    customer_id?: StringFilter<"TroubleTicket"> | string
+    type?: StringNullableFilter<"TroubleTicket"> | string | null
     title?: StringFilter<"TroubleTicket"> | string
     description?: StringNullableFilter<"TroubleTicket"> | string | null
-    status?: StringFilter<"TroubleTicket"> | string
-    assigned_to?: IntNullableFilter<"TroubleTicket"> | number | null
+    status?: Enumtrouble_ticket_statusFilter<"TroubleTicket"> | $Enums.trouble_ticket_status
+    assigned_to?: StringNullableFilter<"TroubleTicket"> | string | null
     current_assignee_role?: StringFilter<"TroubleTicket"> | string
     customer_note?: StringNullableFilter<"TroubleTicket"> | string | null
     noc_note?: StringNullableFilter<"TroubleTicket"> | string | null
     technician_note?: StringNullableFilter<"TroubleTicket"> | string | null
     created_at?: DateTimeNullableFilter<"TroubleTicket"> | Date | string | null
     updated_at?: DateTimeNullableFilter<"TroubleTicket"> | Date | string | null
+    customer?: XOR<CustomerScalarRelationFilter, customerWhereInput>
+    assigned_user?: XOR<UsersNullableScalarRelationFilter, usersWhereInput> | null
+    current_assignee?: XOR<RolesScalarRelationFilter, rolesWhereInput>
+    troubleType?: XOR<Trouble_typeNullableScalarRelationFilter, trouble_typeWhereInput> | null
   }, "id">
 
   export type TroubleTicketOrderByWithAggregationInput = {
@@ -19863,18 +21245,59 @@ export namespace Prisma {
     OR?: TroubleTicketScalarWhereWithAggregatesInput[]
     NOT?: TroubleTicketScalarWhereWithAggregatesInput | TroubleTicketScalarWhereWithAggregatesInput[]
     id?: BigIntWithAggregatesFilter<"TroubleTicket"> | bigint | number
-    customer_id?: BigIntWithAggregatesFilter<"TroubleTicket"> | bigint | number
-    type?: IntNullableWithAggregatesFilter<"TroubleTicket"> | number | null
+    customer_id?: StringWithAggregatesFilter<"TroubleTicket"> | string
+    type?: StringNullableWithAggregatesFilter<"TroubleTicket"> | string | null
     title?: StringWithAggregatesFilter<"TroubleTicket"> | string
     description?: StringNullableWithAggregatesFilter<"TroubleTicket"> | string | null
-    status?: StringWithAggregatesFilter<"TroubleTicket"> | string
-    assigned_to?: IntNullableWithAggregatesFilter<"TroubleTicket"> | number | null
+    status?: Enumtrouble_ticket_statusWithAggregatesFilter<"TroubleTicket"> | $Enums.trouble_ticket_status
+    assigned_to?: StringNullableWithAggregatesFilter<"TroubleTicket"> | string | null
     current_assignee_role?: StringWithAggregatesFilter<"TroubleTicket"> | string
     customer_note?: StringNullableWithAggregatesFilter<"TroubleTicket"> | string | null
     noc_note?: StringNullableWithAggregatesFilter<"TroubleTicket"> | string | null
     technician_note?: StringNullableWithAggregatesFilter<"TroubleTicket"> | string | null
     created_at?: DateTimeNullableWithAggregatesFilter<"TroubleTicket"> | Date | string | null
     updated_at?: DateTimeNullableWithAggregatesFilter<"TroubleTicket"> | Date | string | null
+  }
+
+  export type trouble_typeWhereInput = {
+    AND?: trouble_typeWhereInput | trouble_typeWhereInput[]
+    OR?: trouble_typeWhereInput[]
+    NOT?: trouble_typeWhereInput | trouble_typeWhereInput[]
+    id?: StringFilter<"trouble_type"> | string
+    name?: StringNullableFilter<"trouble_type"> | string | null
+    tickets?: TroubleTicketListRelationFilter
+  }
+
+  export type trouble_typeOrderByWithRelationInput = {
+    id?: SortOrder
+    name?: SortOrderInput | SortOrder
+    tickets?: TroubleTicketOrderByRelationAggregateInput
+    _relevance?: trouble_typeOrderByRelevanceInput
+  }
+
+  export type trouble_typeWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    AND?: trouble_typeWhereInput | trouble_typeWhereInput[]
+    OR?: trouble_typeWhereInput[]
+    NOT?: trouble_typeWhereInput | trouble_typeWhereInput[]
+    name?: StringNullableFilter<"trouble_type"> | string | null
+    tickets?: TroubleTicketListRelationFilter
+  }, "id">
+
+  export type trouble_typeOrderByWithAggregationInput = {
+    id?: SortOrder
+    name?: SortOrderInput | SortOrder
+    _count?: trouble_typeCountOrderByAggregateInput
+    _max?: trouble_typeMaxOrderByAggregateInput
+    _min?: trouble_typeMinOrderByAggregateInput
+  }
+
+  export type trouble_typeScalarWhereWithAggregatesInput = {
+    AND?: trouble_typeScalarWhereWithAggregatesInput | trouble_typeScalarWhereWithAggregatesInput[]
+    OR?: trouble_typeScalarWhereWithAggregatesInput[]
+    NOT?: trouble_typeScalarWhereWithAggregatesInput | trouble_typeScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"trouble_type"> | string
+    name?: StringNullableWithAggregatesFilter<"trouble_type"> | string | null
   }
 
   export type accountsCreateInput = {
@@ -19940,15 +21363,14 @@ export namespace Prisma {
     brand: string
     date: string
     description: string
-    mac_address: string
     model: string
     price: number
     quantity: number
     serial_number: string
-    site: string
     status: string
     status_in_out: string
     type: string
+    company?: companyCreateNestedOneWithoutAssetsInput
   }
 
   export type assetsUncheckedCreateInput = {
@@ -19958,12 +21380,11 @@ export namespace Prisma {
     brand: string
     date: string
     description: string
-    mac_address: string
     model: string
     price: number
     quantity: number
     serial_number: string
-    site: string
+    company_id?: string | null
     status: string
     status_in_out: string
     type: string
@@ -19976,15 +21397,14 @@ export namespace Prisma {
     brand?: StringFieldUpdateOperationsInput | string
     date?: StringFieldUpdateOperationsInput | string
     description?: StringFieldUpdateOperationsInput | string
-    mac_address?: StringFieldUpdateOperationsInput | string
     model?: StringFieldUpdateOperationsInput | string
     price?: FloatFieldUpdateOperationsInput | number
     quantity?: FloatFieldUpdateOperationsInput | number
     serial_number?: StringFieldUpdateOperationsInput | string
-    site?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     status_in_out?: StringFieldUpdateOperationsInput | string
     type?: StringFieldUpdateOperationsInput | string
+    company?: companyUpdateOneWithoutAssetsNestedInput
   }
 
   export type assetsUncheckedUpdateInput = {
@@ -19994,12 +21414,11 @@ export namespace Prisma {
     brand?: StringFieldUpdateOperationsInput | string
     date?: StringFieldUpdateOperationsInput | string
     description?: StringFieldUpdateOperationsInput | string
-    mac_address?: StringFieldUpdateOperationsInput | string
     model?: StringFieldUpdateOperationsInput | string
     price?: FloatFieldUpdateOperationsInput | number
     quantity?: FloatFieldUpdateOperationsInput | number
     serial_number?: StringFieldUpdateOperationsInput | string
-    site?: StringFieldUpdateOperationsInput | string
+    company_id?: NullableStringFieldUpdateOperationsInput | string | null
     status?: StringFieldUpdateOperationsInput | string
     status_in_out?: StringFieldUpdateOperationsInput | string
     type?: StringFieldUpdateOperationsInput | string
@@ -20012,12 +21431,11 @@ export namespace Prisma {
     brand: string
     date: string
     description: string
-    mac_address: string
     model: string
     price: number
     quantity: number
     serial_number: string
-    site: string
+    company_id?: string | null
     status: string
     status_in_out: string
     type: string
@@ -20030,12 +21448,10 @@ export namespace Prisma {
     brand?: StringFieldUpdateOperationsInput | string
     date?: StringFieldUpdateOperationsInput | string
     description?: StringFieldUpdateOperationsInput | string
-    mac_address?: StringFieldUpdateOperationsInput | string
     model?: StringFieldUpdateOperationsInput | string
     price?: FloatFieldUpdateOperationsInput | number
     quantity?: FloatFieldUpdateOperationsInput | number
     serial_number?: StringFieldUpdateOperationsInput | string
-    site?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     status_in_out?: StringFieldUpdateOperationsInput | string
     type?: StringFieldUpdateOperationsInput | string
@@ -20048,12 +21464,11 @@ export namespace Prisma {
     brand?: StringFieldUpdateOperationsInput | string
     date?: StringFieldUpdateOperationsInput | string
     description?: StringFieldUpdateOperationsInput | string
-    mac_address?: StringFieldUpdateOperationsInput | string
     model?: StringFieldUpdateOperationsInput | string
     price?: FloatFieldUpdateOperationsInput | number
     quantity?: FloatFieldUpdateOperationsInput | number
     serial_number?: StringFieldUpdateOperationsInput | string
-    site?: StringFieldUpdateOperationsInput | string
+    company_id?: NullableStringFieldUpdateOperationsInput | string | null
     status?: StringFieldUpdateOperationsInput | string
     status_in_out?: StringFieldUpdateOperationsInput | string
     type?: StringFieldUpdateOperationsInput | string
@@ -20072,6 +21487,7 @@ export namespace Prisma {
     updatedAt: Date | string
     description?: string | null
     customer?: customerCreateNestedManyWithoutCompanyInput
+    assets?: assetsCreateNestedManyWithoutCompanyInput
   }
 
   export type companyUncheckedCreateInput = {
@@ -20087,6 +21503,7 @@ export namespace Prisma {
     updatedAt: Date | string
     description?: string | null
     customer?: customerUncheckedCreateNestedManyWithoutCompanyInput
+    assets?: assetsUncheckedCreateNestedManyWithoutCompanyInput
   }
 
   export type companyUpdateInput = {
@@ -20102,6 +21519,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
     customer?: customerUpdateManyWithoutCompanyNestedInput
+    assets?: assetsUpdateManyWithoutCompanyNestedInput
   }
 
   export type companyUncheckedUpdateInput = {
@@ -20117,6 +21535,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
     customer?: customerUncheckedUpdateManyWithoutCompanyNestedInput
+    assets?: assetsUncheckedUpdateManyWithoutCompanyNestedInput
   }
 
   export type companyCreateManyInput = {
@@ -20185,6 +21604,7 @@ export namespace Prisma {
     company: companyCreateNestedOneWithoutCustomerInput
     products: productsCreateNestedOneWithoutCustomerInput
     customer_installations?: customer_installationsCreateNestedManyWithoutCustomerInput
+    TroubleTicket?: TroubleTicketCreateNestedManyWithoutCustomerInput
   }
 
   export type customerUncheckedCreateInput = {
@@ -20211,6 +21631,7 @@ export namespace Prisma {
     installation_date: Date | string
     next_payment_date: Date | string
     customer_installations?: customer_installationsUncheckedCreateNestedManyWithoutCustomerInput
+    TroubleTicket?: TroubleTicketUncheckedCreateNestedManyWithoutCustomerInput
   }
 
   export type customerUpdateInput = {
@@ -20237,6 +21658,7 @@ export namespace Prisma {
     company?: companyUpdateOneRequiredWithoutCustomerNestedInput
     products?: productsUpdateOneRequiredWithoutCustomerNestedInput
     customer_installations?: customer_installationsUpdateManyWithoutCustomerNestedInput
+    TroubleTicket?: TroubleTicketUpdateManyWithoutCustomerNestedInput
   }
 
   export type customerUncheckedUpdateInput = {
@@ -20263,6 +21685,7 @@ export namespace Prisma {
     installation_date?: DateTimeFieldUpdateOperationsInput | Date | string
     next_payment_date?: DateTimeFieldUpdateOperationsInput | Date | string
     customer_installations?: customer_installationsUncheckedUpdateManyWithoutCustomerNestedInput
+    TroubleTicket?: TroubleTicketUncheckedUpdateManyWithoutCustomerNestedInput
   }
 
   export type customerCreateManyInput = {
@@ -20588,6 +22011,7 @@ export namespace Prisma {
     phone?: string | null
     customer_installations?: customer_installationsCreateNestedManyWithoutUsersInput
     role?: rolesCreateNestedOneWithoutUsersInput
+    TroubleTicket?: TroubleTicketCreateNestedManyWithoutAssigned_userInput
   }
 
   export type usersUncheckedCreateInput = {
@@ -20602,6 +22026,7 @@ export namespace Prisma {
     logo_url?: string | null
     phone?: string | null
     customer_installations?: customer_installationsUncheckedCreateNestedManyWithoutUsersInput
+    TroubleTicket?: TroubleTicketUncheckedCreateNestedManyWithoutAssigned_userInput
   }
 
   export type usersUpdateInput = {
@@ -20616,6 +22041,7 @@ export namespace Prisma {
     phone?: NullableStringFieldUpdateOperationsInput | string | null
     customer_installations?: customer_installationsUpdateManyWithoutUsersNestedInput
     role?: rolesUpdateOneWithoutUsersNestedInput
+    TroubleTicket?: TroubleTicketUpdateManyWithoutAssigned_userNestedInput
   }
 
   export type usersUncheckedUpdateInput = {
@@ -20630,6 +22056,7 @@ export namespace Prisma {
     logo_url?: NullableStringFieldUpdateOperationsInput | string | null
     phone?: NullableStringFieldUpdateOperationsInput | string | null
     customer_installations?: customer_installationsUncheckedUpdateManyWithoutUsersNestedInput
+    TroubleTicket?: TroubleTicketUncheckedUpdateManyWithoutAssigned_userNestedInput
   }
 
   export type usersCreateManyInput = {
@@ -20676,6 +22103,7 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string | null
     users?: usersCreateNestedManyWithoutRoleInput
+    TroubleTicket?: TroubleTicketCreateNestedManyWithoutCurrent_assigneeInput
   }
 
   export type rolesUncheckedCreateInput = {
@@ -20684,6 +22112,7 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string | null
     users?: usersUncheckedCreateNestedManyWithoutRoleInput
+    TroubleTicket?: TroubleTicketUncheckedCreateNestedManyWithoutCurrent_assigneeInput
   }
 
   export type rolesUpdateInput = {
@@ -20692,6 +22121,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     users?: usersUpdateManyWithoutRoleNestedInput
+    TroubleTicket?: TroubleTicketUpdateManyWithoutCurrent_assigneeNestedInput
   }
 
   export type rolesUncheckedUpdateInput = {
@@ -20700,6 +22130,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     users?: usersUncheckedUpdateManyWithoutRoleNestedInput
+    TroubleTicket?: TroubleTicketUncheckedUpdateManyWithoutCurrent_assigneeNestedInput
   }
 
   export type rolesCreateManyInput = {
@@ -21111,29 +22542,29 @@ export namespace Prisma {
 
   export type TroubleTicketCreateInput = {
     id?: bigint | number
-    customer_id: bigint | number
-    type?: number | null
     title: string
     description?: string | null
-    status?: string
-    assigned_to?: number | null
-    current_assignee_role?: string
+    status: $Enums.trouble_ticket_status
     customer_note?: string | null
     noc_note?: string | null
     technician_note?: string | null
     created_at?: Date | string | null
     updated_at?: Date | string | null
+    customer: customerCreateNestedOneWithoutTroubleTicketInput
+    assigned_user?: usersCreateNestedOneWithoutTroubleTicketInput
+    current_assignee: rolesCreateNestedOneWithoutTroubleTicketInput
+    troubleType?: trouble_typeCreateNestedOneWithoutTicketsInput
   }
 
   export type TroubleTicketUncheckedCreateInput = {
     id?: bigint | number
-    customer_id: bigint | number
-    type?: number | null
+    customer_id: string
+    type?: string | null
     title: string
     description?: string | null
-    status?: string
-    assigned_to?: number | null
-    current_assignee_role?: string
+    status: $Enums.trouble_ticket_status
+    assigned_to?: string | null
+    current_assignee_role: string
     customer_note?: string | null
     noc_note?: string | null
     technician_note?: string | null
@@ -21143,28 +22574,28 @@ export namespace Prisma {
 
   export type TroubleTicketUpdateInput = {
     id?: BigIntFieldUpdateOperationsInput | bigint | number
-    customer_id?: BigIntFieldUpdateOperationsInput | bigint | number
-    type?: NullableIntFieldUpdateOperationsInput | number | null
     title?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
-    status?: StringFieldUpdateOperationsInput | string
-    assigned_to?: NullableIntFieldUpdateOperationsInput | number | null
-    current_assignee_role?: StringFieldUpdateOperationsInput | string
+    status?: Enumtrouble_ticket_statusFieldUpdateOperationsInput | $Enums.trouble_ticket_status
     customer_note?: NullableStringFieldUpdateOperationsInput | string | null
     noc_note?: NullableStringFieldUpdateOperationsInput | string | null
     technician_note?: NullableStringFieldUpdateOperationsInput | string | null
     created_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     updated_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    customer?: customerUpdateOneRequiredWithoutTroubleTicketNestedInput
+    assigned_user?: usersUpdateOneWithoutTroubleTicketNestedInput
+    current_assignee?: rolesUpdateOneRequiredWithoutTroubleTicketNestedInput
+    troubleType?: trouble_typeUpdateOneWithoutTicketsNestedInput
   }
 
   export type TroubleTicketUncheckedUpdateInput = {
     id?: BigIntFieldUpdateOperationsInput | bigint | number
-    customer_id?: BigIntFieldUpdateOperationsInput | bigint | number
-    type?: NullableIntFieldUpdateOperationsInput | number | null
+    customer_id?: StringFieldUpdateOperationsInput | string
+    type?: NullableStringFieldUpdateOperationsInput | string | null
     title?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
-    status?: StringFieldUpdateOperationsInput | string
-    assigned_to?: NullableIntFieldUpdateOperationsInput | number | null
+    status?: Enumtrouble_ticket_statusFieldUpdateOperationsInput | $Enums.trouble_ticket_status
+    assigned_to?: NullableStringFieldUpdateOperationsInput | string | null
     current_assignee_role?: StringFieldUpdateOperationsInput | string
     customer_note?: NullableStringFieldUpdateOperationsInput | string | null
     noc_note?: NullableStringFieldUpdateOperationsInput | string | null
@@ -21175,13 +22606,13 @@ export namespace Prisma {
 
   export type TroubleTicketCreateManyInput = {
     id?: bigint | number
-    customer_id: bigint | number
-    type?: number | null
+    customer_id: string
+    type?: string | null
     title: string
     description?: string | null
-    status?: string
-    assigned_to?: number | null
-    current_assignee_role?: string
+    status: $Enums.trouble_ticket_status
+    assigned_to?: string | null
+    current_assignee_role: string
     customer_note?: string | null
     noc_note?: string | null
     technician_note?: string | null
@@ -21191,13 +22622,9 @@ export namespace Prisma {
 
   export type TroubleTicketUpdateManyMutationInput = {
     id?: BigIntFieldUpdateOperationsInput | bigint | number
-    customer_id?: BigIntFieldUpdateOperationsInput | bigint | number
-    type?: NullableIntFieldUpdateOperationsInput | number | null
     title?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
-    status?: StringFieldUpdateOperationsInput | string
-    assigned_to?: NullableIntFieldUpdateOperationsInput | number | null
-    current_assignee_role?: StringFieldUpdateOperationsInput | string
+    status?: Enumtrouble_ticket_statusFieldUpdateOperationsInput | $Enums.trouble_ticket_status
     customer_note?: NullableStringFieldUpdateOperationsInput | string | null
     noc_note?: NullableStringFieldUpdateOperationsInput | string | null
     technician_note?: NullableStringFieldUpdateOperationsInput | string | null
@@ -21207,18 +22634,57 @@ export namespace Prisma {
 
   export type TroubleTicketUncheckedUpdateManyInput = {
     id?: BigIntFieldUpdateOperationsInput | bigint | number
-    customer_id?: BigIntFieldUpdateOperationsInput | bigint | number
-    type?: NullableIntFieldUpdateOperationsInput | number | null
+    customer_id?: StringFieldUpdateOperationsInput | string
+    type?: NullableStringFieldUpdateOperationsInput | string | null
     title?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
-    status?: StringFieldUpdateOperationsInput | string
-    assigned_to?: NullableIntFieldUpdateOperationsInput | number | null
+    status?: Enumtrouble_ticket_statusFieldUpdateOperationsInput | $Enums.trouble_ticket_status
+    assigned_to?: NullableStringFieldUpdateOperationsInput | string | null
     current_assignee_role?: StringFieldUpdateOperationsInput | string
     customer_note?: NullableStringFieldUpdateOperationsInput | string | null
     noc_note?: NullableStringFieldUpdateOperationsInput | string | null
     technician_note?: NullableStringFieldUpdateOperationsInput | string | null
     created_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     updated_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  }
+
+  export type trouble_typeCreateInput = {
+    id: string
+    name?: string | null
+    tickets?: TroubleTicketCreateNestedManyWithoutTroubleTypeInput
+  }
+
+  export type trouble_typeUncheckedCreateInput = {
+    id: string
+    name?: string | null
+    tickets?: TroubleTicketUncheckedCreateNestedManyWithoutTroubleTypeInput
+  }
+
+  export type trouble_typeUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: NullableStringFieldUpdateOperationsInput | string | null
+    tickets?: TroubleTicketUpdateManyWithoutTroubleTypeNestedInput
+  }
+
+  export type trouble_typeUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: NullableStringFieldUpdateOperationsInput | string | null
+    tickets?: TroubleTicketUncheckedUpdateManyWithoutTroubleTypeNestedInput
+  }
+
+  export type trouble_typeCreateManyInput = {
+    id: string
+    name?: string | null
+  }
+
+  export type trouble_typeUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: NullableStringFieldUpdateOperationsInput | string | null
+  }
+
+  export type trouble_typeUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: NullableStringFieldUpdateOperationsInput | string | null
   }
 
   export type StringFilter<$PrismaModel = never> = {
@@ -21355,6 +22821,31 @@ export namespace Prisma {
     not?: NestedFloatFilter<$PrismaModel> | number
   }
 
+  export type StringNullableFilter<$PrismaModel = never> = {
+    equals?: string | StringFieldRefInput<$PrismaModel> | null
+    in?: string[] | null
+    notIn?: string[] | null
+    lt?: string | StringFieldRefInput<$PrismaModel>
+    lte?: string | StringFieldRefInput<$PrismaModel>
+    gt?: string | StringFieldRefInput<$PrismaModel>
+    gte?: string | StringFieldRefInput<$PrismaModel>
+    contains?: string | StringFieldRefInput<$PrismaModel>
+    startsWith?: string | StringFieldRefInput<$PrismaModel>
+    endsWith?: string | StringFieldRefInput<$PrismaModel>
+    search?: string
+    not?: NestedStringNullableFilter<$PrismaModel> | string | null
+  }
+
+  export type CompanyNullableScalarRelationFilter = {
+    is?: companyWhereInput | null
+    isNot?: companyWhereInput | null
+  }
+
+  export type SortOrderInput = {
+    sort: SortOrder
+    nulls?: NullsOrder
+  }
+
   export type assetsOrderByRelevanceInput = {
     fields: assetsOrderByRelevanceFieldEnum | assetsOrderByRelevanceFieldEnum[]
     sort: SortOrder
@@ -21368,12 +22859,11 @@ export namespace Prisma {
     brand?: SortOrder
     date?: SortOrder
     description?: SortOrder
-    mac_address?: SortOrder
     model?: SortOrder
     price?: SortOrder
     quantity?: SortOrder
     serial_number?: SortOrder
-    site?: SortOrder
+    company_id?: SortOrder
     status?: SortOrder
     status_in_out?: SortOrder
     type?: SortOrder
@@ -21391,12 +22881,11 @@ export namespace Prisma {
     brand?: SortOrder
     date?: SortOrder
     description?: SortOrder
-    mac_address?: SortOrder
     model?: SortOrder
     price?: SortOrder
     quantity?: SortOrder
     serial_number?: SortOrder
-    site?: SortOrder
+    company_id?: SortOrder
     status?: SortOrder
     status_in_out?: SortOrder
     type?: SortOrder
@@ -21409,12 +22898,11 @@ export namespace Prisma {
     brand?: SortOrder
     date?: SortOrder
     description?: SortOrder
-    mac_address?: SortOrder
     model?: SortOrder
     price?: SortOrder
     quantity?: SortOrder
     serial_number?: SortOrder
-    site?: SortOrder
+    company_id?: SortOrder
     status?: SortOrder
     status_in_out?: SortOrder
     type?: SortOrder
@@ -21441,7 +22929,7 @@ export namespace Prisma {
     _max?: NestedFloatFilter<$PrismaModel>
   }
 
-  export type StringNullableFilter<$PrismaModel = never> = {
+  export type StringNullableWithAggregatesFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel> | null
     in?: string[] | null
     notIn?: string[] | null
@@ -21453,7 +22941,10 @@ export namespace Prisma {
     startsWith?: string | StringFieldRefInput<$PrismaModel>
     endsWith?: string | StringFieldRefInput<$PrismaModel>
     search?: string
-    not?: NestedStringNullableFilter<$PrismaModel> | string | null
+    not?: NestedStringNullableWithAggregatesFilter<$PrismaModel> | string | null
+    _count?: NestedIntNullableFilter<$PrismaModel>
+    _min?: NestedStringNullableFilter<$PrismaModel>
+    _max?: NestedStringNullableFilter<$PrismaModel>
   }
 
   export type CustomerListRelationFilter = {
@@ -21462,12 +22953,17 @@ export namespace Prisma {
     none?: customerWhereInput
   }
 
-  export type SortOrderInput = {
-    sort: SortOrder
-    nulls?: NullsOrder
+  export type AssetsListRelationFilter = {
+    every?: assetsWhereInput
+    some?: assetsWhereInput
+    none?: assetsWhereInput
   }
 
   export type customerOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type assetsOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
 
@@ -21519,24 +23015,6 @@ export namespace Prisma {
     description?: SortOrder
   }
 
-  export type StringNullableWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: string | StringFieldRefInput<$PrismaModel> | null
-    in?: string[] | null
-    notIn?: string[] | null
-    lt?: string | StringFieldRefInput<$PrismaModel>
-    lte?: string | StringFieldRefInput<$PrismaModel>
-    gt?: string | StringFieldRefInput<$PrismaModel>
-    gte?: string | StringFieldRefInput<$PrismaModel>
-    contains?: string | StringFieldRefInput<$PrismaModel>
-    startsWith?: string | StringFieldRefInput<$PrismaModel>
-    endsWith?: string | StringFieldRefInput<$PrismaModel>
-    search?: string
-    not?: NestedStringNullableWithAggregatesFilter<$PrismaModel> | string | null
-    _count?: NestedIntNullableFilter<$PrismaModel>
-    _min?: NestedStringNullableFilter<$PrismaModel>
-    _max?: NestedStringNullableFilter<$PrismaModel>
-  }
-
   export type AreasScalarRelationFilter = {
     is?: areasWhereInput
     isNot?: areasWhereInput
@@ -21558,7 +23036,17 @@ export namespace Prisma {
     none?: customer_installationsWhereInput
   }
 
+  export type TroubleTicketListRelationFilter = {
+    every?: TroubleTicketWhereInput
+    some?: TroubleTicketWhereInput
+    none?: TroubleTicketWhereInput
+  }
+
   export type customer_installationsOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type TroubleTicketOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
 
@@ -22224,15 +23712,31 @@ export namespace Prisma {
     _max?: NestedEnumtransactions_type_in_outFilter<$PrismaModel>
   }
 
-  export type IntNullableFilter<$PrismaModel = never> = {
-    equals?: number | IntFieldRefInput<$PrismaModel> | null
-    in?: number[] | null
-    notIn?: number[] | null
-    lt?: number | IntFieldRefInput<$PrismaModel>
-    lte?: number | IntFieldRefInput<$PrismaModel>
-    gt?: number | IntFieldRefInput<$PrismaModel>
-    gte?: number | IntFieldRefInput<$PrismaModel>
-    not?: NestedIntNullableFilter<$PrismaModel> | number | null
+  export type Enumtrouble_ticket_statusFilter<$PrismaModel = never> = {
+    equals?: $Enums.trouble_ticket_status | Enumtrouble_ticket_statusFieldRefInput<$PrismaModel>
+    in?: $Enums.trouble_ticket_status[]
+    notIn?: $Enums.trouble_ticket_status[]
+    not?: NestedEnumtrouble_ticket_statusFilter<$PrismaModel> | $Enums.trouble_ticket_status
+  }
+
+  export type CustomerScalarRelationFilter = {
+    is?: customerWhereInput
+    isNot?: customerWhereInput
+  }
+
+  export type UsersNullableScalarRelationFilter = {
+    is?: usersWhereInput | null
+    isNot?: usersWhereInput | null
+  }
+
+  export type RolesScalarRelationFilter = {
+    is?: rolesWhereInput
+    isNot?: rolesWhereInput
+  }
+
+  export type Trouble_typeNullableScalarRelationFilter = {
+    is?: trouble_typeWhereInput | null
+    isNot?: trouble_typeWhereInput | null
   }
 
   export type TroubleTicketOrderByRelevanceInput = {
@@ -22259,9 +23763,6 @@ export namespace Prisma {
 
   export type TroubleTicketAvgOrderByAggregateInput = {
     id?: SortOrder
-    customer_id?: SortOrder
-    type?: SortOrder
-    assigned_to?: SortOrder
   }
 
   export type TroubleTicketMaxOrderByAggregateInput = {
@@ -22298,25 +23799,37 @@ export namespace Prisma {
 
   export type TroubleTicketSumOrderByAggregateInput = {
     id?: SortOrder
-    customer_id?: SortOrder
-    type?: SortOrder
-    assigned_to?: SortOrder
   }
 
-  export type IntNullableWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: number | IntFieldRefInput<$PrismaModel> | null
-    in?: number[] | null
-    notIn?: number[] | null
-    lt?: number | IntFieldRefInput<$PrismaModel>
-    lte?: number | IntFieldRefInput<$PrismaModel>
-    gt?: number | IntFieldRefInput<$PrismaModel>
-    gte?: number | IntFieldRefInput<$PrismaModel>
-    not?: NestedIntNullableWithAggregatesFilter<$PrismaModel> | number | null
-    _count?: NestedIntNullableFilter<$PrismaModel>
-    _avg?: NestedFloatNullableFilter<$PrismaModel>
-    _sum?: NestedIntNullableFilter<$PrismaModel>
-    _min?: NestedIntNullableFilter<$PrismaModel>
-    _max?: NestedIntNullableFilter<$PrismaModel>
+  export type Enumtrouble_ticket_statusWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.trouble_ticket_status | Enumtrouble_ticket_statusFieldRefInput<$PrismaModel>
+    in?: $Enums.trouble_ticket_status[]
+    notIn?: $Enums.trouble_ticket_status[]
+    not?: NestedEnumtrouble_ticket_statusWithAggregatesFilter<$PrismaModel> | $Enums.trouble_ticket_status
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumtrouble_ticket_statusFilter<$PrismaModel>
+    _max?: NestedEnumtrouble_ticket_statusFilter<$PrismaModel>
+  }
+
+  export type trouble_typeOrderByRelevanceInput = {
+    fields: trouble_typeOrderByRelevanceFieldEnum | trouble_typeOrderByRelevanceFieldEnum[]
+    sort: SortOrder
+    search: string
+  }
+
+  export type trouble_typeCountOrderByAggregateInput = {
+    id?: SortOrder
+    name?: SortOrder
+  }
+
+  export type trouble_typeMaxOrderByAggregateInput = {
+    id?: SortOrder
+    name?: SortOrder
+  }
+
+  export type trouble_typeMinOrderByAggregateInput = {
+    id?: SortOrder
+    name?: SortOrder
   }
 
   export type StringFieldUpdateOperationsInput = {
@@ -22335,12 +23848,32 @@ export namespace Prisma {
     set?: Date | string
   }
 
+  export type companyCreateNestedOneWithoutAssetsInput = {
+    create?: XOR<companyCreateWithoutAssetsInput, companyUncheckedCreateWithoutAssetsInput>
+    connectOrCreate?: companyCreateOrConnectWithoutAssetsInput
+    connect?: companyWhereUniqueInput
+  }
+
   export type FloatFieldUpdateOperationsInput = {
     set?: number
     increment?: number
     decrement?: number
     multiply?: number
     divide?: number
+  }
+
+  export type companyUpdateOneWithoutAssetsNestedInput = {
+    create?: XOR<companyCreateWithoutAssetsInput, companyUncheckedCreateWithoutAssetsInput>
+    connectOrCreate?: companyCreateOrConnectWithoutAssetsInput
+    upsert?: companyUpsertWithoutAssetsInput
+    disconnect?: companyWhereInput | boolean
+    delete?: companyWhereInput | boolean
+    connect?: companyWhereUniqueInput
+    update?: XOR<XOR<companyUpdateToOneWithWhereWithoutAssetsInput, companyUpdateWithoutAssetsInput>, companyUncheckedUpdateWithoutAssetsInput>
+  }
+
+  export type NullableStringFieldUpdateOperationsInput = {
+    set?: string | null
   }
 
   export type customerCreateNestedManyWithoutCompanyInput = {
@@ -22350,6 +23883,13 @@ export namespace Prisma {
     connect?: customerWhereUniqueInput | customerWhereUniqueInput[]
   }
 
+  export type assetsCreateNestedManyWithoutCompanyInput = {
+    create?: XOR<assetsCreateWithoutCompanyInput, assetsUncheckedCreateWithoutCompanyInput> | assetsCreateWithoutCompanyInput[] | assetsUncheckedCreateWithoutCompanyInput[]
+    connectOrCreate?: assetsCreateOrConnectWithoutCompanyInput | assetsCreateOrConnectWithoutCompanyInput[]
+    createMany?: assetsCreateManyCompanyInputEnvelope
+    connect?: assetsWhereUniqueInput | assetsWhereUniqueInput[]
+  }
+
   export type customerUncheckedCreateNestedManyWithoutCompanyInput = {
     create?: XOR<customerCreateWithoutCompanyInput, customerUncheckedCreateWithoutCompanyInput> | customerCreateWithoutCompanyInput[] | customerUncheckedCreateWithoutCompanyInput[]
     connectOrCreate?: customerCreateOrConnectWithoutCompanyInput | customerCreateOrConnectWithoutCompanyInput[]
@@ -22357,8 +23897,11 @@ export namespace Prisma {
     connect?: customerWhereUniqueInput | customerWhereUniqueInput[]
   }
 
-  export type NullableStringFieldUpdateOperationsInput = {
-    set?: string | null
+  export type assetsUncheckedCreateNestedManyWithoutCompanyInput = {
+    create?: XOR<assetsCreateWithoutCompanyInput, assetsUncheckedCreateWithoutCompanyInput> | assetsCreateWithoutCompanyInput[] | assetsUncheckedCreateWithoutCompanyInput[]
+    connectOrCreate?: assetsCreateOrConnectWithoutCompanyInput | assetsCreateOrConnectWithoutCompanyInput[]
+    createMany?: assetsCreateManyCompanyInputEnvelope
+    connect?: assetsWhereUniqueInput | assetsWhereUniqueInput[]
   }
 
   export type customerUpdateManyWithoutCompanyNestedInput = {
@@ -22375,6 +23918,20 @@ export namespace Prisma {
     deleteMany?: customerScalarWhereInput | customerScalarWhereInput[]
   }
 
+  export type assetsUpdateManyWithoutCompanyNestedInput = {
+    create?: XOR<assetsCreateWithoutCompanyInput, assetsUncheckedCreateWithoutCompanyInput> | assetsCreateWithoutCompanyInput[] | assetsUncheckedCreateWithoutCompanyInput[]
+    connectOrCreate?: assetsCreateOrConnectWithoutCompanyInput | assetsCreateOrConnectWithoutCompanyInput[]
+    upsert?: assetsUpsertWithWhereUniqueWithoutCompanyInput | assetsUpsertWithWhereUniqueWithoutCompanyInput[]
+    createMany?: assetsCreateManyCompanyInputEnvelope
+    set?: assetsWhereUniqueInput | assetsWhereUniqueInput[]
+    disconnect?: assetsWhereUniqueInput | assetsWhereUniqueInput[]
+    delete?: assetsWhereUniqueInput | assetsWhereUniqueInput[]
+    connect?: assetsWhereUniqueInput | assetsWhereUniqueInput[]
+    update?: assetsUpdateWithWhereUniqueWithoutCompanyInput | assetsUpdateWithWhereUniqueWithoutCompanyInput[]
+    updateMany?: assetsUpdateManyWithWhereWithoutCompanyInput | assetsUpdateManyWithWhereWithoutCompanyInput[]
+    deleteMany?: assetsScalarWhereInput | assetsScalarWhereInput[]
+  }
+
   export type customerUncheckedUpdateManyWithoutCompanyNestedInput = {
     create?: XOR<customerCreateWithoutCompanyInput, customerUncheckedCreateWithoutCompanyInput> | customerCreateWithoutCompanyInput[] | customerUncheckedCreateWithoutCompanyInput[]
     connectOrCreate?: customerCreateOrConnectWithoutCompanyInput | customerCreateOrConnectWithoutCompanyInput[]
@@ -22387,6 +23944,20 @@ export namespace Prisma {
     update?: customerUpdateWithWhereUniqueWithoutCompanyInput | customerUpdateWithWhereUniqueWithoutCompanyInput[]
     updateMany?: customerUpdateManyWithWhereWithoutCompanyInput | customerUpdateManyWithWhereWithoutCompanyInput[]
     deleteMany?: customerScalarWhereInput | customerScalarWhereInput[]
+  }
+
+  export type assetsUncheckedUpdateManyWithoutCompanyNestedInput = {
+    create?: XOR<assetsCreateWithoutCompanyInput, assetsUncheckedCreateWithoutCompanyInput> | assetsCreateWithoutCompanyInput[] | assetsUncheckedCreateWithoutCompanyInput[]
+    connectOrCreate?: assetsCreateOrConnectWithoutCompanyInput | assetsCreateOrConnectWithoutCompanyInput[]
+    upsert?: assetsUpsertWithWhereUniqueWithoutCompanyInput | assetsUpsertWithWhereUniqueWithoutCompanyInput[]
+    createMany?: assetsCreateManyCompanyInputEnvelope
+    set?: assetsWhereUniqueInput | assetsWhereUniqueInput[]
+    disconnect?: assetsWhereUniqueInput | assetsWhereUniqueInput[]
+    delete?: assetsWhereUniqueInput | assetsWhereUniqueInput[]
+    connect?: assetsWhereUniqueInput | assetsWhereUniqueInput[]
+    update?: assetsUpdateWithWhereUniqueWithoutCompanyInput | assetsUpdateWithWhereUniqueWithoutCompanyInput[]
+    updateMany?: assetsUpdateManyWithWhereWithoutCompanyInput | assetsUpdateManyWithWhereWithoutCompanyInput[]
+    deleteMany?: assetsScalarWhereInput | assetsScalarWhereInput[]
   }
 
   export type areasCreateNestedOneWithoutCustomerInput = {
@@ -22414,11 +23985,25 @@ export namespace Prisma {
     connect?: customer_installationsWhereUniqueInput | customer_installationsWhereUniqueInput[]
   }
 
+  export type TroubleTicketCreateNestedManyWithoutCustomerInput = {
+    create?: XOR<TroubleTicketCreateWithoutCustomerInput, TroubleTicketUncheckedCreateWithoutCustomerInput> | TroubleTicketCreateWithoutCustomerInput[] | TroubleTicketUncheckedCreateWithoutCustomerInput[]
+    connectOrCreate?: TroubleTicketCreateOrConnectWithoutCustomerInput | TroubleTicketCreateOrConnectWithoutCustomerInput[]
+    createMany?: TroubleTicketCreateManyCustomerInputEnvelope
+    connect?: TroubleTicketWhereUniqueInput | TroubleTicketWhereUniqueInput[]
+  }
+
   export type customer_installationsUncheckedCreateNestedManyWithoutCustomerInput = {
     create?: XOR<customer_installationsCreateWithoutCustomerInput, customer_installationsUncheckedCreateWithoutCustomerInput> | customer_installationsCreateWithoutCustomerInput[] | customer_installationsUncheckedCreateWithoutCustomerInput[]
     connectOrCreate?: customer_installationsCreateOrConnectWithoutCustomerInput | customer_installationsCreateOrConnectWithoutCustomerInput[]
     createMany?: customer_installationsCreateManyCustomerInputEnvelope
     connect?: customer_installationsWhereUniqueInput | customer_installationsWhereUniqueInput[]
+  }
+
+  export type TroubleTicketUncheckedCreateNestedManyWithoutCustomerInput = {
+    create?: XOR<TroubleTicketCreateWithoutCustomerInput, TroubleTicketUncheckedCreateWithoutCustomerInput> | TroubleTicketCreateWithoutCustomerInput[] | TroubleTicketUncheckedCreateWithoutCustomerInput[]
+    connectOrCreate?: TroubleTicketCreateOrConnectWithoutCustomerInput | TroubleTicketCreateOrConnectWithoutCustomerInput[]
+    createMany?: TroubleTicketCreateManyCustomerInputEnvelope
+    connect?: TroubleTicketWhereUniqueInput | TroubleTicketWhereUniqueInput[]
   }
 
   export type areasUpdateOneRequiredWithoutCustomerNestedInput = {
@@ -22459,6 +24044,20 @@ export namespace Prisma {
     deleteMany?: customer_installationsScalarWhereInput | customer_installationsScalarWhereInput[]
   }
 
+  export type TroubleTicketUpdateManyWithoutCustomerNestedInput = {
+    create?: XOR<TroubleTicketCreateWithoutCustomerInput, TroubleTicketUncheckedCreateWithoutCustomerInput> | TroubleTicketCreateWithoutCustomerInput[] | TroubleTicketUncheckedCreateWithoutCustomerInput[]
+    connectOrCreate?: TroubleTicketCreateOrConnectWithoutCustomerInput | TroubleTicketCreateOrConnectWithoutCustomerInput[]
+    upsert?: TroubleTicketUpsertWithWhereUniqueWithoutCustomerInput | TroubleTicketUpsertWithWhereUniqueWithoutCustomerInput[]
+    createMany?: TroubleTicketCreateManyCustomerInputEnvelope
+    set?: TroubleTicketWhereUniqueInput | TroubleTicketWhereUniqueInput[]
+    disconnect?: TroubleTicketWhereUniqueInput | TroubleTicketWhereUniqueInput[]
+    delete?: TroubleTicketWhereUniqueInput | TroubleTicketWhereUniqueInput[]
+    connect?: TroubleTicketWhereUniqueInput | TroubleTicketWhereUniqueInput[]
+    update?: TroubleTicketUpdateWithWhereUniqueWithoutCustomerInput | TroubleTicketUpdateWithWhereUniqueWithoutCustomerInput[]
+    updateMany?: TroubleTicketUpdateManyWithWhereWithoutCustomerInput | TroubleTicketUpdateManyWithWhereWithoutCustomerInput[]
+    deleteMany?: TroubleTicketScalarWhereInput | TroubleTicketScalarWhereInput[]
+  }
+
   export type customer_installationsUncheckedUpdateManyWithoutCustomerNestedInput = {
     create?: XOR<customer_installationsCreateWithoutCustomerInput, customer_installationsUncheckedCreateWithoutCustomerInput> | customer_installationsCreateWithoutCustomerInput[] | customer_installationsUncheckedCreateWithoutCustomerInput[]
     connectOrCreate?: customer_installationsCreateOrConnectWithoutCustomerInput | customer_installationsCreateOrConnectWithoutCustomerInput[]
@@ -22471,6 +24070,20 @@ export namespace Prisma {
     update?: customer_installationsUpdateWithWhereUniqueWithoutCustomerInput | customer_installationsUpdateWithWhereUniqueWithoutCustomerInput[]
     updateMany?: customer_installationsUpdateManyWithWhereWithoutCustomerInput | customer_installationsUpdateManyWithWhereWithoutCustomerInput[]
     deleteMany?: customer_installationsScalarWhereInput | customer_installationsScalarWhereInput[]
+  }
+
+  export type TroubleTicketUncheckedUpdateManyWithoutCustomerNestedInput = {
+    create?: XOR<TroubleTicketCreateWithoutCustomerInput, TroubleTicketUncheckedCreateWithoutCustomerInput> | TroubleTicketCreateWithoutCustomerInput[] | TroubleTicketUncheckedCreateWithoutCustomerInput[]
+    connectOrCreate?: TroubleTicketCreateOrConnectWithoutCustomerInput | TroubleTicketCreateOrConnectWithoutCustomerInput[]
+    upsert?: TroubleTicketUpsertWithWhereUniqueWithoutCustomerInput | TroubleTicketUpsertWithWhereUniqueWithoutCustomerInput[]
+    createMany?: TroubleTicketCreateManyCustomerInputEnvelope
+    set?: TroubleTicketWhereUniqueInput | TroubleTicketWhereUniqueInput[]
+    disconnect?: TroubleTicketWhereUniqueInput | TroubleTicketWhereUniqueInput[]
+    delete?: TroubleTicketWhereUniqueInput | TroubleTicketWhereUniqueInput[]
+    connect?: TroubleTicketWhereUniqueInput | TroubleTicketWhereUniqueInput[]
+    update?: TroubleTicketUpdateWithWhereUniqueWithoutCustomerInput | TroubleTicketUpdateWithWhereUniqueWithoutCustomerInput[]
+    updateMany?: TroubleTicketUpdateManyWithWhereWithoutCustomerInput | TroubleTicketUpdateManyWithWhereWithoutCustomerInput[]
+    deleteMany?: TroubleTicketScalarWhereInput | TroubleTicketScalarWhereInput[]
   }
 
   export type customerCreateNestedManyWithoutAreasInput = {
@@ -22578,11 +24191,25 @@ export namespace Prisma {
     connect?: rolesWhereUniqueInput
   }
 
+  export type TroubleTicketCreateNestedManyWithoutAssigned_userInput = {
+    create?: XOR<TroubleTicketCreateWithoutAssigned_userInput, TroubleTicketUncheckedCreateWithoutAssigned_userInput> | TroubleTicketCreateWithoutAssigned_userInput[] | TroubleTicketUncheckedCreateWithoutAssigned_userInput[]
+    connectOrCreate?: TroubleTicketCreateOrConnectWithoutAssigned_userInput | TroubleTicketCreateOrConnectWithoutAssigned_userInput[]
+    createMany?: TroubleTicketCreateManyAssigned_userInputEnvelope
+    connect?: TroubleTicketWhereUniqueInput | TroubleTicketWhereUniqueInput[]
+  }
+
   export type customer_installationsUncheckedCreateNestedManyWithoutUsersInput = {
     create?: XOR<customer_installationsCreateWithoutUsersInput, customer_installationsUncheckedCreateWithoutUsersInput> | customer_installationsCreateWithoutUsersInput[] | customer_installationsUncheckedCreateWithoutUsersInput[]
     connectOrCreate?: customer_installationsCreateOrConnectWithoutUsersInput | customer_installationsCreateOrConnectWithoutUsersInput[]
     createMany?: customer_installationsCreateManyUsersInputEnvelope
     connect?: customer_installationsWhereUniqueInput | customer_installationsWhereUniqueInput[]
+  }
+
+  export type TroubleTicketUncheckedCreateNestedManyWithoutAssigned_userInput = {
+    create?: XOR<TroubleTicketCreateWithoutAssigned_userInput, TroubleTicketUncheckedCreateWithoutAssigned_userInput> | TroubleTicketCreateWithoutAssigned_userInput[] | TroubleTicketUncheckedCreateWithoutAssigned_userInput[]
+    connectOrCreate?: TroubleTicketCreateOrConnectWithoutAssigned_userInput | TroubleTicketCreateOrConnectWithoutAssigned_userInput[]
+    createMany?: TroubleTicketCreateManyAssigned_userInputEnvelope
+    connect?: TroubleTicketWhereUniqueInput | TroubleTicketWhereUniqueInput[]
   }
 
   export type NullableDateTimeFieldUpdateOperationsInput = {
@@ -22613,6 +24240,20 @@ export namespace Prisma {
     update?: XOR<XOR<rolesUpdateToOneWithWhereWithoutUsersInput, rolesUpdateWithoutUsersInput>, rolesUncheckedUpdateWithoutUsersInput>
   }
 
+  export type TroubleTicketUpdateManyWithoutAssigned_userNestedInput = {
+    create?: XOR<TroubleTicketCreateWithoutAssigned_userInput, TroubleTicketUncheckedCreateWithoutAssigned_userInput> | TroubleTicketCreateWithoutAssigned_userInput[] | TroubleTicketUncheckedCreateWithoutAssigned_userInput[]
+    connectOrCreate?: TroubleTicketCreateOrConnectWithoutAssigned_userInput | TroubleTicketCreateOrConnectWithoutAssigned_userInput[]
+    upsert?: TroubleTicketUpsertWithWhereUniqueWithoutAssigned_userInput | TroubleTicketUpsertWithWhereUniqueWithoutAssigned_userInput[]
+    createMany?: TroubleTicketCreateManyAssigned_userInputEnvelope
+    set?: TroubleTicketWhereUniqueInput | TroubleTicketWhereUniqueInput[]
+    disconnect?: TroubleTicketWhereUniqueInput | TroubleTicketWhereUniqueInput[]
+    delete?: TroubleTicketWhereUniqueInput | TroubleTicketWhereUniqueInput[]
+    connect?: TroubleTicketWhereUniqueInput | TroubleTicketWhereUniqueInput[]
+    update?: TroubleTicketUpdateWithWhereUniqueWithoutAssigned_userInput | TroubleTicketUpdateWithWhereUniqueWithoutAssigned_userInput[]
+    updateMany?: TroubleTicketUpdateManyWithWhereWithoutAssigned_userInput | TroubleTicketUpdateManyWithWhereWithoutAssigned_userInput[]
+    deleteMany?: TroubleTicketScalarWhereInput | TroubleTicketScalarWhereInput[]
+  }
+
   export type customer_installationsUncheckedUpdateManyWithoutUsersNestedInput = {
     create?: XOR<customer_installationsCreateWithoutUsersInput, customer_installationsUncheckedCreateWithoutUsersInput> | customer_installationsCreateWithoutUsersInput[] | customer_installationsUncheckedCreateWithoutUsersInput[]
     connectOrCreate?: customer_installationsCreateOrConnectWithoutUsersInput | customer_installationsCreateOrConnectWithoutUsersInput[]
@@ -22627,6 +24268,20 @@ export namespace Prisma {
     deleteMany?: customer_installationsScalarWhereInput | customer_installationsScalarWhereInput[]
   }
 
+  export type TroubleTicketUncheckedUpdateManyWithoutAssigned_userNestedInput = {
+    create?: XOR<TroubleTicketCreateWithoutAssigned_userInput, TroubleTicketUncheckedCreateWithoutAssigned_userInput> | TroubleTicketCreateWithoutAssigned_userInput[] | TroubleTicketUncheckedCreateWithoutAssigned_userInput[]
+    connectOrCreate?: TroubleTicketCreateOrConnectWithoutAssigned_userInput | TroubleTicketCreateOrConnectWithoutAssigned_userInput[]
+    upsert?: TroubleTicketUpsertWithWhereUniqueWithoutAssigned_userInput | TroubleTicketUpsertWithWhereUniqueWithoutAssigned_userInput[]
+    createMany?: TroubleTicketCreateManyAssigned_userInputEnvelope
+    set?: TroubleTicketWhereUniqueInput | TroubleTicketWhereUniqueInput[]
+    disconnect?: TroubleTicketWhereUniqueInput | TroubleTicketWhereUniqueInput[]
+    delete?: TroubleTicketWhereUniqueInput | TroubleTicketWhereUniqueInput[]
+    connect?: TroubleTicketWhereUniqueInput | TroubleTicketWhereUniqueInput[]
+    update?: TroubleTicketUpdateWithWhereUniqueWithoutAssigned_userInput | TroubleTicketUpdateWithWhereUniqueWithoutAssigned_userInput[]
+    updateMany?: TroubleTicketUpdateManyWithWhereWithoutAssigned_userInput | TroubleTicketUpdateManyWithWhereWithoutAssigned_userInput[]
+    deleteMany?: TroubleTicketScalarWhereInput | TroubleTicketScalarWhereInput[]
+  }
+
   export type usersCreateNestedManyWithoutRoleInput = {
     create?: XOR<usersCreateWithoutRoleInput, usersUncheckedCreateWithoutRoleInput> | usersCreateWithoutRoleInput[] | usersUncheckedCreateWithoutRoleInput[]
     connectOrCreate?: usersCreateOrConnectWithoutRoleInput | usersCreateOrConnectWithoutRoleInput[]
@@ -22634,11 +24289,25 @@ export namespace Prisma {
     connect?: usersWhereUniqueInput | usersWhereUniqueInput[]
   }
 
+  export type TroubleTicketCreateNestedManyWithoutCurrent_assigneeInput = {
+    create?: XOR<TroubleTicketCreateWithoutCurrent_assigneeInput, TroubleTicketUncheckedCreateWithoutCurrent_assigneeInput> | TroubleTicketCreateWithoutCurrent_assigneeInput[] | TroubleTicketUncheckedCreateWithoutCurrent_assigneeInput[]
+    connectOrCreate?: TroubleTicketCreateOrConnectWithoutCurrent_assigneeInput | TroubleTicketCreateOrConnectWithoutCurrent_assigneeInput[]
+    createMany?: TroubleTicketCreateManyCurrent_assigneeInputEnvelope
+    connect?: TroubleTicketWhereUniqueInput | TroubleTicketWhereUniqueInput[]
+  }
+
   export type usersUncheckedCreateNestedManyWithoutRoleInput = {
     create?: XOR<usersCreateWithoutRoleInput, usersUncheckedCreateWithoutRoleInput> | usersCreateWithoutRoleInput[] | usersUncheckedCreateWithoutRoleInput[]
     connectOrCreate?: usersCreateOrConnectWithoutRoleInput | usersCreateOrConnectWithoutRoleInput[]
     createMany?: usersCreateManyRoleInputEnvelope
     connect?: usersWhereUniqueInput | usersWhereUniqueInput[]
+  }
+
+  export type TroubleTicketUncheckedCreateNestedManyWithoutCurrent_assigneeInput = {
+    create?: XOR<TroubleTicketCreateWithoutCurrent_assigneeInput, TroubleTicketUncheckedCreateWithoutCurrent_assigneeInput> | TroubleTicketCreateWithoutCurrent_assigneeInput[] | TroubleTicketUncheckedCreateWithoutCurrent_assigneeInput[]
+    connectOrCreate?: TroubleTicketCreateOrConnectWithoutCurrent_assigneeInput | TroubleTicketCreateOrConnectWithoutCurrent_assigneeInput[]
+    createMany?: TroubleTicketCreateManyCurrent_assigneeInputEnvelope
+    connect?: TroubleTicketWhereUniqueInput | TroubleTicketWhereUniqueInput[]
   }
 
   export type usersUpdateManyWithoutRoleNestedInput = {
@@ -22655,6 +24324,20 @@ export namespace Prisma {
     deleteMany?: usersScalarWhereInput | usersScalarWhereInput[]
   }
 
+  export type TroubleTicketUpdateManyWithoutCurrent_assigneeNestedInput = {
+    create?: XOR<TroubleTicketCreateWithoutCurrent_assigneeInput, TroubleTicketUncheckedCreateWithoutCurrent_assigneeInput> | TroubleTicketCreateWithoutCurrent_assigneeInput[] | TroubleTicketUncheckedCreateWithoutCurrent_assigneeInput[]
+    connectOrCreate?: TroubleTicketCreateOrConnectWithoutCurrent_assigneeInput | TroubleTicketCreateOrConnectWithoutCurrent_assigneeInput[]
+    upsert?: TroubleTicketUpsertWithWhereUniqueWithoutCurrent_assigneeInput | TroubleTicketUpsertWithWhereUniqueWithoutCurrent_assigneeInput[]
+    createMany?: TroubleTicketCreateManyCurrent_assigneeInputEnvelope
+    set?: TroubleTicketWhereUniqueInput | TroubleTicketWhereUniqueInput[]
+    disconnect?: TroubleTicketWhereUniqueInput | TroubleTicketWhereUniqueInput[]
+    delete?: TroubleTicketWhereUniqueInput | TroubleTicketWhereUniqueInput[]
+    connect?: TroubleTicketWhereUniqueInput | TroubleTicketWhereUniqueInput[]
+    update?: TroubleTicketUpdateWithWhereUniqueWithoutCurrent_assigneeInput | TroubleTicketUpdateWithWhereUniqueWithoutCurrent_assigneeInput[]
+    updateMany?: TroubleTicketUpdateManyWithWhereWithoutCurrent_assigneeInput | TroubleTicketUpdateManyWithWhereWithoutCurrent_assigneeInput[]
+    deleteMany?: TroubleTicketScalarWhereInput | TroubleTicketScalarWhereInput[]
+  }
+
   export type usersUncheckedUpdateManyWithoutRoleNestedInput = {
     create?: XOR<usersCreateWithoutRoleInput, usersUncheckedCreateWithoutRoleInput> | usersCreateWithoutRoleInput[] | usersUncheckedCreateWithoutRoleInput[]
     connectOrCreate?: usersCreateOrConnectWithoutRoleInput | usersCreateOrConnectWithoutRoleInput[]
@@ -22667,6 +24350,20 @@ export namespace Prisma {
     update?: usersUpdateWithWhereUniqueWithoutRoleInput | usersUpdateWithWhereUniqueWithoutRoleInput[]
     updateMany?: usersUpdateManyWithWhereWithoutRoleInput | usersUpdateManyWithWhereWithoutRoleInput[]
     deleteMany?: usersScalarWhereInput | usersScalarWhereInput[]
+  }
+
+  export type TroubleTicketUncheckedUpdateManyWithoutCurrent_assigneeNestedInput = {
+    create?: XOR<TroubleTicketCreateWithoutCurrent_assigneeInput, TroubleTicketUncheckedCreateWithoutCurrent_assigneeInput> | TroubleTicketCreateWithoutCurrent_assigneeInput[] | TroubleTicketUncheckedCreateWithoutCurrent_assigneeInput[]
+    connectOrCreate?: TroubleTicketCreateOrConnectWithoutCurrent_assigneeInput | TroubleTicketCreateOrConnectWithoutCurrent_assigneeInput[]
+    upsert?: TroubleTicketUpsertWithWhereUniqueWithoutCurrent_assigneeInput | TroubleTicketUpsertWithWhereUniqueWithoutCurrent_assigneeInput[]
+    createMany?: TroubleTicketCreateManyCurrent_assigneeInputEnvelope
+    set?: TroubleTicketWhereUniqueInput | TroubleTicketWhereUniqueInput[]
+    disconnect?: TroubleTicketWhereUniqueInput | TroubleTicketWhereUniqueInput[]
+    delete?: TroubleTicketWhereUniqueInput | TroubleTicketWhereUniqueInput[]
+    connect?: TroubleTicketWhereUniqueInput | TroubleTicketWhereUniqueInput[]
+    update?: TroubleTicketUpdateWithWhereUniqueWithoutCurrent_assigneeInput | TroubleTicketUpdateWithWhereUniqueWithoutCurrent_assigneeInput[]
+    updateMany?: TroubleTicketUpdateManyWithWhereWithoutCurrent_assigneeInput | TroubleTicketUpdateManyWithWhereWithoutCurrent_assigneeInput[]
+    deleteMany?: TroubleTicketScalarWhereInput | TroubleTicketScalarWhereInput[]
   }
 
   export type customerCreateNestedOneWithoutCustomer_installationsInput = {
@@ -22767,12 +24464,110 @@ export namespace Prisma {
     set?: $Enums.transactions_type_in_out
   }
 
-  export type NullableIntFieldUpdateOperationsInput = {
-    set?: number | null
-    increment?: number
-    decrement?: number
-    multiply?: number
-    divide?: number
+  export type customerCreateNestedOneWithoutTroubleTicketInput = {
+    create?: XOR<customerCreateWithoutTroubleTicketInput, customerUncheckedCreateWithoutTroubleTicketInput>
+    connectOrCreate?: customerCreateOrConnectWithoutTroubleTicketInput
+    connect?: customerWhereUniqueInput
+  }
+
+  export type usersCreateNestedOneWithoutTroubleTicketInput = {
+    create?: XOR<usersCreateWithoutTroubleTicketInput, usersUncheckedCreateWithoutTroubleTicketInput>
+    connectOrCreate?: usersCreateOrConnectWithoutTroubleTicketInput
+    connect?: usersWhereUniqueInput
+  }
+
+  export type rolesCreateNestedOneWithoutTroubleTicketInput = {
+    create?: XOR<rolesCreateWithoutTroubleTicketInput, rolesUncheckedCreateWithoutTroubleTicketInput>
+    connectOrCreate?: rolesCreateOrConnectWithoutTroubleTicketInput
+    connect?: rolesWhereUniqueInput
+  }
+
+  export type trouble_typeCreateNestedOneWithoutTicketsInput = {
+    create?: XOR<trouble_typeCreateWithoutTicketsInput, trouble_typeUncheckedCreateWithoutTicketsInput>
+    connectOrCreate?: trouble_typeCreateOrConnectWithoutTicketsInput
+    connect?: trouble_typeWhereUniqueInput
+  }
+
+  export type Enumtrouble_ticket_statusFieldUpdateOperationsInput = {
+    set?: $Enums.trouble_ticket_status
+  }
+
+  export type customerUpdateOneRequiredWithoutTroubleTicketNestedInput = {
+    create?: XOR<customerCreateWithoutTroubleTicketInput, customerUncheckedCreateWithoutTroubleTicketInput>
+    connectOrCreate?: customerCreateOrConnectWithoutTroubleTicketInput
+    upsert?: customerUpsertWithoutTroubleTicketInput
+    connect?: customerWhereUniqueInput
+    update?: XOR<XOR<customerUpdateToOneWithWhereWithoutTroubleTicketInput, customerUpdateWithoutTroubleTicketInput>, customerUncheckedUpdateWithoutTroubleTicketInput>
+  }
+
+  export type usersUpdateOneWithoutTroubleTicketNestedInput = {
+    create?: XOR<usersCreateWithoutTroubleTicketInput, usersUncheckedCreateWithoutTroubleTicketInput>
+    connectOrCreate?: usersCreateOrConnectWithoutTroubleTicketInput
+    upsert?: usersUpsertWithoutTroubleTicketInput
+    disconnect?: usersWhereInput | boolean
+    delete?: usersWhereInput | boolean
+    connect?: usersWhereUniqueInput
+    update?: XOR<XOR<usersUpdateToOneWithWhereWithoutTroubleTicketInput, usersUpdateWithoutTroubleTicketInput>, usersUncheckedUpdateWithoutTroubleTicketInput>
+  }
+
+  export type rolesUpdateOneRequiredWithoutTroubleTicketNestedInput = {
+    create?: XOR<rolesCreateWithoutTroubleTicketInput, rolesUncheckedCreateWithoutTroubleTicketInput>
+    connectOrCreate?: rolesCreateOrConnectWithoutTroubleTicketInput
+    upsert?: rolesUpsertWithoutTroubleTicketInput
+    connect?: rolesWhereUniqueInput
+    update?: XOR<XOR<rolesUpdateToOneWithWhereWithoutTroubleTicketInput, rolesUpdateWithoutTroubleTicketInput>, rolesUncheckedUpdateWithoutTroubleTicketInput>
+  }
+
+  export type trouble_typeUpdateOneWithoutTicketsNestedInput = {
+    create?: XOR<trouble_typeCreateWithoutTicketsInput, trouble_typeUncheckedCreateWithoutTicketsInput>
+    connectOrCreate?: trouble_typeCreateOrConnectWithoutTicketsInput
+    upsert?: trouble_typeUpsertWithoutTicketsInput
+    disconnect?: trouble_typeWhereInput | boolean
+    delete?: trouble_typeWhereInput | boolean
+    connect?: trouble_typeWhereUniqueInput
+    update?: XOR<XOR<trouble_typeUpdateToOneWithWhereWithoutTicketsInput, trouble_typeUpdateWithoutTicketsInput>, trouble_typeUncheckedUpdateWithoutTicketsInput>
+  }
+
+  export type TroubleTicketCreateNestedManyWithoutTroubleTypeInput = {
+    create?: XOR<TroubleTicketCreateWithoutTroubleTypeInput, TroubleTicketUncheckedCreateWithoutTroubleTypeInput> | TroubleTicketCreateWithoutTroubleTypeInput[] | TroubleTicketUncheckedCreateWithoutTroubleTypeInput[]
+    connectOrCreate?: TroubleTicketCreateOrConnectWithoutTroubleTypeInput | TroubleTicketCreateOrConnectWithoutTroubleTypeInput[]
+    createMany?: TroubleTicketCreateManyTroubleTypeInputEnvelope
+    connect?: TroubleTicketWhereUniqueInput | TroubleTicketWhereUniqueInput[]
+  }
+
+  export type TroubleTicketUncheckedCreateNestedManyWithoutTroubleTypeInput = {
+    create?: XOR<TroubleTicketCreateWithoutTroubleTypeInput, TroubleTicketUncheckedCreateWithoutTroubleTypeInput> | TroubleTicketCreateWithoutTroubleTypeInput[] | TroubleTicketUncheckedCreateWithoutTroubleTypeInput[]
+    connectOrCreate?: TroubleTicketCreateOrConnectWithoutTroubleTypeInput | TroubleTicketCreateOrConnectWithoutTroubleTypeInput[]
+    createMany?: TroubleTicketCreateManyTroubleTypeInputEnvelope
+    connect?: TroubleTicketWhereUniqueInput | TroubleTicketWhereUniqueInput[]
+  }
+
+  export type TroubleTicketUpdateManyWithoutTroubleTypeNestedInput = {
+    create?: XOR<TroubleTicketCreateWithoutTroubleTypeInput, TroubleTicketUncheckedCreateWithoutTroubleTypeInput> | TroubleTicketCreateWithoutTroubleTypeInput[] | TroubleTicketUncheckedCreateWithoutTroubleTypeInput[]
+    connectOrCreate?: TroubleTicketCreateOrConnectWithoutTroubleTypeInput | TroubleTicketCreateOrConnectWithoutTroubleTypeInput[]
+    upsert?: TroubleTicketUpsertWithWhereUniqueWithoutTroubleTypeInput | TroubleTicketUpsertWithWhereUniqueWithoutTroubleTypeInput[]
+    createMany?: TroubleTicketCreateManyTroubleTypeInputEnvelope
+    set?: TroubleTicketWhereUniqueInput | TroubleTicketWhereUniqueInput[]
+    disconnect?: TroubleTicketWhereUniqueInput | TroubleTicketWhereUniqueInput[]
+    delete?: TroubleTicketWhereUniqueInput | TroubleTicketWhereUniqueInput[]
+    connect?: TroubleTicketWhereUniqueInput | TroubleTicketWhereUniqueInput[]
+    update?: TroubleTicketUpdateWithWhereUniqueWithoutTroubleTypeInput | TroubleTicketUpdateWithWhereUniqueWithoutTroubleTypeInput[]
+    updateMany?: TroubleTicketUpdateManyWithWhereWithoutTroubleTypeInput | TroubleTicketUpdateManyWithWhereWithoutTroubleTypeInput[]
+    deleteMany?: TroubleTicketScalarWhereInput | TroubleTicketScalarWhereInput[]
+  }
+
+  export type TroubleTicketUncheckedUpdateManyWithoutTroubleTypeNestedInput = {
+    create?: XOR<TroubleTicketCreateWithoutTroubleTypeInput, TroubleTicketUncheckedCreateWithoutTroubleTypeInput> | TroubleTicketCreateWithoutTroubleTypeInput[] | TroubleTicketUncheckedCreateWithoutTroubleTypeInput[]
+    connectOrCreate?: TroubleTicketCreateOrConnectWithoutTroubleTypeInput | TroubleTicketCreateOrConnectWithoutTroubleTypeInput[]
+    upsert?: TroubleTicketUpsertWithWhereUniqueWithoutTroubleTypeInput | TroubleTicketUpsertWithWhereUniqueWithoutTroubleTypeInput[]
+    createMany?: TroubleTicketCreateManyTroubleTypeInputEnvelope
+    set?: TroubleTicketWhereUniqueInput | TroubleTicketWhereUniqueInput[]
+    disconnect?: TroubleTicketWhereUniqueInput | TroubleTicketWhereUniqueInput[]
+    delete?: TroubleTicketWhereUniqueInput | TroubleTicketWhereUniqueInput[]
+    connect?: TroubleTicketWhereUniqueInput | TroubleTicketWhereUniqueInput[]
+    update?: TroubleTicketUpdateWithWhereUniqueWithoutTroubleTypeInput | TroubleTicketUpdateWithWhereUniqueWithoutTroubleTypeInput[]
+    updateMany?: TroubleTicketUpdateManyWithWhereWithoutTroubleTypeInput | TroubleTicketUpdateManyWithWhereWithoutTroubleTypeInput[]
+    deleteMany?: TroubleTicketScalarWhereInput | TroubleTicketScalarWhereInput[]
   }
 
   export type NestedStringFilter<$PrismaModel = never> = {
@@ -22871,6 +24666,21 @@ export namespace Prisma {
     _max?: NestedDateTimeFilter<$PrismaModel>
   }
 
+  export type NestedStringNullableFilter<$PrismaModel = never> = {
+    equals?: string | StringFieldRefInput<$PrismaModel> | null
+    in?: string[] | null
+    notIn?: string[] | null
+    lt?: string | StringFieldRefInput<$PrismaModel>
+    lte?: string | StringFieldRefInput<$PrismaModel>
+    gt?: string | StringFieldRefInput<$PrismaModel>
+    gte?: string | StringFieldRefInput<$PrismaModel>
+    contains?: string | StringFieldRefInput<$PrismaModel>
+    startsWith?: string | StringFieldRefInput<$PrismaModel>
+    endsWith?: string | StringFieldRefInput<$PrismaModel>
+    search?: string
+    not?: NestedStringNullableFilter<$PrismaModel> | string | null
+  }
+
   export type NestedFloatWithAggregatesFilter<$PrismaModel = never> = {
     equals?: number | FloatFieldRefInput<$PrismaModel>
     in?: number[]
@@ -22885,21 +24695,6 @@ export namespace Prisma {
     _sum?: NestedFloatFilter<$PrismaModel>
     _min?: NestedFloatFilter<$PrismaModel>
     _max?: NestedFloatFilter<$PrismaModel>
-  }
-
-  export type NestedStringNullableFilter<$PrismaModel = never> = {
-    equals?: string | StringFieldRefInput<$PrismaModel> | null
-    in?: string[] | null
-    notIn?: string[] | null
-    lt?: string | StringFieldRefInput<$PrismaModel>
-    lte?: string | StringFieldRefInput<$PrismaModel>
-    gt?: string | StringFieldRefInput<$PrismaModel>
-    gte?: string | StringFieldRefInput<$PrismaModel>
-    contains?: string | StringFieldRefInput<$PrismaModel>
-    startsWith?: string | StringFieldRefInput<$PrismaModel>
-    endsWith?: string | StringFieldRefInput<$PrismaModel>
-    search?: string
-    not?: NestedStringNullableFilter<$PrismaModel> | string | null
   }
 
   export type NestedStringNullableWithAggregatesFilter<$PrismaModel = never> = {
@@ -23034,31 +24829,97 @@ export namespace Prisma {
     _max?: NestedEnumtransactions_type_in_outFilter<$PrismaModel>
   }
 
-  export type NestedIntNullableWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: number | IntFieldRefInput<$PrismaModel> | null
-    in?: number[] | null
-    notIn?: number[] | null
-    lt?: number | IntFieldRefInput<$PrismaModel>
-    lte?: number | IntFieldRefInput<$PrismaModel>
-    gt?: number | IntFieldRefInput<$PrismaModel>
-    gte?: number | IntFieldRefInput<$PrismaModel>
-    not?: NestedIntNullableWithAggregatesFilter<$PrismaModel> | number | null
-    _count?: NestedIntNullableFilter<$PrismaModel>
-    _avg?: NestedFloatNullableFilter<$PrismaModel>
-    _sum?: NestedIntNullableFilter<$PrismaModel>
-    _min?: NestedIntNullableFilter<$PrismaModel>
-    _max?: NestedIntNullableFilter<$PrismaModel>
+  export type NestedEnumtrouble_ticket_statusFilter<$PrismaModel = never> = {
+    equals?: $Enums.trouble_ticket_status | Enumtrouble_ticket_statusFieldRefInput<$PrismaModel>
+    in?: $Enums.trouble_ticket_status[]
+    notIn?: $Enums.trouble_ticket_status[]
+    not?: NestedEnumtrouble_ticket_statusFilter<$PrismaModel> | $Enums.trouble_ticket_status
   }
 
-  export type NestedFloatNullableFilter<$PrismaModel = never> = {
-    equals?: number | FloatFieldRefInput<$PrismaModel> | null
-    in?: number[] | null
-    notIn?: number[] | null
-    lt?: number | FloatFieldRefInput<$PrismaModel>
-    lte?: number | FloatFieldRefInput<$PrismaModel>
-    gt?: number | FloatFieldRefInput<$PrismaModel>
-    gte?: number | FloatFieldRefInput<$PrismaModel>
-    not?: NestedFloatNullableFilter<$PrismaModel> | number | null
+  export type NestedEnumtrouble_ticket_statusWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.trouble_ticket_status | Enumtrouble_ticket_statusFieldRefInput<$PrismaModel>
+    in?: $Enums.trouble_ticket_status[]
+    notIn?: $Enums.trouble_ticket_status[]
+    not?: NestedEnumtrouble_ticket_statusWithAggregatesFilter<$PrismaModel> | $Enums.trouble_ticket_status
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumtrouble_ticket_statusFilter<$PrismaModel>
+    _max?: NestedEnumtrouble_ticket_statusFilter<$PrismaModel>
+  }
+
+  export type companyCreateWithoutAssetsInput = {
+    id: string
+    name: string
+    url: string
+    email: string
+    phone: string
+    logo_url?: string | null
+    npwp: string
+    address: string
+    createdAt?: Date | string
+    updatedAt: Date | string
+    description?: string | null
+    customer?: customerCreateNestedManyWithoutCompanyInput
+  }
+
+  export type companyUncheckedCreateWithoutAssetsInput = {
+    id: string
+    name: string
+    url: string
+    email: string
+    phone: string
+    logo_url?: string | null
+    npwp: string
+    address: string
+    createdAt?: Date | string
+    updatedAt: Date | string
+    description?: string | null
+    customer?: customerUncheckedCreateNestedManyWithoutCompanyInput
+  }
+
+  export type companyCreateOrConnectWithoutAssetsInput = {
+    where: companyWhereUniqueInput
+    create: XOR<companyCreateWithoutAssetsInput, companyUncheckedCreateWithoutAssetsInput>
+  }
+
+  export type companyUpsertWithoutAssetsInput = {
+    update: XOR<companyUpdateWithoutAssetsInput, companyUncheckedUpdateWithoutAssetsInput>
+    create: XOR<companyCreateWithoutAssetsInput, companyUncheckedCreateWithoutAssetsInput>
+    where?: companyWhereInput
+  }
+
+  export type companyUpdateToOneWithWhereWithoutAssetsInput = {
+    where?: companyWhereInput
+    data: XOR<companyUpdateWithoutAssetsInput, companyUncheckedUpdateWithoutAssetsInput>
+  }
+
+  export type companyUpdateWithoutAssetsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    url?: StringFieldUpdateOperationsInput | string
+    email?: StringFieldUpdateOperationsInput | string
+    phone?: StringFieldUpdateOperationsInput | string
+    logo_url?: NullableStringFieldUpdateOperationsInput | string | null
+    npwp?: StringFieldUpdateOperationsInput | string
+    address?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    customer?: customerUpdateManyWithoutCompanyNestedInput
+  }
+
+  export type companyUncheckedUpdateWithoutAssetsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    url?: StringFieldUpdateOperationsInput | string
+    email?: StringFieldUpdateOperationsInput | string
+    phone?: StringFieldUpdateOperationsInput | string
+    logo_url?: NullableStringFieldUpdateOperationsInput | string | null
+    npwp?: StringFieldUpdateOperationsInput | string
+    address?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    customer?: customerUncheckedUpdateManyWithoutCompanyNestedInput
   }
 
   export type customerCreateWithoutCompanyInput = {
@@ -23084,6 +24945,7 @@ export namespace Prisma {
     areas: areasCreateNestedOneWithoutCustomerInput
     products: productsCreateNestedOneWithoutCustomerInput
     customer_installations?: customer_installationsCreateNestedManyWithoutCustomerInput
+    TroubleTicket?: TroubleTicketCreateNestedManyWithoutCustomerInput
   }
 
   export type customerUncheckedCreateWithoutCompanyInput = {
@@ -23109,6 +24971,7 @@ export namespace Prisma {
     installation_date: Date | string
     next_payment_date: Date | string
     customer_installations?: customer_installationsUncheckedCreateNestedManyWithoutCustomerInput
+    TroubleTicket?: TroubleTicketUncheckedCreateNestedManyWithoutCustomerInput
   }
 
   export type customerCreateOrConnectWithoutCompanyInput = {
@@ -23118,6 +24981,48 @@ export namespace Prisma {
 
   export type customerCreateManyCompanyInputEnvelope = {
     data: customerCreateManyCompanyInput | customerCreateManyCompanyInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type assetsCreateWithoutCompanyInput = {
+    id: string
+    createdAt?: Date | string
+    updatedAt: Date | string
+    brand: string
+    date: string
+    description: string
+    model: string
+    price: number
+    quantity: number
+    serial_number: string
+    status: string
+    status_in_out: string
+    type: string
+  }
+
+  export type assetsUncheckedCreateWithoutCompanyInput = {
+    id: string
+    createdAt?: Date | string
+    updatedAt: Date | string
+    brand: string
+    date: string
+    description: string
+    model: string
+    price: number
+    quantity: number
+    serial_number: string
+    status: string
+    status_in_out: string
+    type: string
+  }
+
+  export type assetsCreateOrConnectWithoutCompanyInput = {
+    where: assetsWhereUniqueInput
+    create: XOR<assetsCreateWithoutCompanyInput, assetsUncheckedCreateWithoutCompanyInput>
+  }
+
+  export type assetsCreateManyCompanyInputEnvelope = {
+    data: assetsCreateManyCompanyInput | assetsCreateManyCompanyInput[]
     skipDuplicates?: boolean
   }
 
@@ -23165,6 +25070,42 @@ export namespace Prisma {
     next_payment_date?: DateTimeFilter<"customer"> | Date | string
   }
 
+  export type assetsUpsertWithWhereUniqueWithoutCompanyInput = {
+    where: assetsWhereUniqueInput
+    update: XOR<assetsUpdateWithoutCompanyInput, assetsUncheckedUpdateWithoutCompanyInput>
+    create: XOR<assetsCreateWithoutCompanyInput, assetsUncheckedCreateWithoutCompanyInput>
+  }
+
+  export type assetsUpdateWithWhereUniqueWithoutCompanyInput = {
+    where: assetsWhereUniqueInput
+    data: XOR<assetsUpdateWithoutCompanyInput, assetsUncheckedUpdateWithoutCompanyInput>
+  }
+
+  export type assetsUpdateManyWithWhereWithoutCompanyInput = {
+    where: assetsScalarWhereInput
+    data: XOR<assetsUpdateManyMutationInput, assetsUncheckedUpdateManyWithoutCompanyInput>
+  }
+
+  export type assetsScalarWhereInput = {
+    AND?: assetsScalarWhereInput | assetsScalarWhereInput[]
+    OR?: assetsScalarWhereInput[]
+    NOT?: assetsScalarWhereInput | assetsScalarWhereInput[]
+    id?: StringFilter<"assets"> | string
+    createdAt?: DateTimeFilter<"assets"> | Date | string
+    updatedAt?: DateTimeFilter<"assets"> | Date | string
+    brand?: StringFilter<"assets"> | string
+    date?: StringFilter<"assets"> | string
+    description?: StringFilter<"assets"> | string
+    model?: StringFilter<"assets"> | string
+    price?: FloatFilter<"assets"> | number
+    quantity?: FloatFilter<"assets"> | number
+    serial_number?: StringFilter<"assets"> | string
+    company_id?: StringNullableFilter<"assets"> | string | null
+    status?: StringFilter<"assets"> | string
+    status_in_out?: StringFilter<"assets"> | string
+    type?: StringFilter<"assets"> | string
+  }
+
   export type areasCreateWithoutCustomerInput = {
     id: string
     name_city: string
@@ -23200,6 +25141,7 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt: Date | string
     description?: string | null
+    assets?: assetsCreateNestedManyWithoutCompanyInput
   }
 
   export type companyUncheckedCreateWithoutCustomerInput = {
@@ -23214,6 +25156,7 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt: Date | string
     description?: string | null
+    assets?: assetsUncheckedCreateNestedManyWithoutCompanyInput
   }
 
   export type companyCreateOrConnectWithoutCustomerInput = {
@@ -23272,6 +25215,46 @@ export namespace Prisma {
     skipDuplicates?: boolean
   }
 
+  export type TroubleTicketCreateWithoutCustomerInput = {
+    id?: bigint | number
+    title: string
+    description?: string | null
+    status: $Enums.trouble_ticket_status
+    customer_note?: string | null
+    noc_note?: string | null
+    technician_note?: string | null
+    created_at?: Date | string | null
+    updated_at?: Date | string | null
+    assigned_user?: usersCreateNestedOneWithoutTroubleTicketInput
+    current_assignee: rolesCreateNestedOneWithoutTroubleTicketInput
+    troubleType?: trouble_typeCreateNestedOneWithoutTicketsInput
+  }
+
+  export type TroubleTicketUncheckedCreateWithoutCustomerInput = {
+    id?: bigint | number
+    type?: string | null
+    title: string
+    description?: string | null
+    status: $Enums.trouble_ticket_status
+    assigned_to?: string | null
+    current_assignee_role: string
+    customer_note?: string | null
+    noc_note?: string | null
+    technician_note?: string | null
+    created_at?: Date | string | null
+    updated_at?: Date | string | null
+  }
+
+  export type TroubleTicketCreateOrConnectWithoutCustomerInput = {
+    where: TroubleTicketWhereUniqueInput
+    create: XOR<TroubleTicketCreateWithoutCustomerInput, TroubleTicketUncheckedCreateWithoutCustomerInput>
+  }
+
+  export type TroubleTicketCreateManyCustomerInputEnvelope = {
+    data: TroubleTicketCreateManyCustomerInput | TroubleTicketCreateManyCustomerInput[]
+    skipDuplicates?: boolean
+  }
+
   export type areasUpsertWithoutCustomerInput = {
     update: XOR<areasUpdateWithoutCustomerInput, areasUncheckedUpdateWithoutCustomerInput>
     create: XOR<areasCreateWithoutCustomerInput, areasUncheckedCreateWithoutCustomerInput>
@@ -23324,6 +25307,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
+    assets?: assetsUpdateManyWithoutCompanyNestedInput
   }
 
   export type companyUncheckedUpdateWithoutCustomerInput = {
@@ -23338,6 +25322,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
+    assets?: assetsUncheckedUpdateManyWithoutCompanyNestedInput
   }
 
   export type productsUpsertWithoutCustomerInput = {
@@ -23398,6 +25383,41 @@ export namespace Prisma {
     updatedAt?: DateTimeFilter<"customer_installations"> | Date | string
   }
 
+  export type TroubleTicketUpsertWithWhereUniqueWithoutCustomerInput = {
+    where: TroubleTicketWhereUniqueInput
+    update: XOR<TroubleTicketUpdateWithoutCustomerInput, TroubleTicketUncheckedUpdateWithoutCustomerInput>
+    create: XOR<TroubleTicketCreateWithoutCustomerInput, TroubleTicketUncheckedCreateWithoutCustomerInput>
+  }
+
+  export type TroubleTicketUpdateWithWhereUniqueWithoutCustomerInput = {
+    where: TroubleTicketWhereUniqueInput
+    data: XOR<TroubleTicketUpdateWithoutCustomerInput, TroubleTicketUncheckedUpdateWithoutCustomerInput>
+  }
+
+  export type TroubleTicketUpdateManyWithWhereWithoutCustomerInput = {
+    where: TroubleTicketScalarWhereInput
+    data: XOR<TroubleTicketUpdateManyMutationInput, TroubleTicketUncheckedUpdateManyWithoutCustomerInput>
+  }
+
+  export type TroubleTicketScalarWhereInput = {
+    AND?: TroubleTicketScalarWhereInput | TroubleTicketScalarWhereInput[]
+    OR?: TroubleTicketScalarWhereInput[]
+    NOT?: TroubleTicketScalarWhereInput | TroubleTicketScalarWhereInput[]
+    id?: BigIntFilter<"TroubleTicket"> | bigint | number
+    customer_id?: StringFilter<"TroubleTicket"> | string
+    type?: StringNullableFilter<"TroubleTicket"> | string | null
+    title?: StringFilter<"TroubleTicket"> | string
+    description?: StringNullableFilter<"TroubleTicket"> | string | null
+    status?: Enumtrouble_ticket_statusFilter<"TroubleTicket"> | $Enums.trouble_ticket_status
+    assigned_to?: StringNullableFilter<"TroubleTicket"> | string | null
+    current_assignee_role?: StringFilter<"TroubleTicket"> | string
+    customer_note?: StringNullableFilter<"TroubleTicket"> | string | null
+    noc_note?: StringNullableFilter<"TroubleTicket"> | string | null
+    technician_note?: StringNullableFilter<"TroubleTicket"> | string | null
+    created_at?: DateTimeNullableFilter<"TroubleTicket"> | Date | string | null
+    updated_at?: DateTimeNullableFilter<"TroubleTicket"> | Date | string | null
+  }
+
   export type customerCreateWithoutAreasInput = {
     id: string
     address: string
@@ -23421,6 +25441,7 @@ export namespace Prisma {
     company: companyCreateNestedOneWithoutCustomerInput
     products: productsCreateNestedOneWithoutCustomerInput
     customer_installations?: customer_installationsCreateNestedManyWithoutCustomerInput
+    TroubleTicket?: TroubleTicketCreateNestedManyWithoutCustomerInput
   }
 
   export type customerUncheckedCreateWithoutAreasInput = {
@@ -23446,6 +25467,7 @@ export namespace Prisma {
     installation_date: Date | string
     next_payment_date: Date | string
     customer_installations?: customer_installationsUncheckedCreateNestedManyWithoutCustomerInput
+    TroubleTicket?: TroubleTicketUncheckedCreateNestedManyWithoutCustomerInput
   }
 
   export type customerCreateOrConnectWithoutAreasInput = {
@@ -23497,6 +25519,7 @@ export namespace Prisma {
     areas: areasCreateNestedOneWithoutCustomerInput
     company: companyCreateNestedOneWithoutCustomerInput
     customer_installations?: customer_installationsCreateNestedManyWithoutCustomerInput
+    TroubleTicket?: TroubleTicketCreateNestedManyWithoutCustomerInput
   }
 
   export type customerUncheckedCreateWithoutProductsInput = {
@@ -23522,6 +25545,7 @@ export namespace Prisma {
     installation_date: Date | string
     next_payment_date: Date | string
     customer_installations?: customer_installationsUncheckedCreateNestedManyWithoutCustomerInput
+    TroubleTicket?: TroubleTicketUncheckedCreateNestedManyWithoutCustomerInput
   }
 
   export type customerCreateOrConnectWithoutProductsInput = {
@@ -23583,6 +25607,7 @@ export namespace Prisma {
     name: string
     createdAt?: Date | string
     updatedAt?: Date | string | null
+    TroubleTicket?: TroubleTicketCreateNestedManyWithoutCurrent_assigneeInput
   }
 
   export type rolesUncheckedCreateWithoutUsersInput = {
@@ -23590,11 +25615,52 @@ export namespace Prisma {
     name: string
     createdAt?: Date | string
     updatedAt?: Date | string | null
+    TroubleTicket?: TroubleTicketUncheckedCreateNestedManyWithoutCurrent_assigneeInput
   }
 
   export type rolesCreateOrConnectWithoutUsersInput = {
     where: rolesWhereUniqueInput
     create: XOR<rolesCreateWithoutUsersInput, rolesUncheckedCreateWithoutUsersInput>
+  }
+
+  export type TroubleTicketCreateWithoutAssigned_userInput = {
+    id?: bigint | number
+    title: string
+    description?: string | null
+    status: $Enums.trouble_ticket_status
+    customer_note?: string | null
+    noc_note?: string | null
+    technician_note?: string | null
+    created_at?: Date | string | null
+    updated_at?: Date | string | null
+    customer: customerCreateNestedOneWithoutTroubleTicketInput
+    current_assignee: rolesCreateNestedOneWithoutTroubleTicketInput
+    troubleType?: trouble_typeCreateNestedOneWithoutTicketsInput
+  }
+
+  export type TroubleTicketUncheckedCreateWithoutAssigned_userInput = {
+    id?: bigint | number
+    customer_id: string
+    type?: string | null
+    title: string
+    description?: string | null
+    status: $Enums.trouble_ticket_status
+    current_assignee_role: string
+    customer_note?: string | null
+    noc_note?: string | null
+    technician_note?: string | null
+    created_at?: Date | string | null
+    updated_at?: Date | string | null
+  }
+
+  export type TroubleTicketCreateOrConnectWithoutAssigned_userInput = {
+    where: TroubleTicketWhereUniqueInput
+    create: XOR<TroubleTicketCreateWithoutAssigned_userInput, TroubleTicketUncheckedCreateWithoutAssigned_userInput>
+  }
+
+  export type TroubleTicketCreateManyAssigned_userInputEnvelope = {
+    data: TroubleTicketCreateManyAssigned_userInput | TroubleTicketCreateManyAssigned_userInput[]
+    skipDuplicates?: boolean
   }
 
   export type customer_installationsUpsertWithWhereUniqueWithoutUsersInput = {
@@ -23629,6 +25695,7 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    TroubleTicket?: TroubleTicketUpdateManyWithoutCurrent_assigneeNestedInput
   }
 
   export type rolesUncheckedUpdateWithoutUsersInput = {
@@ -23636,6 +25703,23 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    TroubleTicket?: TroubleTicketUncheckedUpdateManyWithoutCurrent_assigneeNestedInput
+  }
+
+  export type TroubleTicketUpsertWithWhereUniqueWithoutAssigned_userInput = {
+    where: TroubleTicketWhereUniqueInput
+    update: XOR<TroubleTicketUpdateWithoutAssigned_userInput, TroubleTicketUncheckedUpdateWithoutAssigned_userInput>
+    create: XOR<TroubleTicketCreateWithoutAssigned_userInput, TroubleTicketUncheckedCreateWithoutAssigned_userInput>
+  }
+
+  export type TroubleTicketUpdateWithWhereUniqueWithoutAssigned_userInput = {
+    where: TroubleTicketWhereUniqueInput
+    data: XOR<TroubleTicketUpdateWithoutAssigned_userInput, TroubleTicketUncheckedUpdateWithoutAssigned_userInput>
+  }
+
+  export type TroubleTicketUpdateManyWithWhereWithoutAssigned_userInput = {
+    where: TroubleTicketScalarWhereInput
+    data: XOR<TroubleTicketUpdateManyMutationInput, TroubleTicketUncheckedUpdateManyWithoutAssigned_userInput>
   }
 
   export type usersCreateWithoutRoleInput = {
@@ -23649,6 +25733,7 @@ export namespace Prisma {
     logo_url?: string | null
     phone?: string | null
     customer_installations?: customer_installationsCreateNestedManyWithoutUsersInput
+    TroubleTicket?: TroubleTicketCreateNestedManyWithoutAssigned_userInput
   }
 
   export type usersUncheckedCreateWithoutRoleInput = {
@@ -23662,6 +25747,7 @@ export namespace Prisma {
     logo_url?: string | null
     phone?: string | null
     customer_installations?: customer_installationsUncheckedCreateNestedManyWithoutUsersInput
+    TroubleTicket?: TroubleTicketUncheckedCreateNestedManyWithoutAssigned_userInput
   }
 
   export type usersCreateOrConnectWithoutRoleInput = {
@@ -23671,6 +25757,46 @@ export namespace Prisma {
 
   export type usersCreateManyRoleInputEnvelope = {
     data: usersCreateManyRoleInput | usersCreateManyRoleInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type TroubleTicketCreateWithoutCurrent_assigneeInput = {
+    id?: bigint | number
+    title: string
+    description?: string | null
+    status: $Enums.trouble_ticket_status
+    customer_note?: string | null
+    noc_note?: string | null
+    technician_note?: string | null
+    created_at?: Date | string | null
+    updated_at?: Date | string | null
+    customer: customerCreateNestedOneWithoutTroubleTicketInput
+    assigned_user?: usersCreateNestedOneWithoutTroubleTicketInput
+    troubleType?: trouble_typeCreateNestedOneWithoutTicketsInput
+  }
+
+  export type TroubleTicketUncheckedCreateWithoutCurrent_assigneeInput = {
+    id?: bigint | number
+    customer_id: string
+    type?: string | null
+    title: string
+    description?: string | null
+    status: $Enums.trouble_ticket_status
+    assigned_to?: string | null
+    customer_note?: string | null
+    noc_note?: string | null
+    technician_note?: string | null
+    created_at?: Date | string | null
+    updated_at?: Date | string | null
+  }
+
+  export type TroubleTicketCreateOrConnectWithoutCurrent_assigneeInput = {
+    where: TroubleTicketWhereUniqueInput
+    create: XOR<TroubleTicketCreateWithoutCurrent_assigneeInput, TroubleTicketUncheckedCreateWithoutCurrent_assigneeInput>
+  }
+
+  export type TroubleTicketCreateManyCurrent_assigneeInputEnvelope = {
+    data: TroubleTicketCreateManyCurrent_assigneeInput | TroubleTicketCreateManyCurrent_assigneeInput[]
     skipDuplicates?: boolean
   }
 
@@ -23706,6 +25832,22 @@ export namespace Prisma {
     phone?: StringNullableFilter<"users"> | string | null
   }
 
+  export type TroubleTicketUpsertWithWhereUniqueWithoutCurrent_assigneeInput = {
+    where: TroubleTicketWhereUniqueInput
+    update: XOR<TroubleTicketUpdateWithoutCurrent_assigneeInput, TroubleTicketUncheckedUpdateWithoutCurrent_assigneeInput>
+    create: XOR<TroubleTicketCreateWithoutCurrent_assigneeInput, TroubleTicketUncheckedCreateWithoutCurrent_assigneeInput>
+  }
+
+  export type TroubleTicketUpdateWithWhereUniqueWithoutCurrent_assigneeInput = {
+    where: TroubleTicketWhereUniqueInput
+    data: XOR<TroubleTicketUpdateWithoutCurrent_assigneeInput, TroubleTicketUncheckedUpdateWithoutCurrent_assigneeInput>
+  }
+
+  export type TroubleTicketUpdateManyWithWhereWithoutCurrent_assigneeInput = {
+    where: TroubleTicketScalarWhereInput
+    data: XOR<TroubleTicketUpdateManyMutationInput, TroubleTicketUncheckedUpdateManyWithoutCurrent_assigneeInput>
+  }
+
   export type customerCreateWithoutCustomer_installationsInput = {
     id: string
     address: string
@@ -23729,6 +25871,7 @@ export namespace Prisma {
     areas: areasCreateNestedOneWithoutCustomerInput
     company: companyCreateNestedOneWithoutCustomerInput
     products: productsCreateNestedOneWithoutCustomerInput
+    TroubleTicket?: TroubleTicketCreateNestedManyWithoutCustomerInput
   }
 
   export type customerUncheckedCreateWithoutCustomer_installationsInput = {
@@ -23754,6 +25897,7 @@ export namespace Prisma {
     updatedAt: Date | string
     installation_date: Date | string
     next_payment_date: Date | string
+    TroubleTicket?: TroubleTicketUncheckedCreateNestedManyWithoutCustomerInput
   }
 
   export type customerCreateOrConnectWithoutCustomer_installationsInput = {
@@ -23772,6 +25916,7 @@ export namespace Prisma {
     logo_url?: string | null
     phone?: string | null
     role?: rolesCreateNestedOneWithoutUsersInput
+    TroubleTicket?: TroubleTicketCreateNestedManyWithoutAssigned_userInput
   }
 
   export type usersUncheckedCreateWithoutCustomer_installationsInput = {
@@ -23785,6 +25930,7 @@ export namespace Prisma {
     role_id?: string | null
     logo_url?: string | null
     phone?: string | null
+    TroubleTicket?: TroubleTicketUncheckedCreateNestedManyWithoutAssigned_userInput
   }
 
   export type usersCreateOrConnectWithoutCustomer_installationsInput = {
@@ -23826,6 +25972,7 @@ export namespace Prisma {
     areas?: areasUpdateOneRequiredWithoutCustomerNestedInput
     company?: companyUpdateOneRequiredWithoutCustomerNestedInput
     products?: productsUpdateOneRequiredWithoutCustomerNestedInput
+    TroubleTicket?: TroubleTicketUpdateManyWithoutCustomerNestedInput
   }
 
   export type customerUncheckedUpdateWithoutCustomer_installationsInput = {
@@ -23851,6 +25998,7 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     installation_date?: DateTimeFieldUpdateOperationsInput | Date | string
     next_payment_date?: DateTimeFieldUpdateOperationsInput | Date | string
+    TroubleTicket?: TroubleTicketUncheckedUpdateManyWithoutCustomerNestedInput
   }
 
   export type usersUpsertWithoutCustomer_installationsInput = {
@@ -23875,6 +26023,7 @@ export namespace Prisma {
     logo_url?: NullableStringFieldUpdateOperationsInput | string | null
     phone?: NullableStringFieldUpdateOperationsInput | string | null
     role?: rolesUpdateOneWithoutUsersNestedInput
+    TroubleTicket?: TroubleTicketUpdateManyWithoutAssigned_userNestedInput
   }
 
   export type usersUncheckedUpdateWithoutCustomer_installationsInput = {
@@ -23888,6 +26037,7 @@ export namespace Prisma {
     role_id?: NullableStringFieldUpdateOperationsInput | string | null
     logo_url?: NullableStringFieldUpdateOperationsInput | string | null
     phone?: NullableStringFieldUpdateOperationsInput | string | null
+    TroubleTicket?: TroubleTicketUncheckedUpdateManyWithoutAssigned_userNestedInput
   }
 
   export type invoice_itemsCreateWithoutInvoicesInput = {
@@ -24006,6 +26156,338 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type customerCreateWithoutTroubleTicketInput = {
+    id: string
+    address: string
+    card_identition: string
+    email?: string | null
+    gender: string
+    ip_static: string
+    job: string
+    latitude: number
+    longitude: number
+    mac_address: string
+    name: string
+    no_identition: number
+    password: string
+    phone: string
+    type_of_service: string
+    createdAt?: Date | string
+    updatedAt: Date | string
+    installation_date: Date | string
+    next_payment_date: Date | string
+    areas: areasCreateNestedOneWithoutCustomerInput
+    company: companyCreateNestedOneWithoutCustomerInput
+    products: productsCreateNestedOneWithoutCustomerInput
+    customer_installations?: customer_installationsCreateNestedManyWithoutCustomerInput
+  }
+
+  export type customerUncheckedCreateWithoutTroubleTicketInput = {
+    id: string
+    address: string
+    area_id: string
+    card_identition: string
+    company_id: string
+    email?: string | null
+    gender: string
+    product_id: string
+    ip_static: string
+    job: string
+    latitude: number
+    longitude: number
+    mac_address: string
+    name: string
+    no_identition: number
+    password: string
+    phone: string
+    type_of_service: string
+    createdAt?: Date | string
+    updatedAt: Date | string
+    installation_date: Date | string
+    next_payment_date: Date | string
+    customer_installations?: customer_installationsUncheckedCreateNestedManyWithoutCustomerInput
+  }
+
+  export type customerCreateOrConnectWithoutTroubleTicketInput = {
+    where: customerWhereUniqueInput
+    create: XOR<customerCreateWithoutTroubleTicketInput, customerUncheckedCreateWithoutTroubleTicketInput>
+  }
+
+  export type usersCreateWithoutTroubleTicketInput = {
+    id: string
+    email: string
+    name: string
+    password: string
+    createdAt?: Date | string
+    updatedAt?: Date | string | null
+    token?: string | null
+    logo_url?: string | null
+    phone?: string | null
+    customer_installations?: customer_installationsCreateNestedManyWithoutUsersInput
+    role?: rolesCreateNestedOneWithoutUsersInput
+  }
+
+  export type usersUncheckedCreateWithoutTroubleTicketInput = {
+    id: string
+    email: string
+    name: string
+    password: string
+    createdAt?: Date | string
+    updatedAt?: Date | string | null
+    token?: string | null
+    role_id?: string | null
+    logo_url?: string | null
+    phone?: string | null
+    customer_installations?: customer_installationsUncheckedCreateNestedManyWithoutUsersInput
+  }
+
+  export type usersCreateOrConnectWithoutTroubleTicketInput = {
+    where: usersWhereUniqueInput
+    create: XOR<usersCreateWithoutTroubleTicketInput, usersUncheckedCreateWithoutTroubleTicketInput>
+  }
+
+  export type rolesCreateWithoutTroubleTicketInput = {
+    id: string
+    name: string
+    createdAt?: Date | string
+    updatedAt?: Date | string | null
+    users?: usersCreateNestedManyWithoutRoleInput
+  }
+
+  export type rolesUncheckedCreateWithoutTroubleTicketInput = {
+    id: string
+    name: string
+    createdAt?: Date | string
+    updatedAt?: Date | string | null
+    users?: usersUncheckedCreateNestedManyWithoutRoleInput
+  }
+
+  export type rolesCreateOrConnectWithoutTroubleTicketInput = {
+    where: rolesWhereUniqueInput
+    create: XOR<rolesCreateWithoutTroubleTicketInput, rolesUncheckedCreateWithoutTroubleTicketInput>
+  }
+
+  export type trouble_typeCreateWithoutTicketsInput = {
+    id: string
+    name?: string | null
+  }
+
+  export type trouble_typeUncheckedCreateWithoutTicketsInput = {
+    id: string
+    name?: string | null
+  }
+
+  export type trouble_typeCreateOrConnectWithoutTicketsInput = {
+    where: trouble_typeWhereUniqueInput
+    create: XOR<trouble_typeCreateWithoutTicketsInput, trouble_typeUncheckedCreateWithoutTicketsInput>
+  }
+
+  export type customerUpsertWithoutTroubleTicketInput = {
+    update: XOR<customerUpdateWithoutTroubleTicketInput, customerUncheckedUpdateWithoutTroubleTicketInput>
+    create: XOR<customerCreateWithoutTroubleTicketInput, customerUncheckedCreateWithoutTroubleTicketInput>
+    where?: customerWhereInput
+  }
+
+  export type customerUpdateToOneWithWhereWithoutTroubleTicketInput = {
+    where?: customerWhereInput
+    data: XOR<customerUpdateWithoutTroubleTicketInput, customerUncheckedUpdateWithoutTroubleTicketInput>
+  }
+
+  export type customerUpdateWithoutTroubleTicketInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    address?: StringFieldUpdateOperationsInput | string
+    card_identition?: StringFieldUpdateOperationsInput | string
+    email?: NullableStringFieldUpdateOperationsInput | string | null
+    gender?: StringFieldUpdateOperationsInput | string
+    ip_static?: StringFieldUpdateOperationsInput | string
+    job?: StringFieldUpdateOperationsInput | string
+    latitude?: FloatFieldUpdateOperationsInput | number
+    longitude?: FloatFieldUpdateOperationsInput | number
+    mac_address?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    no_identition?: IntFieldUpdateOperationsInput | number
+    password?: StringFieldUpdateOperationsInput | string
+    phone?: StringFieldUpdateOperationsInput | string
+    type_of_service?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    installation_date?: DateTimeFieldUpdateOperationsInput | Date | string
+    next_payment_date?: DateTimeFieldUpdateOperationsInput | Date | string
+    areas?: areasUpdateOneRequiredWithoutCustomerNestedInput
+    company?: companyUpdateOneRequiredWithoutCustomerNestedInput
+    products?: productsUpdateOneRequiredWithoutCustomerNestedInput
+    customer_installations?: customer_installationsUpdateManyWithoutCustomerNestedInput
+  }
+
+  export type customerUncheckedUpdateWithoutTroubleTicketInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    address?: StringFieldUpdateOperationsInput | string
+    area_id?: StringFieldUpdateOperationsInput | string
+    card_identition?: StringFieldUpdateOperationsInput | string
+    company_id?: StringFieldUpdateOperationsInput | string
+    email?: NullableStringFieldUpdateOperationsInput | string | null
+    gender?: StringFieldUpdateOperationsInput | string
+    product_id?: StringFieldUpdateOperationsInput | string
+    ip_static?: StringFieldUpdateOperationsInput | string
+    job?: StringFieldUpdateOperationsInput | string
+    latitude?: FloatFieldUpdateOperationsInput | number
+    longitude?: FloatFieldUpdateOperationsInput | number
+    mac_address?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    no_identition?: IntFieldUpdateOperationsInput | number
+    password?: StringFieldUpdateOperationsInput | string
+    phone?: StringFieldUpdateOperationsInput | string
+    type_of_service?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    installation_date?: DateTimeFieldUpdateOperationsInput | Date | string
+    next_payment_date?: DateTimeFieldUpdateOperationsInput | Date | string
+    customer_installations?: customer_installationsUncheckedUpdateManyWithoutCustomerNestedInput
+  }
+
+  export type usersUpsertWithoutTroubleTicketInput = {
+    update: XOR<usersUpdateWithoutTroubleTicketInput, usersUncheckedUpdateWithoutTroubleTicketInput>
+    create: XOR<usersCreateWithoutTroubleTicketInput, usersUncheckedCreateWithoutTroubleTicketInput>
+    where?: usersWhereInput
+  }
+
+  export type usersUpdateToOneWithWhereWithoutTroubleTicketInput = {
+    where?: usersWhereInput
+    data: XOR<usersUpdateWithoutTroubleTicketInput, usersUncheckedUpdateWithoutTroubleTicketInput>
+  }
+
+  export type usersUpdateWithoutTroubleTicketInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    email?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    password?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    token?: NullableStringFieldUpdateOperationsInput | string | null
+    logo_url?: NullableStringFieldUpdateOperationsInput | string | null
+    phone?: NullableStringFieldUpdateOperationsInput | string | null
+    customer_installations?: customer_installationsUpdateManyWithoutUsersNestedInput
+    role?: rolesUpdateOneWithoutUsersNestedInput
+  }
+
+  export type usersUncheckedUpdateWithoutTroubleTicketInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    email?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    password?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    token?: NullableStringFieldUpdateOperationsInput | string | null
+    role_id?: NullableStringFieldUpdateOperationsInput | string | null
+    logo_url?: NullableStringFieldUpdateOperationsInput | string | null
+    phone?: NullableStringFieldUpdateOperationsInput | string | null
+    customer_installations?: customer_installationsUncheckedUpdateManyWithoutUsersNestedInput
+  }
+
+  export type rolesUpsertWithoutTroubleTicketInput = {
+    update: XOR<rolesUpdateWithoutTroubleTicketInput, rolesUncheckedUpdateWithoutTroubleTicketInput>
+    create: XOR<rolesCreateWithoutTroubleTicketInput, rolesUncheckedCreateWithoutTroubleTicketInput>
+    where?: rolesWhereInput
+  }
+
+  export type rolesUpdateToOneWithWhereWithoutTroubleTicketInput = {
+    where?: rolesWhereInput
+    data: XOR<rolesUpdateWithoutTroubleTicketInput, rolesUncheckedUpdateWithoutTroubleTicketInput>
+  }
+
+  export type rolesUpdateWithoutTroubleTicketInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    users?: usersUpdateManyWithoutRoleNestedInput
+  }
+
+  export type rolesUncheckedUpdateWithoutTroubleTicketInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    users?: usersUncheckedUpdateManyWithoutRoleNestedInput
+  }
+
+  export type trouble_typeUpsertWithoutTicketsInput = {
+    update: XOR<trouble_typeUpdateWithoutTicketsInput, trouble_typeUncheckedUpdateWithoutTicketsInput>
+    create: XOR<trouble_typeCreateWithoutTicketsInput, trouble_typeUncheckedCreateWithoutTicketsInput>
+    where?: trouble_typeWhereInput
+  }
+
+  export type trouble_typeUpdateToOneWithWhereWithoutTicketsInput = {
+    where?: trouble_typeWhereInput
+    data: XOR<trouble_typeUpdateWithoutTicketsInput, trouble_typeUncheckedUpdateWithoutTicketsInput>
+  }
+
+  export type trouble_typeUpdateWithoutTicketsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: NullableStringFieldUpdateOperationsInput | string | null
+  }
+
+  export type trouble_typeUncheckedUpdateWithoutTicketsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: NullableStringFieldUpdateOperationsInput | string | null
+  }
+
+  export type TroubleTicketCreateWithoutTroubleTypeInput = {
+    id?: bigint | number
+    title: string
+    description?: string | null
+    status: $Enums.trouble_ticket_status
+    customer_note?: string | null
+    noc_note?: string | null
+    technician_note?: string | null
+    created_at?: Date | string | null
+    updated_at?: Date | string | null
+    customer: customerCreateNestedOneWithoutTroubleTicketInput
+    assigned_user?: usersCreateNestedOneWithoutTroubleTicketInput
+    current_assignee: rolesCreateNestedOneWithoutTroubleTicketInput
+  }
+
+  export type TroubleTicketUncheckedCreateWithoutTroubleTypeInput = {
+    id?: bigint | number
+    customer_id: string
+    title: string
+    description?: string | null
+    status: $Enums.trouble_ticket_status
+    assigned_to?: string | null
+    current_assignee_role: string
+    customer_note?: string | null
+    noc_note?: string | null
+    technician_note?: string | null
+    created_at?: Date | string | null
+    updated_at?: Date | string | null
+  }
+
+  export type TroubleTicketCreateOrConnectWithoutTroubleTypeInput = {
+    where: TroubleTicketWhereUniqueInput
+    create: XOR<TroubleTicketCreateWithoutTroubleTypeInput, TroubleTicketUncheckedCreateWithoutTroubleTypeInput>
+  }
+
+  export type TroubleTicketCreateManyTroubleTypeInputEnvelope = {
+    data: TroubleTicketCreateManyTroubleTypeInput | TroubleTicketCreateManyTroubleTypeInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type TroubleTicketUpsertWithWhereUniqueWithoutTroubleTypeInput = {
+    where: TroubleTicketWhereUniqueInput
+    update: XOR<TroubleTicketUpdateWithoutTroubleTypeInput, TroubleTicketUncheckedUpdateWithoutTroubleTypeInput>
+    create: XOR<TroubleTicketCreateWithoutTroubleTypeInput, TroubleTicketUncheckedCreateWithoutTroubleTypeInput>
+  }
+
+  export type TroubleTicketUpdateWithWhereUniqueWithoutTroubleTypeInput = {
+    where: TroubleTicketWhereUniqueInput
+    data: XOR<TroubleTicketUpdateWithoutTroubleTypeInput, TroubleTicketUncheckedUpdateWithoutTroubleTypeInput>
+  }
+
+  export type TroubleTicketUpdateManyWithWhereWithoutTroubleTypeInput = {
+    where: TroubleTicketScalarWhereInput
+    data: XOR<TroubleTicketUpdateManyMutationInput, TroubleTicketUncheckedUpdateManyWithoutTroubleTypeInput>
+  }
+
   export type customerCreateManyCompanyInput = {
     id: string
     address: string
@@ -24028,6 +26510,22 @@ export namespace Prisma {
     updatedAt: Date | string
     installation_date: Date | string
     next_payment_date: Date | string
+  }
+
+  export type assetsCreateManyCompanyInput = {
+    id: string
+    createdAt?: Date | string
+    updatedAt: Date | string
+    brand: string
+    date: string
+    description: string
+    model: string
+    price: number
+    quantity: number
+    serial_number: string
+    status: string
+    status_in_out: string
+    type: string
   }
 
   export type customerUpdateWithoutCompanyInput = {
@@ -24053,6 +26551,7 @@ export namespace Prisma {
     areas?: areasUpdateOneRequiredWithoutCustomerNestedInput
     products?: productsUpdateOneRequiredWithoutCustomerNestedInput
     customer_installations?: customer_installationsUpdateManyWithoutCustomerNestedInput
+    TroubleTicket?: TroubleTicketUpdateManyWithoutCustomerNestedInput
   }
 
   export type customerUncheckedUpdateWithoutCompanyInput = {
@@ -24078,6 +26577,7 @@ export namespace Prisma {
     installation_date?: DateTimeFieldUpdateOperationsInput | Date | string
     next_payment_date?: DateTimeFieldUpdateOperationsInput | Date | string
     customer_installations?: customer_installationsUncheckedUpdateManyWithoutCustomerNestedInput
+    TroubleTicket?: TroubleTicketUncheckedUpdateManyWithoutCustomerNestedInput
   }
 
   export type customerUncheckedUpdateManyWithoutCompanyInput = {
@@ -24104,6 +26604,54 @@ export namespace Prisma {
     next_payment_date?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type assetsUpdateWithoutCompanyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    brand?: StringFieldUpdateOperationsInput | string
+    date?: StringFieldUpdateOperationsInput | string
+    description?: StringFieldUpdateOperationsInput | string
+    model?: StringFieldUpdateOperationsInput | string
+    price?: FloatFieldUpdateOperationsInput | number
+    quantity?: FloatFieldUpdateOperationsInput | number
+    serial_number?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    status_in_out?: StringFieldUpdateOperationsInput | string
+    type?: StringFieldUpdateOperationsInput | string
+  }
+
+  export type assetsUncheckedUpdateWithoutCompanyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    brand?: StringFieldUpdateOperationsInput | string
+    date?: StringFieldUpdateOperationsInput | string
+    description?: StringFieldUpdateOperationsInput | string
+    model?: StringFieldUpdateOperationsInput | string
+    price?: FloatFieldUpdateOperationsInput | number
+    quantity?: FloatFieldUpdateOperationsInput | number
+    serial_number?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    status_in_out?: StringFieldUpdateOperationsInput | string
+    type?: StringFieldUpdateOperationsInput | string
+  }
+
+  export type assetsUncheckedUpdateManyWithoutCompanyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    brand?: StringFieldUpdateOperationsInput | string
+    date?: StringFieldUpdateOperationsInput | string
+    description?: StringFieldUpdateOperationsInput | string
+    model?: StringFieldUpdateOperationsInput | string
+    price?: FloatFieldUpdateOperationsInput | number
+    quantity?: FloatFieldUpdateOperationsInput | number
+    serial_number?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    status_in_out?: StringFieldUpdateOperationsInput | string
+    type?: StringFieldUpdateOperationsInput | string
+  }
+
   export type customer_installationsCreateManyCustomerInput = {
     id: string
     technician_id: string
@@ -24111,6 +26659,21 @@ export namespace Prisma {
     date: Date | string
     createdAt?: Date | string
     updatedAt: Date | string
+  }
+
+  export type TroubleTicketCreateManyCustomerInput = {
+    id?: bigint | number
+    type?: string | null
+    title: string
+    description?: string | null
+    status: $Enums.trouble_ticket_status
+    assigned_to?: string | null
+    current_assignee_role: string
+    customer_note?: string | null
+    noc_note?: string | null
+    technician_note?: string | null
+    created_at?: Date | string | null
+    updated_at?: Date | string | null
   }
 
   export type customer_installationsUpdateWithoutCustomerInput = {
@@ -24138,6 +26701,51 @@ export namespace Prisma {
     date?: DateTimeFieldUpdateOperationsInput | Date | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type TroubleTicketUpdateWithoutCustomerInput = {
+    id?: BigIntFieldUpdateOperationsInput | bigint | number
+    title?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    status?: Enumtrouble_ticket_statusFieldUpdateOperationsInput | $Enums.trouble_ticket_status
+    customer_note?: NullableStringFieldUpdateOperationsInput | string | null
+    noc_note?: NullableStringFieldUpdateOperationsInput | string | null
+    technician_note?: NullableStringFieldUpdateOperationsInput | string | null
+    created_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    updated_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    assigned_user?: usersUpdateOneWithoutTroubleTicketNestedInput
+    current_assignee?: rolesUpdateOneRequiredWithoutTroubleTicketNestedInput
+    troubleType?: trouble_typeUpdateOneWithoutTicketsNestedInput
+  }
+
+  export type TroubleTicketUncheckedUpdateWithoutCustomerInput = {
+    id?: BigIntFieldUpdateOperationsInput | bigint | number
+    type?: NullableStringFieldUpdateOperationsInput | string | null
+    title?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    status?: Enumtrouble_ticket_statusFieldUpdateOperationsInput | $Enums.trouble_ticket_status
+    assigned_to?: NullableStringFieldUpdateOperationsInput | string | null
+    current_assignee_role?: StringFieldUpdateOperationsInput | string
+    customer_note?: NullableStringFieldUpdateOperationsInput | string | null
+    noc_note?: NullableStringFieldUpdateOperationsInput | string | null
+    technician_note?: NullableStringFieldUpdateOperationsInput | string | null
+    created_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    updated_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  }
+
+  export type TroubleTicketUncheckedUpdateManyWithoutCustomerInput = {
+    id?: BigIntFieldUpdateOperationsInput | bigint | number
+    type?: NullableStringFieldUpdateOperationsInput | string | null
+    title?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    status?: Enumtrouble_ticket_statusFieldUpdateOperationsInput | $Enums.trouble_ticket_status
+    assigned_to?: NullableStringFieldUpdateOperationsInput | string | null
+    current_assignee_role?: StringFieldUpdateOperationsInput | string
+    customer_note?: NullableStringFieldUpdateOperationsInput | string | null
+    noc_note?: NullableStringFieldUpdateOperationsInput | string | null
+    technician_note?: NullableStringFieldUpdateOperationsInput | string | null
+    created_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    updated_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   }
 
   export type customerCreateManyAreasInput = {
@@ -24187,6 +26795,7 @@ export namespace Prisma {
     company?: companyUpdateOneRequiredWithoutCustomerNestedInput
     products?: productsUpdateOneRequiredWithoutCustomerNestedInput
     customer_installations?: customer_installationsUpdateManyWithoutCustomerNestedInput
+    TroubleTicket?: TroubleTicketUpdateManyWithoutCustomerNestedInput
   }
 
   export type customerUncheckedUpdateWithoutAreasInput = {
@@ -24212,6 +26821,7 @@ export namespace Prisma {
     installation_date?: DateTimeFieldUpdateOperationsInput | Date | string
     next_payment_date?: DateTimeFieldUpdateOperationsInput | Date | string
     customer_installations?: customer_installationsUncheckedUpdateManyWithoutCustomerNestedInput
+    TroubleTicket?: TroubleTicketUncheckedUpdateManyWithoutCustomerNestedInput
   }
 
   export type customerUncheckedUpdateManyWithoutAreasInput = {
@@ -24285,6 +26895,7 @@ export namespace Prisma {
     areas?: areasUpdateOneRequiredWithoutCustomerNestedInput
     company?: companyUpdateOneRequiredWithoutCustomerNestedInput
     customer_installations?: customer_installationsUpdateManyWithoutCustomerNestedInput
+    TroubleTicket?: TroubleTicketUpdateManyWithoutCustomerNestedInput
   }
 
   export type customerUncheckedUpdateWithoutProductsInput = {
@@ -24310,6 +26921,7 @@ export namespace Prisma {
     installation_date?: DateTimeFieldUpdateOperationsInput | Date | string
     next_payment_date?: DateTimeFieldUpdateOperationsInput | Date | string
     customer_installations?: customer_installationsUncheckedUpdateManyWithoutCustomerNestedInput
+    TroubleTicket?: TroubleTicketUncheckedUpdateManyWithoutCustomerNestedInput
   }
 
   export type customerUncheckedUpdateManyWithoutProductsInput = {
@@ -24345,6 +26957,21 @@ export namespace Prisma {
     updatedAt: Date | string
   }
 
+  export type TroubleTicketCreateManyAssigned_userInput = {
+    id?: bigint | number
+    customer_id: string
+    type?: string | null
+    title: string
+    description?: string | null
+    status: $Enums.trouble_ticket_status
+    current_assignee_role: string
+    customer_note?: string | null
+    noc_note?: string | null
+    technician_note?: string | null
+    created_at?: Date | string | null
+    updated_at?: Date | string | null
+  }
+
   export type customer_installationsUpdateWithoutUsersInput = {
     id?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
@@ -24372,6 +26999,51 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type TroubleTicketUpdateWithoutAssigned_userInput = {
+    id?: BigIntFieldUpdateOperationsInput | bigint | number
+    title?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    status?: Enumtrouble_ticket_statusFieldUpdateOperationsInput | $Enums.trouble_ticket_status
+    customer_note?: NullableStringFieldUpdateOperationsInput | string | null
+    noc_note?: NullableStringFieldUpdateOperationsInput | string | null
+    technician_note?: NullableStringFieldUpdateOperationsInput | string | null
+    created_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    updated_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    customer?: customerUpdateOneRequiredWithoutTroubleTicketNestedInput
+    current_assignee?: rolesUpdateOneRequiredWithoutTroubleTicketNestedInput
+    troubleType?: trouble_typeUpdateOneWithoutTicketsNestedInput
+  }
+
+  export type TroubleTicketUncheckedUpdateWithoutAssigned_userInput = {
+    id?: BigIntFieldUpdateOperationsInput | bigint | number
+    customer_id?: StringFieldUpdateOperationsInput | string
+    type?: NullableStringFieldUpdateOperationsInput | string | null
+    title?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    status?: Enumtrouble_ticket_statusFieldUpdateOperationsInput | $Enums.trouble_ticket_status
+    current_assignee_role?: StringFieldUpdateOperationsInput | string
+    customer_note?: NullableStringFieldUpdateOperationsInput | string | null
+    noc_note?: NullableStringFieldUpdateOperationsInput | string | null
+    technician_note?: NullableStringFieldUpdateOperationsInput | string | null
+    created_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    updated_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  }
+
+  export type TroubleTicketUncheckedUpdateManyWithoutAssigned_userInput = {
+    id?: BigIntFieldUpdateOperationsInput | bigint | number
+    customer_id?: StringFieldUpdateOperationsInput | string
+    type?: NullableStringFieldUpdateOperationsInput | string | null
+    title?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    status?: Enumtrouble_ticket_statusFieldUpdateOperationsInput | $Enums.trouble_ticket_status
+    current_assignee_role?: StringFieldUpdateOperationsInput | string
+    customer_note?: NullableStringFieldUpdateOperationsInput | string | null
+    noc_note?: NullableStringFieldUpdateOperationsInput | string | null
+    technician_note?: NullableStringFieldUpdateOperationsInput | string | null
+    created_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    updated_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  }
+
   export type usersCreateManyRoleInput = {
     id: string
     email: string
@@ -24382,6 +27054,21 @@ export namespace Prisma {
     token?: string | null
     logo_url?: string | null
     phone?: string | null
+  }
+
+  export type TroubleTicketCreateManyCurrent_assigneeInput = {
+    id?: bigint | number
+    customer_id: string
+    type?: string | null
+    title: string
+    description?: string | null
+    status: $Enums.trouble_ticket_status
+    assigned_to?: string | null
+    customer_note?: string | null
+    noc_note?: string | null
+    technician_note?: string | null
+    created_at?: Date | string | null
+    updated_at?: Date | string | null
   }
 
   export type usersUpdateWithoutRoleInput = {
@@ -24395,6 +27082,7 @@ export namespace Prisma {
     logo_url?: NullableStringFieldUpdateOperationsInput | string | null
     phone?: NullableStringFieldUpdateOperationsInput | string | null
     customer_installations?: customer_installationsUpdateManyWithoutUsersNestedInput
+    TroubleTicket?: TroubleTicketUpdateManyWithoutAssigned_userNestedInput
   }
 
   export type usersUncheckedUpdateWithoutRoleInput = {
@@ -24408,6 +27096,7 @@ export namespace Prisma {
     logo_url?: NullableStringFieldUpdateOperationsInput | string | null
     phone?: NullableStringFieldUpdateOperationsInput | string | null
     customer_installations?: customer_installationsUncheckedUpdateManyWithoutUsersNestedInput
+    TroubleTicket?: TroubleTicketUncheckedUpdateManyWithoutAssigned_userNestedInput
   }
 
   export type usersUncheckedUpdateManyWithoutRoleInput = {
@@ -24420,6 +27109,51 @@ export namespace Prisma {
     token?: NullableStringFieldUpdateOperationsInput | string | null
     logo_url?: NullableStringFieldUpdateOperationsInput | string | null
     phone?: NullableStringFieldUpdateOperationsInput | string | null
+  }
+
+  export type TroubleTicketUpdateWithoutCurrent_assigneeInput = {
+    id?: BigIntFieldUpdateOperationsInput | bigint | number
+    title?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    status?: Enumtrouble_ticket_statusFieldUpdateOperationsInput | $Enums.trouble_ticket_status
+    customer_note?: NullableStringFieldUpdateOperationsInput | string | null
+    noc_note?: NullableStringFieldUpdateOperationsInput | string | null
+    technician_note?: NullableStringFieldUpdateOperationsInput | string | null
+    created_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    updated_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    customer?: customerUpdateOneRequiredWithoutTroubleTicketNestedInput
+    assigned_user?: usersUpdateOneWithoutTroubleTicketNestedInput
+    troubleType?: trouble_typeUpdateOneWithoutTicketsNestedInput
+  }
+
+  export type TroubleTicketUncheckedUpdateWithoutCurrent_assigneeInput = {
+    id?: BigIntFieldUpdateOperationsInput | bigint | number
+    customer_id?: StringFieldUpdateOperationsInput | string
+    type?: NullableStringFieldUpdateOperationsInput | string | null
+    title?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    status?: Enumtrouble_ticket_statusFieldUpdateOperationsInput | $Enums.trouble_ticket_status
+    assigned_to?: NullableStringFieldUpdateOperationsInput | string | null
+    customer_note?: NullableStringFieldUpdateOperationsInput | string | null
+    noc_note?: NullableStringFieldUpdateOperationsInput | string | null
+    technician_note?: NullableStringFieldUpdateOperationsInput | string | null
+    created_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    updated_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  }
+
+  export type TroubleTicketUncheckedUpdateManyWithoutCurrent_assigneeInput = {
+    id?: BigIntFieldUpdateOperationsInput | bigint | number
+    customer_id?: StringFieldUpdateOperationsInput | string
+    type?: NullableStringFieldUpdateOperationsInput | string | null
+    title?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    status?: Enumtrouble_ticket_statusFieldUpdateOperationsInput | $Enums.trouble_ticket_status
+    assigned_to?: NullableStringFieldUpdateOperationsInput | string | null
+    customer_note?: NullableStringFieldUpdateOperationsInput | string | null
+    noc_note?: NullableStringFieldUpdateOperationsInput | string | null
+    technician_note?: NullableStringFieldUpdateOperationsInput | string | null
+    created_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    updated_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   }
 
   export type invoice_itemsCreateManyInvoicesInput = {
@@ -24460,6 +27194,66 @@ export namespace Prisma {
     price?: IntFieldUpdateOperationsInput | number
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type TroubleTicketCreateManyTroubleTypeInput = {
+    id?: bigint | number
+    customer_id: string
+    title: string
+    description?: string | null
+    status: $Enums.trouble_ticket_status
+    assigned_to?: string | null
+    current_assignee_role: string
+    customer_note?: string | null
+    noc_note?: string | null
+    technician_note?: string | null
+    created_at?: Date | string | null
+    updated_at?: Date | string | null
+  }
+
+  export type TroubleTicketUpdateWithoutTroubleTypeInput = {
+    id?: BigIntFieldUpdateOperationsInput | bigint | number
+    title?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    status?: Enumtrouble_ticket_statusFieldUpdateOperationsInput | $Enums.trouble_ticket_status
+    customer_note?: NullableStringFieldUpdateOperationsInput | string | null
+    noc_note?: NullableStringFieldUpdateOperationsInput | string | null
+    technician_note?: NullableStringFieldUpdateOperationsInput | string | null
+    created_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    updated_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    customer?: customerUpdateOneRequiredWithoutTroubleTicketNestedInput
+    assigned_user?: usersUpdateOneWithoutTroubleTicketNestedInput
+    current_assignee?: rolesUpdateOneRequiredWithoutTroubleTicketNestedInput
+  }
+
+  export type TroubleTicketUncheckedUpdateWithoutTroubleTypeInput = {
+    id?: BigIntFieldUpdateOperationsInput | bigint | number
+    customer_id?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    status?: Enumtrouble_ticket_statusFieldUpdateOperationsInput | $Enums.trouble_ticket_status
+    assigned_to?: NullableStringFieldUpdateOperationsInput | string | null
+    current_assignee_role?: StringFieldUpdateOperationsInput | string
+    customer_note?: NullableStringFieldUpdateOperationsInput | string | null
+    noc_note?: NullableStringFieldUpdateOperationsInput | string | null
+    technician_note?: NullableStringFieldUpdateOperationsInput | string | null
+    created_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    updated_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  }
+
+  export type TroubleTicketUncheckedUpdateManyWithoutTroubleTypeInput = {
+    id?: BigIntFieldUpdateOperationsInput | bigint | number
+    customer_id?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    status?: Enumtrouble_ticket_statusFieldUpdateOperationsInput | $Enums.trouble_ticket_status
+    assigned_to?: NullableStringFieldUpdateOperationsInput | string | null
+    current_assignee_role?: StringFieldUpdateOperationsInput | string
+    customer_note?: NullableStringFieldUpdateOperationsInput | string | null
+    noc_note?: NullableStringFieldUpdateOperationsInput | string | null
+    technician_note?: NullableStringFieldUpdateOperationsInput | string | null
+    created_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    updated_at?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   }
 
 

@@ -135,12 +135,11 @@ exports.Prisma.AssetsScalarFieldEnum = {
   brand: 'brand',
   date: 'date',
   description: 'description',
-  mac_address: 'mac_address',
   model: 'model',
   price: 'price',
   quantity: 'quantity',
   serial_number: 'serial_number',
-  site: 'site',
+  company_id: 'company_id',
   status: 'status',
   status_in_out: 'status_in_out',
   type: 'type'
@@ -309,6 +308,11 @@ exports.Prisma.TroubleTicketScalarFieldEnum = {
   updated_at: 'updated_at'
 };
 
+exports.Prisma.Trouble_typeScalarFieldEnum = {
+  id: 'id',
+  name: 'name'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -319,23 +323,22 @@ exports.Prisma.accountsOrderByRelevanceFieldEnum = {
   name: 'name'
 };
 
+exports.Prisma.NullsOrder = {
+  first: 'first',
+  last: 'last'
+};
+
 exports.Prisma.assetsOrderByRelevanceFieldEnum = {
   id: 'id',
   brand: 'brand',
   date: 'date',
   description: 'description',
-  mac_address: 'mac_address',
   model: 'model',
   serial_number: 'serial_number',
-  site: 'site',
+  company_id: 'company_id',
   status: 'status',
   status_in_out: 'status_in_out',
   type: 'type'
-};
-
-exports.Prisma.NullsOrder = {
-  first: 'first',
-  last: 'last'
 };
 
 exports.Prisma.companyOrderByRelevanceFieldEnum = {
@@ -444,13 +447,20 @@ exports.Prisma.transactionsOrderByRelevanceFieldEnum = {
 };
 
 exports.Prisma.TroubleTicketOrderByRelevanceFieldEnum = {
+  customer_id: 'customer_id',
+  type: 'type',
   title: 'title',
   description: 'description',
-  status: 'status',
+  assigned_to: 'assigned_to',
   current_assignee_role: 'current_assignee_role',
   customer_note: 'customer_note',
   noc_note: 'noc_note',
   technician_note: 'technician_note'
+};
+
+exports.Prisma.trouble_typeOrderByRelevanceFieldEnum = {
+  id: 'id',
+  name: 'name'
 };
 exports.invoices_status = exports.$Enums.invoices_status = {
   paid: 'paid',
@@ -466,6 +476,12 @@ exports.transactions_type_cash = exports.$Enums.transactions_type_cash = {
 exports.transactions_type_in_out = exports.$Enums.transactions_type_in_out = {
   debit: 'debit',
   credit: 'credit'
+};
+
+exports.trouble_ticket_status = exports.$Enums.trouble_ticket_status = {
+  finished: 'finished',
+  ongoing: 'ongoing',
+  unfinished: 'unfinished'
 };
 
 exports.Prisma.ModelName = {
@@ -484,7 +500,8 @@ exports.Prisma.ModelName = {
   invoices: 'invoices',
   invoice_items: 'invoice_items',
   transactions: 'transactions',
-  TroubleTicket: 'TroubleTicket'
+  TroubleTicket: 'TroubleTicket',
+  trouble_type: 'trouble_type'
 };
 
 /**

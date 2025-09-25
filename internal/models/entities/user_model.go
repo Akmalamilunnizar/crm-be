@@ -68,9 +68,9 @@ type Asset struct {
 	Brand        string        `json:"brand" validate:"required"`
 	Model        string        `json:"model" validate:"required"`
 	SerialNumber string        `json:"serial_number" validate:"required"`
-	MacAddress   string        `json:"mac_address" validate:"required"`
 	Date         string        `json:"date" validate:"required"`
-	Site         string        `json:"site"`
+	CompanyID    *string       `json:"company_id" gorm:"type:varchar(191)"`
+	Company      *Company      `json:"company,omitempty" gorm:"foreignKey:CompanyID;references:ID"`
 	Quantity     int64         `json:"quantity" validate:"required"`
 	Status       string        `json:"status" `
 	Price        int64         `json:"price" validate:"required"`
@@ -399,6 +399,7 @@ func (u *Invoice) BeforeCreate(tx *gorm.DB) error {
 		u.ID = uuid.New().String()
 		u.Status = InvoiceStatusUnpaid
 	}
+
 	return nil
 }
 

@@ -25,7 +25,7 @@ func NewAdminAssetRepository(db *gorm.DB) *AdminAssetRepositoryStruct {
 
 func (r AdminAssetRepositoryStruct) FindAdminAssetRepository() ([]entities.Asset, error) {
 	assets := []entities.Asset{}
-	tx := r.db.Find(&assets)
+	tx := r.db.Preload("Company").Find(&assets)
 	if tx.Error != nil {
 		return assets, nil
 	}
@@ -45,7 +45,7 @@ func (r AdminAssetRepositoryStruct) CreateAdminAssetRepository(request CreateAdm
 }
 func (r AdminAssetRepositoryStruct) FindByIdAdminAssetRepository(request IdAdminAssetRequest) (entities.Asset, error) {
 	asset := entities.Asset{}
-	tx := r.db.First(&asset, "id = ?", request.Id)
+	tx := r.db.Preload("Company").First(&asset, "id = ?", request.Id)
 	if tx.Error != nil {
 		return asset, tx.Error
 	}

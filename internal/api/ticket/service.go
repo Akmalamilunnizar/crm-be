@@ -78,15 +78,15 @@ func (s *Service) SendToNOC(id uint64, note string, imageFilename *string) (*ent
 		return nil, err
 	}
 	t.Status = "ongoing"
-	// Look up NOC role ID dynamically
+	// Look up NOC role ID dynamically (NOC now uses CUSTOMER_SERVICE role)
 	nocRoleName := string(entities.AssignNOC)
-	log.Printf("SendToNOC: Looking up role ID for name: '%s'", nocRoleName)
+	log.Printf("SendToNOC: Looking up role ID for name: '%s' (NOC now uses CUSTOMER_SERVICE)", nocRoleName)
 	nocRoleID, err := s.repo.RoleIDByName(nocRoleName)
 	if err != nil {
 		log.Printf("SendToNOC: Error looking up NOC role ID: %v", err)
 		return nil, err
 	}
-	log.Printf("SendToNOC: Found NOC role ID: '%s'", nocRoleID)
+	log.Printf("SendToNOC: Found NOC role ID: '%s' (using CUSTOMER_SERVICE role)", nocRoleID)
 	if nocRoleID == "" {
 		return nil, fmt.Errorf("noc role ID is empty for role name: %s", nocRoleName)
 	}

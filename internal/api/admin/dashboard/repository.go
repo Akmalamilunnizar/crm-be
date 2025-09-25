@@ -98,11 +98,12 @@ func (r AdminDashboardRepositoryStruct) CardPacketPopular() (map[string]interfac
 	}
 
 	var results []PacketCount
+	// Join products through network_devices as product is linked to device, not directly on customer
 	err := r.db.
-		Model(&entities.Customer{}).
-		Joins("JOIN products ON products.id = customer.product_id").
+		Model(&entities.NetworkDevice{}).
+		Joins("JOIN products ON products.id = network_devices.product_id").
 		Select("COUNT(*) as count, products.name").
-		Group("products.id").
+		Group("products.id, products.name").
 		Scan(&results).Error
 	if err != nil {
 		return nil, err
@@ -283,9 +284,20 @@ func (r AdminDashboardRepositoryStruct) GetDashboardStats() (map[string]interfac
 }
 
 func (r AdminDashboardRepositoryStruct) GetRecentInvoices() ([]map[string]interface{}, error) {
+	// First, let's check if invoices table exists and has data
+	var totalInvoices int64
+	if err := r.db.Model(&entities.Invoice{}).Count(&totalInvoices).Error; err != nil {
+		return nil, err
+	}
+
+	// If no invoices, return empty array instead of error
+	if totalInvoices == 0 {
+		return []map[string]interface{}{}, nil
+	}
+
 	var invoices []entities.Invoice
 	if err := r.db.Preload("Customer").
-		Order("created_at DESC").
+		Order("createdAt DESC").
 		Limit(10).
 		Find(&invoices).Error; err != nil {
 		return nil, err
@@ -293,12 +305,17 @@ func (r AdminDashboardRepositoryStruct) GetRecentInvoices() ([]map[string]interf
 
 	var result []map[string]interface{}
 	for _, invoice := range invoices {
+		customerName := ""
+		if invoice.Customer.Name != "" {
+			customerName = invoice.Customer.Name
+		}
+
 		result = append(result, map[string]interface{}{
 			"id":         invoice.ID,
 			"invoice_no": invoice.ID, // Using ID as invoice number since InvoiceNo field doesn't exist
 			"amount":     invoice.Amount,
 			"status":     invoice.Status,
-			"customer":   invoice.Customer.Name,
+			"customer":   customerName,
 			"created_at": invoice.CreatedAt,
 		})
 	}
@@ -307,6 +324,17 @@ func (r AdminDashboardRepositoryStruct) GetRecentInvoices() ([]map[string]interf
 }
 
 func (r AdminDashboardRepositoryStruct) GetRecentTransactions() ([]map[string]interface{}, error) {
+	// First, let's check if transactions table exists and has data
+	var totalTransactions int64
+	if err := r.db.Model(&entities.Transaction{}).Count(&totalTransactions).Error; err != nil {
+		return nil, err
+	}
+
+	// If no transactions, return empty array instead of error
+	if totalTransactions == 0 {
+		return []map[string]interface{}{}, nil
+	}
+
 	var transactions []entities.Transaction
 	if err := r.db.Order("date DESC").
 		Limit(10).
@@ -330,12 +358,26 @@ func (r AdminDashboardRepositoryStruct) GetRecentTransactions() ([]map[string]in
 }
 
 func (r AdminDashboardRepositoryStruct) GetCustomerGrowth() (map[string]interface{}, error) {
+	// First, let's check if customers table exists and has data
+	var totalCustomers int64
+	if err := r.db.Model(&entities.Customer{}).Count(&totalCustomers).Error; err != nil {
+		return nil, err
+	}
+
+	// If no customers, return empty data instead of error
+	if totalCustomers == 0 {
+		data := map[string]interface{}{
+			"customer_growth": []map[string]interface{}{},
+		}
+		return data, nil
+	}
+
 	var results []DailyCount
 	err := r.db.
 		Model(&entities.Customer{}).
-		Select("DATE(created_at) as date, COUNT(*) as count").
-		Where("created_at >= ?", time.Now().AddDate(0, 0, -29).Truncate(24*time.Hour)).
-		Group("DATE(created_at)").
+		Select("DATE(createdAt) as date, COUNT(*) as count").
+		Where("createdAt >= ?", time.Now().AddDate(0, -3, 0).Truncate(24*time.Hour)). // Changed to 3 months to capture existing customers
+		Group("DATE(createdAt)").
 		Order("date").
 		Scan(&results).Error
 	if err != nil {
@@ -348,9 +390,9 @@ func (r AdminDashboardRepositoryStruct) GetCustomerGrowth() (map[string]interfac
 		dateMap[r.Date.Format("2006-01-02")] = r.Count
 	}
 
-	// Build 30-day graph data
+	// Build 90-day graph data (3 months)
 	graphData := make([]map[string]interface{}, 0)
-	for i := 29; i >= 0; i-- {
+	for i := 89; i >= 0; i-- {
 		date := time.Now().AddDate(0, 0, -i).Format("2006-01-02")
 		graphData = append(graphData, map[string]interface{}{
 			"date":  date,
@@ -366,11 +408,25 @@ func (r AdminDashboardRepositoryStruct) GetCustomerGrowth() (map[string]interfac
 }
 
 func (r AdminDashboardRepositoryStruct) GetRevenueChart() (map[string]interface{}, error) {
+	// First, check if there are any transactions
+	var totalTransactions int64
+	if err := r.db.Model(&entities.Transaction{}).Where("type_in_out = ?", entities.TransactionsTypeInOutIn).Count(&totalTransactions).Error; err != nil {
+		return nil, err
+	}
+
+	// If no transactions, return empty data
+	if totalTransactions == 0 {
+		data := map[string]interface{}{
+			"revenue_chart": []map[string]interface{}{},
+		}
+		return data, nil
+	}
+
 	var results []DailyCount
 	err := r.db.
 		Model(&entities.Transaction{}).
 		Select("DATE(date) as date, SUM(amount) as count").
-		Where("type_in_out = ? AND date >= ?", entities.TransactionsTypeInOutIn, time.Now().AddDate(0, 0, -29).Truncate(24*time.Hour)).
+		Where("type_in_out = ? AND date >= ?", entities.TransactionsTypeInOutIn, time.Now().AddDate(0, -3, 0).Truncate(24*time.Hour)). // Changed to 3 months
 		Group("DATE(date)").
 		Order("date").
 		Scan(&results).Error
@@ -384,9 +440,9 @@ func (r AdminDashboardRepositoryStruct) GetRevenueChart() (map[string]interface{
 		dateMap[r.Date.Format("2006-01-02")] = r.Count
 	}
 
-	// Build 30-day graph data
+	// Build 90-day graph data (3 months)
 	graphData := make([]map[string]interface{}, 0)
-	for i := 29; i >= 0; i-- {
+	for i := 89; i >= 0; i-- {
 		date := time.Now().AddDate(0, 0, -i).Format("2006-01-02")
 		graphData = append(graphData, map[string]interface{}{
 			"date":   date,

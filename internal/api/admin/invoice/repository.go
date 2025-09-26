@@ -106,6 +106,41 @@ func (r AdminInvoiceRepositoryStruct) CreateAdminInvoiceRepository(request Creat
 		Status:     entities.InvoiceStatusUnpaid, // Set default status
 	}
 
+	// Set invoice date to today and derive due date based on the first item's quantity interpreted as number of months
+	// If qty is 0 or items are empty, default to 1 month
+	computeClampedMonthlyDate := func(base time.Time, addMonths int, preferredDay int) time.Time {
+		// Move to the first day of the target month, then clamp the day
+		year, month, _ := base.Date()
+		// Calculate target year/month with carry
+		targetMonthIndex := int(month) - 1 + addMonths
+		targetYear := year + targetMonthIndex/12
+		targetMonth := time.Month(targetMonthIndex%12 + 1)
+		// Last day of target month
+		firstOfTarget := time.Date(targetYear, targetMonth, 1, base.Hour(), base.Minute(), base.Second(), base.Nanosecond(), base.Location())
+		firstOfNext := firstOfTarget.AddDate(0, 1, 0)
+		lastDay := firstOfNext.AddDate(0, 0, -1).Day()
+		day := preferredDay
+		if day > lastDay {
+			day = lastDay
+		}
+		return time.Date(targetYear, targetMonth, day, base.Hour(), base.Minute(), base.Second(), base.Nanosecond(), base.Location())
+	}
+
+	now := time.Now()
+	invoiceDate := now
+	invoice.InvoiceDate = &invoiceDate
+
+	if len(request.InvoiceItems) > 0 {
+		months := int(request.InvoiceItems[0].Qty)
+		if months <= 0 {
+			months = 1
+		}
+		// Use invoice date as the base, keep the same day number when adding months
+		preferredDay := now.Day()
+		due := computeClampedMonthlyDate(now, months, preferredDay)
+		invoice.DueDate = &due
+	}
+
 	// Convert request invoice items to entity invoice items
 	var invoiceItems []entities.InvoiceItems
 	for _, reqItem := range request.InvoiceItems {

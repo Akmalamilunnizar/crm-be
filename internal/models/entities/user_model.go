@@ -206,7 +206,7 @@ type Products struct {
 	Price       int64     `json:"price"` // BigInt mapped to int64
 	Description string    `json:"description"`
 	CreatedAt   time.Time `json:"createdAt" gorm:"default:current_timestamp; column:createdAt"`
-	UpdatedAt   time.Time `json:"updatedAt" gorm:"column:updatedAt" omitempty"`
+	UpdatedAt   time.Time `json:"updatedAt" gorm:"column:updatedAt"`
 }
 
 func (u *Products) TableName() string {
@@ -314,7 +314,7 @@ type User struct {
 	Token     string    `json:"token" gorm:"default:null"`
 	Phone     string    `json:"phone"`
 	CreatedAt time.Time `json:"createdAt" gorm:"default:current_timestamp; column:createdAt"`
-	UpdatedAt time.Time `json:"updatedAt" gorm:"column:updatedAt" omitempty"`
+	UpdatedAt time.Time `json:"updatedAt" gorm:"column:updatedAt"`
 	Log       []Log     `json:"log" gorm:"foreignKey:UserID"`
 }
 
@@ -332,7 +332,7 @@ type Role struct {
 	ID        string    `json:"id" gorm:"primaryKey"`
 	Name      string    `json:"name" gorm:"default:null"`
 	CreatedAt time.Time `json:"createdAt" gorm:"default:current_timestamp; column:createdAt"`
-	UpdatedAt time.Time `json:"updatedAt" gorm:"column:updatedAt" omitempty"`
+	UpdatedAt time.Time `json:"updatedAt" gorm:"column:updatedAt"`
 }
 
 func (u *Role) TableName() string {
@@ -382,13 +382,14 @@ type Invoice struct {
 	Customer     Customer       `gorm:"foreignKey:CustomerID;references:id;constraint:OnUpdate:RESTRICT" json:"customer"`
 	Link         string         `gorm:"column:link;type:varchar;not null" json:"link"`
 	Status       InvoiceStatus  `gorm:"column:status;type:varchar;not null" json:"status"`
+	InvoiceDate  *time.Time     `gorm:"column:invoice_date;type:date" json:"invoice_date"`
 	DueDate      *time.Time     `gorm:"column:due_date;type:date" json:"due_date"`
 	PdfViewed    bool           `gorm:"column:pdf_viewed;type:boolean;default:false" json:"pdf_viewed"`
 	PdfViewedAt  *time.Time     `gorm:"column:pdf_viewed_at;type:timestamp" json:"pdf_viewed_at"`
 	CreatedAt    time.Time      `gorm:"column:createdAt;default:current_timestamp" json:"created_at"`
 	UpdatedAt    time.Time      `gorm:"column:updatedAt;not null" json:"updated_at"`
 	InvoiceItems []InvoiceItems `gorm:"foreignKey:InvoiceID;constraint:OnUpdate:RESTRICT" json:"invoice_items"`
-	Transaction  Transaction    `gorm:"foreignKey:invoice_id;constraint:OnUpdate:RESTRICT" json:"transaction""`
+	Transaction  Transaction    `gorm:"foreignKey:invoice_id;constraint:OnUpdate:RESTRICT" json:"transaction"`
 }
 
 func (Invoice) TableName() string {

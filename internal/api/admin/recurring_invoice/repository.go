@@ -3,6 +3,7 @@ package recurring_invoice
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"time"
 
 	"gorm.io/gorm"
@@ -31,6 +32,22 @@ type AdminRecurringInvoiceRepositoryStruct struct {
 
 func NewAdminRecurringInvoiceRepository(db *gorm.DB) *AdminRecurringInvoiceRepositoryStruct {
 	return &AdminRecurringInvoiceRepositoryStruct{db}
+}
+
+// clampToMonth moves base by addMonths and returns a date at the same time-of-day
+// with the preferred day-of-month, clamped to the last valid day of the target month.
+func clampToMonth(base time.Time, addMonths int, preferredDay int) time.Time {
+	y, m, _ := base.Date()
+	idx := int(m) - 1 + addMonths
+	ty := y + idx/12
+	tm := time.Month(idx%12 + 1)
+	first := time.Date(ty, tm, 1, base.Hour(), base.Minute(), base.Second(), base.Nanosecond(), base.Location())
+	last := first.AddDate(0, 1, -1).Day()
+	d := preferredDay
+	if d > last {
+		d = last
+	}
+	return time.Date(ty, tm, d, base.Hour(), base.Minute(), base.Second(), base.Nanosecond(), base.Location())
 }
 
 func (r AdminRecurringInvoiceRepositoryStruct) FindAllRecurringInvoices() ([]entities.RecurringInvoice, error) {
@@ -220,28 +237,65 @@ func (r AdminRecurringInvoiceRepositoryStruct) GenerateInvoiceFromRecurring(requ
 			return fmt.Errorf("failed to parse invoice items: %v", err)
 		}
 
-		// Compute dates
+		// Compute dates with end-of-month clamping
 		invoiceDate := request.InvoiceDate
 		dueDate := request.DueDate
+		log.Printf("[recurring-gen] request id=%s invoice_date=%v due_date=%v", request.Id, invoiceDate, dueDate)
 		if invoiceDate == nil {
 			invoiceDate = &recurringInvoice.NextInvoiceDate
 		}
+
+		// Helper to clamp preferred day within target month
+		clampMonthly := clampToMonth
+
 		if dueDate == nil {
-			// preserve original delta
-			deltaDays := int(recurringInvoice.DueDate.Sub(recurringInvoice.InvoiceDate).Hours()/24 + 0.5)
-			dv := invoiceDate.AddDate(0, 0, deltaDays)
+			// Due date should be next period relative to invoice_date
+			// (monthly/quarterly/yearly) and clamped to the last valid day
+			// using the preferred day from the template's original due date.
+			monthsToAdd := 1
+			switch recurringInvoice.Frequency {
+			case entities.RecurringInvoiceFrequencyQuarterly:
+				monthsToAdd = 3
+			case entities.RecurringInvoiceFrequencyYearly:
+				monthsToAdd = 12
+			default:
+				monthsToAdd = 1
+			}
+			// Prefer end-of-month ordering: for day >= 30, request 31 then clamp.
+			preferredDay := invoiceDate.Day()
+			if preferredDay >= 30 {
+				preferredDay = 31
+			}
+			dv := clampMonthly(*invoiceDate, monthsToAdd, preferredDay)
 			dueDate = &dv
 		}
+		log.Printf("[recurring-gen] computed dates id=%s invoice_date=%s due_date=%s (freq=%s preferredDay=%d)", request.Id, invoiceDate.Format("2006-01-02"), dueDate.Format("2006-01-02"), string(recurringInvoice.Frequency), recurringInvoice.DueDate.Day())
 
-		// Create invoice
+		// Create invoice with dates
 		inv := entities.Invoice{
-			CustomerID: recurringInvoice.CustomerID,
-			Amount:     recurringInvoice.Amount,
-			Link:       fmt.Sprintf("/invoice/%s", recurringInvoice.ID),
-			Status:     entities.InvoiceStatusUnpaid,
+			CustomerID:  recurringInvoice.CustomerID,
+			Amount:      recurringInvoice.Amount,
+			Link:        fmt.Sprintf("/invoice/%s", recurringInvoice.ID),
+			Status:      entities.InvoiceStatusUnpaid,
+			InvoiceDate: invoiceDate,
+			DueDate:     dueDate,
 		}
 		if err := tx.Create(&inv).Error; err != nil {
 			return err
+		}
+
+		// Ensure dates are persisted even if the ORM omitted pointer fields
+		if err := tx.Model(&inv).Updates(map[string]interface{}{
+			"invoice_date": *invoiceDate,
+			"due_date":     *dueDate,
+		}).Error; err != nil {
+			return err
+		}
+		// Reload to verify
+		if err := tx.First(&inv, "id = ?", inv.ID).Error; err == nil {
+			log.Printf("[recurring-gen] persisted id=%s invoice_date=%v due_date=%v", inv.ID, inv.InvoiceDate, inv.DueDate)
+		} else {
+			log.Printf("[recurring-gen] reload error id=%s: %v", inv.ID, err)
 		}
 
 		// Items
@@ -318,16 +372,28 @@ func (r AdminRecurringInvoiceRepositoryStruct) GetRecurringInvoiceHistory(reques
 
 // Helper function to calculate next invoice date
 func calculateNextInvoiceDate(currentDate time.Time, frequency string) time.Time {
+	months := 1
 	switch frequency {
 	case "monthly":
-		return currentDate.AddDate(0, 1, 0)
+		months = 1
 	case "quarterly":
-		return currentDate.AddDate(0, 3, 0)
+		months = 3
 	case "yearly":
-		return currentDate.AddDate(1, 0, 0)
+		months = 12
 	default:
-		return currentDate.AddDate(0, 1, 0) // Default to monthly
+		months = 1
 	}
+
+	// Determine preferred day: keep the same day-of-month if possible.
+	preferred := currentDate.Day()
+
+	// For end-of-month behavior: if the source day is near the month end (>=30),
+	// request day 31 so clampToMonth yields the last valid day of the target month
+	// (31 → 31/30/29/28; 30 → 30/29/28; others keep same day).
+	if preferred >= 30 {
+		preferred = 31
+	}
+	return clampToMonth(currentDate, months, preferred)
 }
 
 // ProcessDueRecurringInvoices finds all active recurring invoices with next_invoice_date <= now

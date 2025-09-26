@@ -3,7 +3,7 @@ package invoice
 type InvoiceItem struct {
 	Name  string `json:"name" validate:"required"`
 	Price int64  `json:"price" validate:"required"`
-	Qty   int64  `json:"qty" validate:"required"`
+	Qty   int64  `json:"qty" validate:"required,min=1"`
 	Total int64  `json:"total" validate:"required"`
 }
 

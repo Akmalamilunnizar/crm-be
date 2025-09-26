@@ -76,7 +76,7 @@ func RouteFiber(app *fiber.App) {
 
 	customer := api.Group("/customer")
 	customerdashboard.CustomerDashboardRoute(customer.Group("/dashboard"))
-	
+
 	// Customer monitoring routes
 	monitoring.RouteCustomerMonitoring(app)
 

@@ -22,7 +22,7 @@ func NewAdminReportRepository(db *gorm.DB) AdminReportRepositoryStruct {
 func (r AdminReportRepositoryStruct) InternetReportAdminReportRepository() ([]dto.ReportInternet, error) {
 	customers := []entities.Customer{}
 	reports := []dto.ReportInternet{}
-	tx := r.db.Preload("Product").Find(&customers)
+	tx := r.db.Find(&customers)
 	if tx.Error != nil {
 		return nil, tx.Error
 	}

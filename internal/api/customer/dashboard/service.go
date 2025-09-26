@@ -3,6 +3,7 @@ package dashboard
 import (
 	midtrans "skripsi-be/internal/api/common/midtrands"
 	"skripsi-be/internal/models/dto"
+	"skripsi-be/internal/models/entities"
 )
 
 type CustomerDashboardServiceInterface interface {
@@ -25,9 +26,19 @@ func (s CustomerDashboardServiceStruct) MyUserCustomerDashboard(request string) 
 		return dashboard, err
 	}
 
-	MyProduct, err := s.repository.MyProductCustomerDashboard(myAccount.ProductID)
+	// Get product_id from network_device instead of customer
+	productID, err := s.repository.GetProductIDFromNetworkDevice(myAccount.ID)
 	if err != nil {
 		return dashboard, err
+	}
+
+	// If no product_id found, create empty product
+	var MyProduct entities.Products
+	if productID != "" {
+		MyProduct, err = s.repository.MyProductCustomerDashboard(productID)
+		if err != nil {
+			return dashboard, err
+		}
 	}
 
 	MyInvoice, err := s.repository.MyInvoiceCustomerDashboard(myAccount.ID)

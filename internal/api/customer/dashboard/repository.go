@@ -14,6 +14,7 @@ type CustomerDashboardRepositoryInterface interface {
 	MyInvoiceCustomerDashboard(request string) ([]entities.Invoice, error)
 	MyInvoiceIdCustomerDashboard(request SearchInvoice) (entities.Invoice, error)
 	MyInvoiceUpdatePaymentCustomerDashboard(request SearchInvoice, link string) (entities.Invoice, error)
+	GetProductIDFromNetworkDevice(customerID string) (string, error)
 }
 
 type CustomerDashboardRepositoryStruct struct {
@@ -81,4 +82,22 @@ func (r CustomerDashboardRepositoryStruct) MyInvoiceUpdatePaymentCustomerDashboa
 	}
 
 	return invoice, nil
+}
+
+func (r CustomerDashboardRepositoryStruct) GetProductIDFromNetworkDevice(customerID string) (string, error) {
+	networkDevice := entities.NetworkDevice{}
+	err := r.db.Where("customer_id = ?", customerID).First(&networkDevice).Error
+	if err != nil {
+		// If no network device found, return empty string instead of error
+		if err == gorm.ErrRecordNotFound {
+			return "", nil
+		}
+		return "", err
+	}
+
+	if networkDevice.ProductID == nil {
+		return "", nil
+	}
+
+	return *networkDevice.ProductID, nil
 }

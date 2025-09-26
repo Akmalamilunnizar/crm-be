@@ -31,7 +31,7 @@ func NewAdminInvoiceRepository(db *gorm.DB) *AdminInvoiceRepositoryStruct {
 
 func (r AdminInvoiceRepositoryStruct) FindAdminInvoiceRepository() ([]entities.Invoice, error) {
 	invoices := []entities.Invoice{}
-	tx := r.db.Preload("Customer.Product").Preload("InvoiceItems.Invoice").Order("createdAt DESC").Find(&invoices)
+	tx := r.db.Preload("Customer").Preload("InvoiceItems.Invoice").Order("createdAt DESC").Find(&invoices)
 
 	if tx.Error != nil {
 		return invoices, tx.Error
@@ -55,7 +55,7 @@ func (r AdminInvoiceRepositoryStruct) FindAdminInvoiceRepository() ([]entities.I
 
 func (r AdminInvoiceRepositoryStruct) FindByIdAdminInvoiceRepository(request IdAdminInvoiceRequest) (entities.Invoice, error) {
 	invoice := entities.Invoice{}
-	tx := r.db.Preload("Customer.Product").Preload("InvoiceItems.Invoice").Preload("Transaction").First(&invoice, "id = ?", request.Id)
+	tx := r.db.Preload("Customer").Preload("InvoiceItems.Invoice").Preload("Transaction").First(&invoice, "id = ?", request.Id)
 
 	if tx.Error != nil {
 		return invoice, tx.Error
@@ -156,7 +156,7 @@ func (r AdminInvoiceRepositoryStruct) UpdateStatusAdminInvoiceRepository(request
 	}
 
 	// Reload the invoice to get updated data
-	r.db.Preload("Customer.Product").Preload("InvoiceItems.Invoice").Preload("Transaction").First(&invoice, "id = ?", request.Id)
+	r.db.Preload("Customer").Preload("InvoiceItems.Invoice").Preload("Transaction").First(&invoice, "id = ?", request.Id)
 
 	return invoice, nil
 }

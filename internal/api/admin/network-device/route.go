@@ -9,8 +9,10 @@ import (
 func AdminNetworkDeviceRoutes(admin fiber.Router, handler *AdminNetworkDeviceHandlerStruct) {
 	api := admin.Group("/network-device")
 
+	// Apply authentication middleware first
+	api.Use(helpers.VerifyToken)
 	// Apply role-based middleware
-	api.Use(helpers.RequireRoles("ADMIN", "CUSTOMER_SERVICE"))
+	api.Use(helpers.RequireRoles("ADMIN", "CUSTOMER_SERVICE", "TECHNICIAN"))
 
 	// Routes
 	api.Get("/", handler.GetAllAdminNetworkDeviceHandler)

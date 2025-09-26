@@ -13,7 +13,6 @@ type CustomerDTO struct {
 	CompanyID        string    `json:"company_id"`
 	Email            string    `json:"email"`
 	Gender           string    `json:"gender"`
-	ProductID        string    `json:"product_id"`
 	IPStatic         string    `json:"ip_static"`
 	Job              string    `json:"job"`
 	Latitude         float64   `json:"latitude"`

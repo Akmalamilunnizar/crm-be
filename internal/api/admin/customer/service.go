@@ -65,6 +65,9 @@ func (s AdminCustomerServiceStruct) CreateAdminCustomerService(request CreateAdm
 		return customer, err
 	}
 
+	// Note: StatusUser field removed as it doesn't exist in the Customer entity
+	// Customer status is managed through customer_services table if needed
+
 	customer, err = s.repository.CreateAdminCustomerRepository(customer)
 	if err != nil {
 		return customer, err
@@ -80,21 +83,21 @@ func (s AdminCustomerServiceStruct) CreateAdminCustomerService(request CreateAdm
 	// TODO: Update Mikrotik integration to work with network_devices table
 	// For now, commenting out to fix database schema mismatch
 	/*
-	payloadStruct := PayloadMikrotik{
-		MacAddress: customer.MacAddress,
-		ToAddress:  customer.Address,
-		Address:    customer.Address,
-		Type:       "bypassed",
-	}
+		payloadStruct := PayloadMikrotik{
+			MacAddress: customer.MacAddress,
+			ToAddress:  customer.Address,
+			Address:    customer.Address,
+			Type:       "bypassed",
+		}
 
-	// Convert to JSON
-	payload, err := json.Marshal(payloadStruct)
-	if err != nil {
-		fmt.Printf("Error marshaling JSON: %v\n", err)
-		return customer, err
-	}
+		// Convert to JSON
+		payload, err := json.Marshal(payloadStruct)
+		if err != nil {
+			fmt.Printf("Error marshaling JSON: %v\n", err)
+			return customer, err
+		}
 
-	helpers.HttpRequestHelpers("http://10.3.2.33/rest/ip/hotspot/ip-binding", "PUT", string(payload))
+		helpers.HttpRequestHelpers("http://10.3.2.33/rest/ip/hotspot/ip-binding", "PUT", string(payload))
 	*/
 
 	return customer, err

@@ -1,0 +1,416 @@
+package recurring_invoice
+
+import (
+	"encoding/json"
+	"fmt"
+	"log"
+	"time"
+
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
+
+	"skripsi-be/internal/models/entities"
+
+	"github.com/google/uuid"
+)
+
+type AdminRecurringInvoiceRepositoryInterface interface {
+	FindAllRecurringInvoices() ([]entities.RecurringInvoice, error)
+	FindRecurringInvoiceByID(request IdRecurringInvoiceRequest) (entities.RecurringInvoice, error)
+	CreateRecurringInvoice(request CreateRecurringInvoiceRequest, userID string) (entities.RecurringInvoice, error)
+	UpdateRecurringInvoice(request UpdateRecurringInvoiceRequest) (entities.RecurringInvoice, error)
+	UpdateRecurringInvoiceStatus(request UpdateRecurringInvoiceStatusRequest) (entities.RecurringInvoice, error)
+	DeleteRecurringInvoice(request IdRecurringInvoiceRequest) error
+	GenerateInvoiceFromRecurring(request GenerateInvoiceRequest) (entities.Invoice, error)
+	GetRecurringInvoiceHistory(request IdRecurringInvoiceRequest) ([]entities.RecurringInvoiceHistory, error)
+	ProcessDueRecurringInvoices() (int, error)
+}
+
+type AdminRecurringInvoiceRepositoryStruct struct {
+	db *gorm.DB
+}
+
+func NewAdminRecurringInvoiceRepository(db *gorm.DB) *AdminRecurringInvoiceRepositoryStruct {
+	return &AdminRecurringInvoiceRepositoryStruct{db}
+}
+
+// clampToMonth moves base by addMonths and returns a date at the same time-of-day
+// with the preferred day-of-month, clamped to the last valid day of the target month.
+func clampToMonth(base time.Time, addMonths int, preferredDay int) time.Time {
+	y, m, _ := base.Date()
+	idx := int(m) - 1 + addMonths
+	ty := y + idx/12
+	tm := time.Month(idx%12 + 1)
+	first := time.Date(ty, tm, 1, base.Hour(), base.Minute(), base.Second(), base.Nanosecond(), base.Location())
+	last := first.AddDate(0, 1, -1).Day()
+	d := preferredDay
+	if d > last {
+		d = last
+	}
+	return time.Date(ty, tm, d, base.Hour(), base.Minute(), base.Second(), base.Nanosecond(), base.Location())
+}
+
+func (r AdminRecurringInvoiceRepositoryStruct) FindAllRecurringInvoices() ([]entities.RecurringInvoice, error) {
+	var recurringInvoices []entities.RecurringInvoice
+
+	tx := r.db.Preload("Customer").
+		Preload("CreatedByUser").
+		Preload("History.GeneratedInvoice").
+		Order("created_at DESC").
+		Find(&recurringInvoices)
+
+	if tx.Error != nil {
+		return recurringInvoices, tx.Error
+	}
+
+	// Parse JSON invoice items for each recurring invoice
+	for i := range recurringInvoices {
+		if recurringInvoices[i].InvoiceItems != "" {
+			var items []entities.RecurringInvoiceItem
+			if err := json.Unmarshal([]byte(recurringInvoices[i].InvoiceItems), &items); err == nil {
+				recurringInvoices[i].InvoiceItemsData = items
+			}
+		}
+	}
+
+	return recurringInvoices, nil
+}
+
+func (r AdminRecurringInvoiceRepositoryStruct) FindRecurringInvoiceByID(request IdRecurringInvoiceRequest) (entities.RecurringInvoice, error) {
+	var recurringInvoice entities.RecurringInvoice
+
+	tx := r.db.Preload("Customer").
+		Preload("CreatedByUser").
+		Preload("History.GeneratedInvoice").
+		Where("id = ?", request.Id).
+		First(&recurringInvoice)
+
+	if tx.Error != nil {
+		return recurringInvoice, tx.Error
+	}
+
+	// Parse JSON invoice items
+	if recurringInvoice.InvoiceItems != "" {
+		var items []entities.RecurringInvoiceItem
+		if err := json.Unmarshal([]byte(recurringInvoice.InvoiceItems), &items); err == nil {
+			recurringInvoice.InvoiceItemsData = items
+		}
+	}
+
+	return recurringInvoice, nil
+}
+
+func (r AdminRecurringInvoiceRepositoryStruct) CreateRecurringInvoice(request CreateRecurringInvoiceRequest, userID string) (entities.RecurringInvoice, error) {
+	// Calculate next invoice date based on frequency
+	nextInvoiceDate := calculateNextInvoiceDate(request.InvoiceDate, request.Frequency)
+
+	// Marshal invoice items to JSON
+	itemsJSON, err := json.Marshal(request.InvoiceItems)
+	if err != nil {
+		return entities.RecurringInvoice{}, fmt.Errorf("failed to marshal invoice items: %v", err)
+	}
+
+	recurringInvoice := entities.RecurringInvoice{
+		CustomerID:      request.CustomerID,
+		Amount:          request.Amount,
+		InvoiceDate:     request.InvoiceDate,
+		DueDate:         request.DueDate,
+		NextInvoiceDate: nextInvoiceDate,
+		Frequency:       entities.RecurringInvoiceFrequency(request.Frequency),
+		Status:          entities.RecurringInvoiceStatusActive,
+		Description:     request.Description,
+		InvoiceItems:    string(itemsJSON),
+		CreatedBy:       &userID,
+	}
+
+	tx := r.db.Create(&recurringInvoice)
+	if tx.Error != nil {
+		return recurringInvoice, tx.Error
+	}
+
+	// Parse items for response
+	var items []entities.RecurringInvoiceItem
+	for _, item := range request.InvoiceItems {
+		items = append(items, entities.RecurringInvoiceItem{
+			Name:  item.Name,
+			Price: item.Price,
+			Qty:   item.Qty,
+			Total: item.Total,
+		})
+	}
+	recurringInvoice.InvoiceItemsData = items
+
+	return recurringInvoice, nil
+}
+
+func (r AdminRecurringInvoiceRepositoryStruct) UpdateRecurringInvoice(request UpdateRecurringInvoiceRequest) (entities.RecurringInvoice, error) {
+	var recurringInvoice entities.RecurringInvoice
+
+	// Find existing recurring invoice
+	tx := r.db.Where("id = ?", request.Id).First(&recurringInvoice)
+	if tx.Error != nil {
+		return recurringInvoice, tx.Error
+	}
+
+	// Calculate next invoice date based on frequency
+	nextInvoiceDate := calculateNextInvoiceDate(request.InvoiceDate, request.Frequency)
+
+	// Marshal invoice items to JSON
+	itemsJSON, err := json.Marshal(request.InvoiceItems)
+	if err != nil {
+		return entities.RecurringInvoice{}, fmt.Errorf("failed to marshal invoice items: %v", err)
+	}
+
+	// Update fields
+	recurringInvoice.CustomerID = request.CustomerID
+	recurringInvoice.Amount = request.Amount
+	recurringInvoice.InvoiceDate = request.InvoiceDate
+	recurringInvoice.DueDate = request.DueDate
+	recurringInvoice.NextInvoiceDate = nextInvoiceDate
+	recurringInvoice.Frequency = entities.RecurringInvoiceFrequency(request.Frequency)
+	recurringInvoice.Description = request.Description
+	recurringInvoice.InvoiceItems = string(itemsJSON)
+
+	tx = r.db.Save(&recurringInvoice)
+	if tx.Error != nil {
+		return recurringInvoice, tx.Error
+	}
+
+	// Parse items for response
+	var items []entities.RecurringInvoiceItem
+	for _, item := range request.InvoiceItems {
+		items = append(items, entities.RecurringInvoiceItem{
+			Name:  item.Name,
+			Price: item.Price,
+			Qty:   item.Qty,
+			Total: item.Total,
+		})
+	}
+	recurringInvoice.InvoiceItemsData = items
+
+	return recurringInvoice, nil
+}
+
+func (r AdminRecurringInvoiceRepositoryStruct) UpdateRecurringInvoiceStatus(request UpdateRecurringInvoiceStatusRequest) (entities.RecurringInvoice, error) {
+	var recurringInvoice entities.RecurringInvoice
+
+	tx := r.db.Where("id = ?", request.Id).First(&recurringInvoice)
+	if tx.Error != nil {
+		return recurringInvoice, tx.Error
+	}
+
+	recurringInvoice.Status = entities.RecurringInvoiceStatus(request.Status)
+
+	tx = r.db.Save(&recurringInvoice)
+	if tx.Error != nil {
+		return recurringInvoice, tx.Error
+	}
+
+	// Parse items for response
+	if recurringInvoice.InvoiceItems != "" {
+		var items []entities.RecurringInvoiceItem
+		if err := json.Unmarshal([]byte(recurringInvoice.InvoiceItems), &items); err == nil {
+			recurringInvoice.InvoiceItemsData = items
+		}
+	}
+
+	return recurringInvoice, nil
+}
+
+func (r AdminRecurringInvoiceRepositoryStruct) DeleteRecurringInvoice(request IdRecurringInvoiceRequest) error {
+	tx := r.db.Where("id = ?", request.Id).Delete(&entities.RecurringInvoice{})
+	return tx.Error
+}
+
+func (r AdminRecurringInvoiceRepositoryStruct) GenerateInvoiceFromRecurring(request GenerateInvoiceRequest) (entities.Invoice, error) {
+	var out entities.Invoice
+	err := r.db.Transaction(func(tx *gorm.DB) error {
+		// lock the recurring record to avoid double generation
+		var recurringInvoice entities.RecurringInvoice
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Preload("Customer.Product").First(&recurringInvoice, "id = ?", request.Id).Error; err != nil {
+			return err
+		}
+
+		// Parse items
+		var items []entities.RecurringInvoiceItem
+		if err := json.Unmarshal([]byte(recurringInvoice.InvoiceItems), &items); err != nil {
+			return fmt.Errorf("failed to parse invoice items: %v", err)
+		}
+
+		// Compute dates with end-of-month clamping
+		invoiceDate := request.InvoiceDate
+		dueDate := request.DueDate
+		log.Printf("[recurring-gen] request id=%s invoice_date=%v due_date=%v", request.Id, invoiceDate, dueDate)
+		if invoiceDate == nil {
+			invoiceDate = &recurringInvoice.NextInvoiceDate
+		}
+
+		// Helper to clamp preferred day within target month
+		clampMonthly := clampToMonth
+
+		if dueDate == nil {
+			// Due date should be next period relative to invoice_date
+			// (monthly/quarterly/yearly) and clamped to the last valid day
+			// using the preferred day from the template's original due date.
+			monthsToAdd := 1
+			switch recurringInvoice.Frequency {
+			case entities.RecurringInvoiceFrequencyQuarterly:
+				monthsToAdd = 3
+			case entities.RecurringInvoiceFrequencyYearly:
+				monthsToAdd = 12
+			default:
+				monthsToAdd = 1
+			}
+			// Prefer end-of-month ordering: for day >= 30, request 31 then clamp.
+			preferredDay := invoiceDate.Day()
+			if preferredDay >= 30 {
+				preferredDay = 31
+			}
+			dv := clampMonthly(*invoiceDate, monthsToAdd, preferredDay)
+			dueDate = &dv
+		}
+		log.Printf("[recurring-gen] computed dates id=%s invoice_date=%s due_date=%s (freq=%s preferredDay=%d)", request.Id, invoiceDate.Format("2006-01-02"), dueDate.Format("2006-01-02"), string(recurringInvoice.Frequency), recurringInvoice.DueDate.Day())
+
+		// Create invoice with dates
+		inv := entities.Invoice{
+			CustomerID:  recurringInvoice.CustomerID,
+			Amount:      recurringInvoice.Amount,
+			Link:        fmt.Sprintf("/invoice/%s", recurringInvoice.ID),
+			Status:      entities.InvoiceStatusUnpaid,
+			InvoiceDate: invoiceDate,
+			DueDate:     dueDate,
+		}
+		if err := tx.Create(&inv).Error; err != nil {
+			return err
+		}
+
+		// Ensure dates are persisted even if the ORM omitted pointer fields
+		if err := tx.Model(&inv).Updates(map[string]interface{}{
+			"invoice_date": *invoiceDate,
+			"due_date":     *dueDate,
+		}).Error; err != nil {
+			return err
+		}
+		// Reload to verify
+		if err := tx.First(&inv, "id = ?", inv.ID).Error; err == nil {
+			log.Printf("[recurring-gen] persisted id=%s invoice_date=%v due_date=%v", inv.ID, inv.InvoiceDate, inv.DueDate)
+		} else {
+			log.Printf("[recurring-gen] reload error id=%s: %v", inv.ID, err)
+		}
+
+		// Items
+		for _, it := range items {
+			name := it.Name
+			if name == "" && recurringInvoice.Customer.Product.ID != "" {
+				name = recurringInvoice.Customer.Product.Name
+			}
+			qty := it.Qty
+			if qty <= 0 {
+				qty = 1
+			}
+			price := it.Price
+			total := it.Total
+			if total <= 0 {
+				total = price * qty
+			}
+			ii := entities.InvoiceItems{InvoiceID: inv.ID, Name: name, Price: price, Qty: qty, Total: total}
+			// Ensure primary key is set (ID is varchar PK, no BeforeCreate hook)
+			ii.ID = uuid.New().String()
+			if err := tx.Create(&ii).Error; err != nil {
+				return err
+			}
+		}
+
+		// History
+		h := entities.RecurringInvoiceHistory{RecurringInvoiceID: recurringInvoice.ID, GeneratedInvoiceID: inv.ID, InvoiceDate: *invoiceDate, DueDate: *dueDate}
+		if err := tx.Create(&h).Error; err != nil {
+			return err
+		}
+
+		// Update recurring dates (force), with fallback when RowsAffected == 0
+		newNext := calculateNextInvoiceDate(*invoiceDate, string(recurringInvoice.Frequency))
+		res := tx.Model(&entities.RecurringInvoice{}).Where("id = ?", recurringInvoice.ID).
+			Updates(map[string]interface{}{
+				"invoice_date":      *invoiceDate,
+				"due_date":          *dueDate,
+				"next_invoice_date": newNext,
+				"updated_at":        time.Now(),
+			})
+		if res.Error != nil {
+			return res.Error
+		}
+		if res.RowsAffected == 0 {
+			if err := tx.Exec(
+				"UPDATE recurring_invoices SET invoice_date = ?, due_date = ?, next_invoice_date = ?, updated_at = ? WHERE id = ?",
+				*invoiceDate, *dueDate, newNext, time.Now(), recurringInvoice.ID,
+			).Error; err != nil {
+				return err
+			}
+		}
+
+		out = inv
+		return nil
+	})
+	if err != nil {
+		return entities.Invoice{}, err
+	}
+	// reload invoice with relations for response (explicit condition to avoid malformed WHERE)
+	r.db.Preload("Customer").Preload("InvoiceItems").First(&out, "id = ?", out.ID)
+	return out, nil
+}
+
+func (r AdminRecurringInvoiceRepositoryStruct) GetRecurringInvoiceHistory(request IdRecurringInvoiceRequest) ([]entities.RecurringInvoiceHistory, error) {
+	var history []entities.RecurringInvoiceHistory
+
+	tx := r.db.Preload("GeneratedInvoice").
+		Where("recurring_invoice_id = ?", request.Id).
+		Order("generated_at DESC").
+		Find(&history)
+
+	return history, tx.Error
+}
+
+// Helper function to calculate next invoice date
+func calculateNextInvoiceDate(currentDate time.Time, frequency string) time.Time {
+	months := 1
+	switch frequency {
+	case "monthly":
+		months = 1
+	case "quarterly":
+		months = 3
+	case "yearly":
+		months = 12
+	default:
+		months = 1
+	}
+
+	// Determine preferred day: keep the same day-of-month if possible.
+	preferred := currentDate.Day()
+
+	// For end-of-month behavior: if the source day is near the month end (>=30),
+	// request day 31 so clampToMonth yields the last valid day of the target month
+	// (31 → 31/30/29/28; 30 → 30/29/28; others keep same day).
+	if preferred >= 30 {
+		preferred = 31
+	}
+	return clampToMonth(currentDate, months, preferred)
+}
+
+// ProcessDueRecurringInvoices finds all active recurring invoices with next_invoice_date <= now
+// and generates invoices for them. Returns the number of invoices generated.
+func (r AdminRecurringInvoiceRepositoryStruct) ProcessDueRecurringInvoices() (int, error) {
+	var due []entities.RecurringInvoice
+	tx := r.db.Where("status = ? AND next_invoice_date <= ?", entities.RecurringInvoiceStatusActive, time.Now()).Find(&due)
+	if tx.Error != nil {
+		return 0, tx.Error
+	}
+
+	generated := 0
+	for _, rec := range due {
+		_, err := r.GenerateInvoiceFromRecurring(GenerateInvoiceRequest{IdRecurringInvoiceRequest: IdRecurringInvoiceRequest{Id: rec.ID}})
+		if err == nil {
+			generated++
+		}
+	}
+	return generated, nil
+}

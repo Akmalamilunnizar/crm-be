@@ -35,12 +35,13 @@ func (h *Handler) List(c *fiber.Ctx) error {
 
 func (h *Handler) Create(c *fiber.Ctx) error {
 	var in struct {
-		CustomerID   string  `json:"customer_id"`
-		Title        string  `json:"title"`
-		Description  *string `json:"description"`
-		Type         *string `json:"type"`
-		AutoClassify bool    `json:"auto_classify"` // New field for auto-classification
-		ImgCS        *string `json:"img_cs"`        // Optional: CS image filename from upload API
+		CustomerID     string  `json:"customer_id"`
+		Title          string  `json:"title"`
+		Description    *string `json:"description"`
+		Type           *string `json:"type"`
+		AutoClassify   bool    `json:"auto_classify"`  // New field for auto-classification
+		Classification string  `json:"classification"` // "info" or "gangguan"
+		ImgCS          *string `json:"img_cs"`         // Optional: CS image filename from upload API
 	}
 	if err := c.BodyParser(&in); err != nil {
 		return helpers.ResponseUtils(c, 400, false, err.Error(), nil)
@@ -84,7 +85,13 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 		}
 	}
 
-	out, err := h.svc.CreateCS(t)
+	// Default to "gangguan" if no classification provided
+	classification := in.Classification
+	if classification == "" {
+		classification = "gangguan"
+	}
+
+	out, err := h.svc.CreateCS(t, classification)
 	if err != nil {
 		return helpers.ResponseUtils(c, 500, false, err.Error(), nil)
 	}
@@ -463,6 +470,112 @@ func (h *Handler) AddTechnicianNote(c *fiber.Ctx) error {
 	})
 }
 
+// Accept ticket by technician
+func (h *Handler) Accept(c *fiber.Ctx) error {
+	id, err := idParam(c)
+	if err != nil {
+		return helpers.ResponseUtils(c, 400, false, "bad id", nil)
+	}
+	uidVal := c.Locals("user_id")
+	uid, _ := uidVal.(string)
+	out, err := h.svc.AcceptTicket(id, uid)
+	if err != nil {
+		return helpers.ResponseUtils(c, 400, false, err.Error(), nil)
+	}
+	return helpers.ResponseUtils(c, 200, true, "ok", out)
+}
+
+// Set technician team composition
+func (h *Handler) SetTeam(c *fiber.Ctx) error {
+	id, err := idParam(c)
+	if err != nil {
+		return helpers.ResponseUtils(c, 400, false, "bad id", nil)
+	}
+	var body struct {
+		Members []struct {
+			UserID string `json:"user_id"`
+			Role   string `json:"role"`
+		} `json:"members"`
+	}
+	if err := c.BodyParser(&body); err != nil {
+		return helpers.ResponseUtils(c, 400, false, err.Error(), nil)
+	}
+	members := make([]entities.TechnicianTeamMember, 0, len(body.Members))
+	for _, m := range body.Members {
+		members = append(members, entities.TechnicianTeamMember{UserID: m.UserID, Role: m.Role})
+	}
+	if err := h.svc.SetTeam(id, members); err != nil {
+		return helpers.ResponseUtils(c, 400, false, err.Error(), nil)
+	}
+	return helpers.ResponseUtils(c, 200, true, "ok", nil)
+}
+
+// Add troubleshooting step (multipart for image)
+func (h *Handler) AddStep(c *fiber.Ctx) error {
+	id, err := idParam(c)
+	if err != nil {
+		return helpers.ResponseUtils(c, 400, false, "bad id", nil)
+	}
+	// Parse multipart form
+	form, err := c.MultipartForm()
+	if err != nil {
+		return helpers.ResponseUtils(c, 400, false, "failed to parse multipart form", nil)
+	}
+	desc := ""
+	if vals := form.Value["description"]; len(vals) > 0 {
+		desc = vals[0]
+	}
+	// Save step first
+	step := entities.TicketStep{Description: desc}
+	if err := h.svc.AddStep(id, step); err != nil {
+		return helpers.ResponseUtils(c, 400, false, err.Error(), nil)
+	}
+	// We need the created step id → fetch count and infer last? Better: create via repo directly and return with ID.
+	// Simplify: re-add using repo to get ID
+	// Create step explicitly to get ID
+	s := entities.TicketStep{TicketID: id, Description: desc}
+	if err := h.svc.repo.AddTicketStep(&s); err != nil {
+		return helpers.ResponseUtils(c, 500, false, "failed to create step", nil)
+	}
+	// Handle multiple files
+	var saved []string
+	if files := form.File["images"]; len(files) > 0 {
+		uploadDir := "uploads/tickets"
+		if err := os.MkdirAll(uploadDir, 0755); err != nil {
+			return helpers.ResponseUtils(c, 500, false, "failed to create upload directory", nil)
+		}
+		for _, file := range files {
+			if file.Size > 20*1024*1024 {
+				continue
+			}
+			filename := fmt.Sprintf("%d-step-%d-%s", id, time.Now().UnixNano(), filepath.Ext(file.Filename))
+			full := filepath.Join(uploadDir, filename)
+			if err := c.SaveFile(file, full); err == nil {
+				saved = append(saved, filename)
+			}
+		}
+		if err := h.svc.AddStepImages(s.ID, saved); err != nil {
+			return helpers.ResponseUtils(c, 500, false, "failed to save step images", nil)
+		}
+	}
+	return helpers.ResponseUtils(c, 200, true, "ok", fiber.Map{"step_id": s.ID, "images": saved})
+}
+
+// Verify and close by CS
+func (h *Handler) VerifyAndClose(c *fiber.Ctx) error {
+	id, err := idParam(c)
+	if err != nil {
+		return helpers.ResponseUtils(c, 400, false, "bad id", nil)
+	}
+	uidVal := c.Locals("user_id")
+	uid, _ := uidVal.(string)
+	out, err := h.svc.VerifyAndClose(id, uid)
+	if err != nil {
+		return helpers.ResponseUtils(c, 400, false, err.Error(), nil)
+	}
+	return helpers.ResponseUtils(c, 200, true, "ok", out)
+}
+
 func (h *Handler) ReportByType(c *fiber.Ctx) error {
 	startDate := c.Query("start_date")
 	endDate := c.Query("end_date")
@@ -604,4 +717,64 @@ func generateUniqueFilename(originalName string) string {
 	timestamp := time.Now().UnixNano()
 	randomStr := fmt.Sprintf("%d", timestamp)
 	return randomStr + ext
+}
+
+// MarkTechnicianCompleted allows technician to mark their work as completed
+func (h *Handler) MarkTechnicianCompleted(c *fiber.Ctx) error {
+	id, err := idParam(c)
+	if err != nil {
+		return helpers.ResponseUtils(c, 400, false, err.Error(), nil)
+	}
+
+	// Get technician user ID from token
+	technicianUserID := c.Locals("user_id").(string)
+	if technicianUserID == "" {
+		return helpers.ResponseUtils(c, 401, false, "technician user ID not found", nil)
+	}
+
+	result, err := h.svc.MarkTechnicianCompleted(id, technicianUserID)
+	if err != nil {
+		return helpers.ResponseUtils(c, 500, false, err.Error(), nil)
+	}
+
+	return helpers.ResponseUtils(c, 200, true, "technician work marked as completed", result)
+}
+
+
+// (removed duplicate SetNetworkArchitecture; see technician_handler.go)
+
+// ValidateAndSetTeam validates and sets technician team composition
+func (h *Handler) ValidateAndSetTeam(c *fiber.Ctx) error {
+	id, err := idParam(c)
+	if err != nil {
+		return helpers.ResponseUtils(c, 400, false, err.Error(), nil)
+	}
+
+	var in struct {
+		TeamMembers []entities.TechnicianTeamMember `json:"team_members"`
+	}
+	if err := c.BodyParser(&in); err != nil {
+		return helpers.ResponseUtils(c, 400, false, err.Error(), nil)
+	}
+
+	if err := h.svc.ValidateAndSetTeam(id, in.TeamMembers); err != nil {
+		return helpers.ResponseUtils(c, 400, false, err.Error(), nil)
+	}
+
+	return helpers.ResponseUtils(c, 200, true, "team composition set successfully", nil)
+}
+
+// GetTechnicianTeamMembers gets all team members for a ticket
+func (h *Handler) GetTechnicianTeamMembers(c *fiber.Ctx) error {
+	id, err := idParam(c)
+	if err != nil {
+		return helpers.ResponseUtils(c, 400, false, err.Error(), nil)
+	}
+
+	members, err := h.svc.GetTechnicianTeamMembers(id)
+	if err != nil {
+		return helpers.ResponseUtils(c, 500, false, err.Error(), nil)
+	}
+
+	return helpers.ResponseUtils(c, 200, true, "team members retrieved", members)
 }

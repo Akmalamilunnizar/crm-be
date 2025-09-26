@@ -5,6 +5,7 @@ import (
 	"log"
 	"skripsi-be/internal/models/entities"
 	"skripsi-be/internal/telegram"
+	"time"
 )
 
 type Service struct {
@@ -19,7 +20,7 @@ func NewService(r *Repo) *Service {
 	}
 }
 
-func (s *Service) CreateCS(input entities.TroubleTicket) (*entities.TroubleTicket, error) {
+func (s *Service) CreateCS(input entities.TroubleTicket, classification string) (*entities.TroubleTicket, error) {
 	// Force initial state to match DB enum values
 	input.Status = "unfinished"
 	if input.CurrentAssignee == "" {
@@ -33,6 +34,10 @@ func (s *Service) CreateCS(input entities.TroubleTicket) (*entities.TroubleTicke
 		}
 		input.CurrentAssignee = csRoleID
 	}
+
+	// Set classification based on CS input
+	input.SetClassification(classification)
+
 	if err := s.repo.Create(&input); err != nil {
 		return nil, err
 	}
@@ -73,15 +78,15 @@ func (s *Service) SendToNOC(id uint64, note string, imageFilename *string) (*ent
 		return nil, err
 	}
 	t.Status = "ongoing"
-	// Look up NOC role ID dynamically
+	// Look up NOC role ID dynamically (NOC now uses CUSTOMER_SERVICE role)
 	nocRoleName := string(entities.AssignNOC)
-	log.Printf("SendToNOC: Looking up role ID for name: '%s'", nocRoleName)
+	log.Printf("SendToNOC: Looking up role ID for name: '%s' (NOC now uses CUSTOMER_SERVICE)", nocRoleName)
 	nocRoleID, err := s.repo.RoleIDByName(nocRoleName)
 	if err != nil {
 		log.Printf("SendToNOC: Error looking up NOC role ID: %v", err)
 		return nil, err
 	}
-	log.Printf("SendToNOC: Found NOC role ID: '%s'", nocRoleID)
+	log.Printf("SendToNOC: Found NOC role ID: '%s' (using CUSTOMER_SERVICE role)", nocRoleID)
 	if nocRoleID == "" {
 		return nil, fmt.Errorf("noc role ID is empty for role name: %s", nocRoleName)
 	}
@@ -272,6 +277,10 @@ func (s *Service) CSResolve(id uint64, note string) (*entities.TroubleTicket, er
 	if err != nil {
 		return nil, err
 	}
+	// Enforce technician completion before CS can resolve
+	if t.TechnicianCompleted == nil || (t.TechnicianCompleted != nil && !*t.TechnicianCompleted) {
+		return nil, fmt.Errorf("technician has not completed the job yet")
+	}
 	t.Status = "finished"
 	// Keep assigned to CS since they're resolving it
 	csRoleID, err := s.repo.RoleIDByName(string(entities.AssignCS))
@@ -317,4 +326,133 @@ func (s *Service) AddTechnicianNote(id uint64, note string, imgTechBf *string, i
 	}
 
 	return t, nil
+}
+
+// AcceptTicket allows a technician to accept a ticket (locks assignment to a single tech)
+func (s *Service) AcceptTicket(id uint64, technicianUserID string) (*entities.TroubleTicket, error) {
+	t, err := s.repo.ByID(id)
+	if err != nil {
+		return nil, err
+	}
+	if t.AssignedTo != nil && *t.AssignedTo != "" && *t.AssignedTo != technicianUserID {
+		return nil, fmt.Errorf("ticket already accepted by another technician")
+	}
+	t.AssignedTo = &technicianUserID
+	if t.Status == "unfinished" {
+		t.Status = "ongoing"
+	}
+	if err := s.repo.Save(t); err != nil {
+		return nil, err
+	}
+	return t, nil
+}
+
+// SetTeam sets the team composition for a ticket
+func (s *Service) SetTeam(ticketID uint64, team []entities.TechnicianTeamMember) error {
+	// Validate roles
+	for _, m := range team {
+		switch m.Role {
+		case "senior", "junior", "helper":
+		default:
+			return fmt.Errorf("invalid team role: %s", m.Role)
+		}
+	}
+	return s.repo.ReplaceTeamMembers(ticketID, team)
+}
+
+// AddStep adds a troubleshooting step (max 7)
+func (s *Service) AddStep(ticketID uint64, step entities.TicketStep) error {
+	cnt, err := s.repo.CountTicketSteps(ticketID)
+	if err != nil {
+		return err
+	}
+	if cnt >= 7 {
+		return fmt.Errorf("maximum of 7 steps reached")
+	}
+	step.TicketID = ticketID
+	step.StepOrder = int(cnt) + 1
+	return s.repo.AddTicketStep(&step)
+}
+
+// AddStepImages attaches multiple images to a step
+func (s *Service) AddStepImages(stepID uint64, paths []string) error {
+	for _, p := range paths {
+		if p == "" {
+			continue
+		}
+		if err := s.repo.AddStepImage(&entities.TicketStepImage{StepID: stepID, Path: p}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// VerifyAndClose allows CS to verify the report and close the ticket
+func (s *Service) VerifyAndClose(ticketID uint64, csUserID string) (*entities.TroubleTicket, error) {
+	t, err := s.repo.ByID(ticketID)
+	if err != nil {
+		return nil, err
+	}
+	now := time.Now() // get current time
+	t.Status = "finished"
+	// mark verified fields if present in DB
+	// using raw SQL update for portability if fields exist
+	if err := s.repo.DB.Model(&entities.TroubleTicket{}).Where("id = ?", ticketID).
+		Updates(map[string]interface{}{
+			"status":                "finished",
+			"verified_by_cs":        1,
+			"verified_at":           now,
+			"current_assignee_role": t.CurrentAssignee, // keep
+		}).Error; err != nil {
+		return nil, err
+	}
+	return t, nil
+}
+
+// MarkTechnicianCompleted allows technician to mark their work as completed
+func (s *Service) MarkTechnicianCompleted(ticketID uint64, technicianUserID string) (*entities.TroubleTicket, error) {
+	// Use repository method to mark technician completed
+	ticket, err := s.repo.MarkTechnicianCompleted(ticketID, technicianUserID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Send Telegram notification to CS channel
+	if err := s.telegramService.SendTicketNotification("CUSTOMER SERVICE", ticket, "Technician Work Completed - Ready for CS Review"); err != nil {
+		log.Printf("Failed to send Telegram notification: %v", err)
+	}
+
+	return ticket, nil
+}
+
+// (removed duplicate SetNetworkArchitecture; see technician_service.go)
+
+// ValidateAndSetTeam validates technician assignments and sets team composition
+func (s *Service) ValidateAndSetTeam(ticketID uint64, teamMembers []entities.TechnicianTeamMember) error {
+	// Validate each team member assignment
+	for _, member := range teamMembers {
+		if err := s.repo.ValidateTechnicianAssignment(ticketID, member.UserID); err != nil {
+			return err
+		}
+	}
+
+	// Clear existing team members for this ticket
+	if err := s.repo.DB.Where("ticket_id = ?", ticketID).Delete(&entities.TechnicianTeamMember{}).Error; err != nil {
+		return fmt.Errorf("failed to clear existing team: %v", err)
+	}
+
+	// Add new team members
+	for _, member := range teamMembers {
+		member.TicketID = ticketID
+		if err := s.repo.DB.Create(&member).Error; err != nil {
+			return fmt.Errorf("failed to add team member: %v", err)
+		}
+	}
+
+	return nil
+}
+
+// GetTechnicianTeamMembers gets all team members for a ticket
+func (s *Service) GetTechnicianTeamMembers(ticketID uint64) ([]entities.TechnicianTeamMember, error) {
+	return s.repo.GetTechnicianTeamMembers(ticketID)
 }

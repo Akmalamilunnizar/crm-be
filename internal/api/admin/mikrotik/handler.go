@@ -53,6 +53,9 @@ func (h *MikroTikHandler) Connect(c *fiber.Ctx) error {
 		return helpers.ResponseUtils(c, http.StatusInternalServerError, false, "Failed to connect to MikroTik: "+err.Error(), nil)
 	}
 
+	// expose shared instance for background jobs
+	services.SetSharedMikroTikService(h.mikroTikService)
+
 	return helpers.ResponseUtils(c, http.StatusOK, true, "Successfully connected to MikroTik", map[string]interface{}{
 		"host":   req.Host,
 		"port":   req.Port,
@@ -88,7 +91,7 @@ func (h *MikroTikHandler) GetStatus(c *fiber.Ctx) error {
 	return helpers.ResponseUtils(c, http.StatusOK, true, "Status retrieved", status)
 }
 
-// Get MikroTik logs
+// Get MikroTik logs (Netwatch logs)
 func (h *MikroTikHandler) GetLogs(c *fiber.Ctx) error {
 	if h.mikroTikService == nil {
 		return helpers.ResponseUtils(c, http.StatusBadRequest, false, "Not connected to any MikroTik device", nil)
@@ -96,12 +99,13 @@ func (h *MikroTikHandler) GetLogs(c *fiber.Ctx) error {
 
 	timeRange := c.Query("timeRange", "1d")
 
-	logs, err := h.mikroTikService.GetLogs(timeRange)
+	// Use Netwatch logs instead of general logs
+	logs, err := h.mikroTikService.GetNetwatchLogs(timeRange)
 	if err != nil {
-		return helpers.ResponseUtils(c, http.StatusInternalServerError, false, "Failed to get logs: "+err.Error(), nil)
+		return helpers.ResponseUtils(c, http.StatusInternalServerError, false, "Failed to get netwatch logs: "+err.Error(), nil)
 	}
 
-	return helpers.ResponseUtils(c, http.StatusOK, true, "Logs retrieved successfully", map[string]interface{}{
+	return helpers.ResponseUtils(c, http.StatusOK, true, "Netwatch logs retrieved successfully", map[string]interface{}{
 		"logs":      logs,
 		"count":     len(logs),
 		"timeRange": timeRange,
@@ -151,6 +155,86 @@ func (h *MikroTikHandler) GetSystemInfo(c *fiber.Ctx) error {
 	return helpers.ResponseUtils(c, http.StatusOK, true, "System information retrieved successfully", info)
 }
 
+// Set hotspot IP binding type (for customer isolation)
+func (h *MikroTikHandler) SetHotspotIPBindingType(c *fiber.Ctx) error {
+	if h.mikroTikService == nil {
+		return helpers.ResponseUtils(c, http.StatusBadRequest, false, "Not connected to any MikroTik device", nil)
+	}
+
+	var req struct {
+		MacAddress string `json:"mac_address" validate:"required"`
+		Type       string `json:"type" validate:"required,oneof=regular bypassed"`
+	}
+
+	if err := c.BodyParser(&req); err != nil {
+		return helpers.ResponseUtils(c, http.StatusBadRequest, false, "Invalid request body", nil)
+	}
+
+	if req.MacAddress == "" || req.Type == "" {
+		return helpers.ResponseUtils(c, http.StatusBadRequest, false, "MAC address and type are required", nil)
+	}
+
+	err := h.mikroTikService.SetHotspotIPBindingType(req.MacAddress, req.Type)
+	if err != nil {
+		return helpers.ResponseUtils(c, http.StatusInternalServerError, false, "Failed to set IP binding type: "+err.Error(), nil)
+	}
+
+	return helpers.ResponseUtils(c, http.StatusOK, true, "IP binding type updated successfully", map[string]interface{}{
+		"mac_address": req.MacAddress,
+		"type":        req.Type,
+	})
+}
+
+// Get hotspot IP bindings
+func (h *MikroTikHandler) GetHotspotIPBindings(c *fiber.Ctx) error {
+	if h.mikroTikService == nil {
+		return helpers.ResponseUtils(c, http.StatusBadRequest, false, "Not connected to any MikroTik device", nil)
+	}
+
+	bindings, err := h.mikroTikService.GetHotspotIPBindings()
+	if err != nil {
+		return helpers.ResponseUtils(c, http.StatusInternalServerError, false, "Failed to get IP bindings: "+err.Error(), nil)
+	}
+
+	return helpers.ResponseUtils(c, http.StatusOK, true, "IP bindings retrieved successfully", bindings)
+}
+
+// Get specific hotspot IP binding by MAC address
+func (h *MikroTikHandler) GetHotspotIPBindingByMAC(c *fiber.Ctx) error {
+	if h.mikroTikService == nil {
+		return helpers.ResponseUtils(c, http.StatusBadRequest, false, "Not connected to any MikroTik device", nil)
+	}
+
+	macAddress := c.Params("mac")
+	if macAddress == "" {
+		return helpers.ResponseUtils(c, http.StatusBadRequest, false, "MAC address is required", nil)
+	}
+
+	binding, err := h.mikroTikService.GetHotspotIPBindingByMAC(macAddress)
+	if err != nil {
+		return helpers.ResponseUtils(c, http.StatusNotFound, false, "IP binding not found: "+err.Error(), nil)
+	}
+
+	return helpers.ResponseUtils(c, http.StatusOK, true, "IP binding retrieved successfully", binding)
+}
+
+// Get Netwatch devices
+func (h *MikroTikHandler) GetNetwatchDevices(c *fiber.Ctx) error {
+	if h.mikroTikService == nil {
+		return helpers.ResponseUtils(c, http.StatusBadRequest, false, "Not connected to any MikroTik device", nil)
+	}
+
+	devices, err := h.mikroTikService.GetNetwatchDevices()
+	if err != nil {
+		return helpers.ResponseUtils(c, http.StatusInternalServerError, false, "Failed to get netwatch devices: "+err.Error(), nil)
+	}
+
+	return helpers.ResponseUtils(c, http.StatusOK, true, "Netwatch devices retrieved successfully", map[string]interface{}{
+		"devices": devices,
+		"count":   len(devices),
+	})
+}
+
 // Get real-time logs with WebSocket support
 func (h *MikroTikHandler) GetRealTimeLogs(c *fiber.Ctx) error {
 	if h.mikroTikService == nil {
@@ -161,7 +245,7 @@ func (h *MikroTikHandler) GetRealTimeLogs(c *fiber.Ctx) error {
 	// For now, we'll return the latest logs
 	timeRange := c.Query("timeRange", "1h")
 
-	logs, err := h.mikroTikService.GetLogs(timeRange)
+	logs, err := h.mikroTikService.GetNetwatchLogs(timeRange)
 	if err != nil {
 		return helpers.ResponseUtils(c, http.StatusInternalServerError, false, "Failed to get logs: "+err.Error(), nil)
 	}

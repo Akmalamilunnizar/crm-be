@@ -160,3 +160,12 @@ func (h AdminInvoiceHandlerStruct) MarkPdfViewedHandler(c *fiber.Ctx) error {
 
 	return helpers.ResponseUtils(c, fiber.StatusOK, true, "PDF marked as viewed", invoice)
 }
+
+// PrintAllUnpaidInvoicesHandler prints all unpaid invoices to thermal printer
+func (h AdminInvoiceHandlerStruct) PrintAllUnpaidInvoicesHandler(c *fiber.Ctx) error {
+	result, err := h.service.PrintAllUnpaidInvoicesService()
+	if err != nil {
+		return helpers.ResponseUtils(c, fiber.StatusBadRequest, false, err.Error(), nil)
+	}
+	return helpers.ResponseUtils(c, fiber.StatusOK, true, "All unpaid invoices printed successfully", result)
+}

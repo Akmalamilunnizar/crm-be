@@ -15,6 +15,7 @@ type AdminInvoiceServiceInterface interface {
 	DeleteAdminInvoiceService(request IdAdminInvoiceRequest) (entities.Invoice, error)
 	ProcessPartialPaymentService(request PartialPaymentRequest) (entities.Invoice, error)
 	MarkPdfViewedService(request IdAdminInvoiceRequest) (entities.Invoice, error)
+	PrintAllUnpaidInvoicesService() (map[string]interface{}, error)
 }
 type AdminInvoiceServiceStruct struct {
 	repository AdminInvoiceRepositoryInterface
@@ -108,4 +109,12 @@ func (s AdminInvoiceServiceStruct) MarkPdfViewedService(request IdAdminInvoiceRe
 	}
 
 	return invoice, nil
+}
+
+func (s AdminInvoiceServiceStruct) PrintAllUnpaidInvoicesService() (map[string]interface{}, error) {
+	result, err := s.repository.PrintAllUnpaidInvoicesRepository()
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
 }

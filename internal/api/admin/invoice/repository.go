@@ -2,12 +2,16 @@ package invoice
 
 import (
 	"fmt"
+	"log"
+	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jinzhu/copier"
 	"gorm.io/gorm"
 
 	"skripsi-be/internal/models/entities"
+	"skripsi-be/internal/services"
 )
 
 type AdminInvoiceRepositoryInterface interface {
@@ -19,6 +23,10 @@ type AdminInvoiceRepositoryInterface interface {
 	DeleteAdminInvoiceRepository(request IdAdminInvoiceRequest) (entities.Invoice, error)
 	ProcessPartialPaymentRepository(request PartialPaymentRequest) (entities.Invoice, error)
 	MarkPdfViewedRepository(request IdAdminInvoiceRequest) (entities.Invoice, error)
+	FindDueUnpaidInvoices() ([]entities.Invoice, error)
+	FindPaidInvoices() ([]entities.Invoice, error)
+	FindNewestInvoicePerCustomer() ([]entities.Invoice, error)
+	PrintAllUnpaidInvoicesRepository() (map[string]interface{}, error)
 }
 
 type AdminInvoiceRepositoryStruct struct {
@@ -91,28 +99,91 @@ func (r AdminInvoiceRepositoryStruct) FindByIdAdminInvoiceRepository(request IdA
 }
 
 func (r AdminInvoiceRepositoryStruct) CreateAdminInvoiceRepository(request CreateAdminInvoiceRequest) (entities.Invoice, error) {
-	invoice := entities.Invoice{}
-	copier.Copy(&invoice, &request)
+	// Create invoice entity manually to ensure proper field mapping
+	invoice := entities.Invoice{
+		CustomerID: request.CustomerID,
+		Amount:     request.Amount,
+		Status:     entities.InvoiceStatusUnpaid, // Set default status
+	}
+
+	// Set invoice date to today and derive due date based on the first item's quantity interpreted as number of months
+	// If qty is 0 or items are empty, default to 1 month
+	computeClampedMonthlyDate := func(base time.Time, addMonths int, preferredDay int) time.Time {
+		// Move to the first day of the target month, then clamp the day
+		year, month, _ := base.Date()
+		// Calculate target year/month with carry
+		targetMonthIndex := int(month) - 1 + addMonths
+		targetYear := year + targetMonthIndex/12
+		targetMonth := time.Month(targetMonthIndex%12 + 1)
+		// Last day of target month
+		firstOfTarget := time.Date(targetYear, targetMonth, 1, base.Hour(), base.Minute(), base.Second(), base.Nanosecond(), base.Location())
+		firstOfNext := firstOfTarget.AddDate(0, 1, 0)
+		lastDay := firstOfNext.AddDate(0, 0, -1).Day()
+		day := preferredDay
+		if day > lastDay {
+			day = lastDay
+		}
+		return time.Date(targetYear, targetMonth, day, base.Hour(), base.Minute(), base.Second(), base.Nanosecond(), base.Location())
+	}
+
+	now := time.Now()
+	invoiceDate := now
+	invoice.InvoiceDate = &invoiceDate
+
+	if len(request.InvoiceItems) > 0 {
+		months := int(request.InvoiceItems[0].Qty)
+		if months <= 0 {
+			months = 1
+		}
+		// Use invoice date as the base, keep the same day number when adding months
+		preferredDay := now.Day()
+		due := computeClampedMonthlyDate(now, months, preferredDay)
+		invoice.DueDate = &due
+	}
+
+	// Convert request invoice items to entity invoice items
+	var invoiceItems []entities.InvoiceItems
+	for _, reqItem := range request.InvoiceItems {
+		item := entities.InvoiceItems{
+			// Don't set ID here - let it be generated fresh in the loop below
+			Name:  reqItem.Name,
+			Price: reqItem.Price,
+			Qty:   reqItem.Qty,
+			Total: reqItem.Total,
+		}
+		invoiceItems = append(invoiceItems, item)
+	}
+	invoice.InvoiceItems = invoiceItems
+
 	tx := r.db.Begin()
-	txInvoice := tx.Model(&invoice).Create(&invoice)
+
+	// Create the invoice first
+	txInvoice := tx.Create(&invoice)
 	if txInvoice.Error != nil {
 		tx.Rollback()
-		return entities.Invoice{}, tx.Error
+		return entities.Invoice{}, txInvoice.Error
 	}
 
 	// Calculate total amount from all invoice items and save them
 	var totalAmount int64 = 0
 	for i := range invoice.InvoiceItems {
+		// Generate a fresh UUID for each item to ensure uniqueness
+		newID := uuid.New().String()
+		log.Printf("Creating invoice item %d with ID: %s", i, newID)
+
+		invoice.InvoiceItems[i].ID = newID
 		invoice.InvoiceItems[i].InvoiceID = invoice.ID
 		invoice.InvoiceItems[i].Total = invoice.InvoiceItems[i].Price * invoice.InvoiceItems[i].Qty
 		totalAmount += invoice.InvoiceItems[i].Total
 
-		// Save each invoice item
+		// Save each invoice item individually
 		txInvoiceItem := tx.Create(&invoice.InvoiceItems[i])
 		if txInvoiceItem.Error != nil {
+			log.Printf("Error creating invoice item %d: %v", i, txInvoiceItem.Error)
 			tx.Rollback()
 			return entities.Invoice{}, txInvoiceItem.Error
 		}
+		log.Printf("Successfully created invoice item %d with ID: %s", i, newID)
 	}
 
 	// Set total amount to sum of all items
@@ -120,12 +191,19 @@ func (r AdminInvoiceRepositoryStruct) CreateAdminInvoiceRepository(request Creat
 	txInvoice = tx.Model(&invoice).Updates(entities.Invoice{Amount: invoice.Amount})
 	if txInvoice.Error != nil {
 		tx.Rollback()
-		return entities.Invoice{}, tx.Error
+		return entities.Invoice{}, txInvoice.Error
 	}
 
 	tx.Commit()
 
-	return invoice, nil
+	// Fetch the complete invoice with all relationships
+	var completeInvoice entities.Invoice
+	err := r.db.Preload("Customer.Product").Preload("InvoiceItems").First(&completeInvoice, "id = ?", invoice.ID)
+	if err.Error != nil {
+		return entities.Invoice{}, err.Error
+	}
+
+	return completeInvoice, nil
 }
 
 func (r AdminInvoiceRepositoryStruct) UpdateAdminInvoiceRepository(request UpdateAdminInvoiceRequest) (entities.Invoice, error) {
@@ -158,6 +236,11 @@ func (r AdminInvoiceRepositoryStruct) UpdateStatusAdminInvoiceRepository(request
 	// Reload the invoice to get updated data
 	r.db.Preload("Customer").Preload("InvoiceItems.Invoice").Preload("Transaction").First(&invoice, "id = ?", request.Id)
 
+	// Trigger MikroTik enforcement if invoice is paid
+	if request.Status == "paid" {
+		go r.enforceMikroTikForPaidInvoice(invoice)
+	}
+
 	return invoice, nil
 }
 
@@ -175,6 +258,50 @@ func (r AdminInvoiceRepositoryStruct) DeleteAdminInvoiceRepository(request IdAdm
 		return invoice, tx.Error
 	}
 	return invoice, nil
+}
+
+// FindDueUnpaidInvoices returns unpaid invoices with due_date <= NOW().
+// If your schema does not include due_date, adjust to your real condition.
+func (r AdminInvoiceRepositoryStruct) FindDueUnpaidInvoices() ([]entities.Invoice, error) {
+	var invoices []entities.Invoice
+	tx := r.db.Where("status = ? AND due_date <= NOW()", entities.InvoiceStatusUnpaid).Find(&invoices)
+	return invoices, tx.Error
+}
+
+// FindPaidInvoices returns the newest paid invoice for each customer
+func (r AdminInvoiceRepositoryStruct) FindPaidInvoices() ([]entities.Invoice, error) {
+	var invoices []entities.Invoice
+
+	// Get the latest paid invoice for each customer
+	subQuery := r.db.Table("invoices").
+		Select("customer_id, MAX(createdAt) as max_created_at").
+		Where("status = ?", entities.InvoiceStatusPaid).
+		Group("customer_id")
+
+	tx := r.db.Table("invoices i").
+		Select("i.*").
+		Joins("INNER JOIN (?) s ON i.customer_id = s.customer_id AND i.createdAt = s.max_created_at", subQuery).
+		Where("i.status = ?", entities.InvoiceStatusPaid).
+		Find(&invoices)
+
+	return invoices, tx.Error
+}
+
+// FindNewestInvoicePerCustomer returns the newest invoice for each customer
+func (r AdminInvoiceRepositoryStruct) FindNewestInvoicePerCustomer() ([]entities.Invoice, error) {
+	var invoices []entities.Invoice
+
+	// Get the latest invoice for each customer (regardless of status)
+	subQuery := r.db.Table("invoices").
+		Select("customer_id, MAX(createdAt) as max_created_at").
+		Group("customer_id")
+
+	tx := r.db.Table("invoices i").
+		Select("i.*").
+		Joins("INNER JOIN (?) s ON i.customer_id = s.customer_id AND i.createdAt = s.max_created_at", subQuery).
+		Find(&invoices)
+
+	return invoices, tx.Error
 }
 
 func (r AdminInvoiceRepositoryStruct) ProcessPartialPaymentRepository(request PartialPaymentRequest) (entities.Invoice, error) {
@@ -278,4 +405,164 @@ func (r AdminInvoiceRepositoryStruct) MarkPdfViewedRepository(request IdAdminInv
 	r.db.Preload("Customer").Preload("InvoiceItems").Preload("Transaction").First(&invoice, "id = ?", request.Id)
 
 	return invoice, nil
+}
+
+// enforceMikroTikForPaidInvoice sets IP binding type to "bypassed" for paid invoices
+func (r AdminInvoiceRepositoryStruct) enforceMikroTikForPaidInvoice(invoice entities.Invoice) {
+	defer func() {
+		if rec := recover(); rec != nil {
+			log.Printf("[enforce-paid] panic: %v", rec)
+		}
+	}()
+
+	mt := services.GetSharedMikroTikService()
+	if mt == nil || !mt.IsConnected() {
+		log.Printf("[enforce-paid] MikroTik not connected; skipping invoice %s", invoice.ID)
+		return
+	}
+
+	log.Printf("[enforce-paid] processing paid invoice %s for customer %s", invoice.ID, invoice.CustomerID)
+
+	// Get customer's network devices
+	var devices []struct{ MacAddress *string }
+	if err := r.db.Table("network_devices").
+		Select("mac_address").
+		Where("customer_id = ? AND mac_address IS NOT NULL AND mac_address <> ''", invoice.CustomerID).
+		Scan(&devices).Error; err != nil {
+		log.Printf("[enforce-paid] devices fetch error customer=%s: %v", invoice.CustomerID, err)
+		return
+	}
+
+	changed := 0
+	for _, d := range devices {
+		if d.MacAddress == nil {
+			continue
+		}
+		mac := *d.MacAddress
+
+		if err := mt.SetHotspotIPBindingType(mac, "bypassed"); err != nil {
+			log.Printf("[enforce-paid] set bypassed failed mac=%s: %v", mac, err)
+		} else {
+			changed++
+			log.Printf("[enforce-paid] set bypassed for mac=%s", mac)
+		}
+	}
+
+	if changed > 0 {
+		log.Printf("[enforce-paid] set type=bypassed for %d device(s) (invoice %s)", changed, invoice.ID)
+	} else {
+		log.Printf("[enforce-paid] no devices found for customer %s (invoice %s)", invoice.CustomerID, invoice.ID)
+	}
+}
+
+// PrintAllUnpaidInvoicesRepository generates thermal printer data for all unpaid invoices
+func (r AdminInvoiceRepositoryStruct) PrintAllUnpaidInvoicesRepository() (map[string]interface{}, error) {
+	var invoices []entities.Invoice
+
+	// Get all unpaid invoices with customer and invoice items
+	err := r.db.Preload("Customer").Preload("InvoiceItems").Where("status = ?", entities.InvoiceStatusUnpaid).Find(&invoices).Error
+	if err != nil {
+		return nil, err
+	}
+
+	// Generate thermal printer format
+	thermalData := generateThermalPrinterData(invoices)
+
+	result := map[string]interface{}{
+		"total_invoices": len(invoices),
+		"thermal_data":   thermalData,
+		"print_ready":    true,
+	}
+
+	return result, nil
+}
+
+// generateThermalPrinterData creates thermal printer formatted data
+func generateThermalPrinterData(invoices []entities.Invoice) string {
+	var output strings.Builder
+
+	// Compact header printed once
+	output.WriteString(centerText("PT JR Nusa Menara Networks", 30) + "\n")
+	output.WriteString(centerText("Jl Raya Talangsuko 373 Turen", 30) + "\n")
+	output.WriteString(centerText("PH: 08123511147, (0341)8224357", 30) + "\n")
+	output.WriteString(centerText("EMAIL: info@menara.net.id", 30) + "\n")
+	output.WriteString(centerText("LINK: www.menara.net.id", 30) + "\n")
+	output.WriteString(strings.Repeat("=", 30) + "\n")
+
+	for i, invoice := range invoices {
+		output.WriteString(centerText("*** Tanda Terima ***", 30) + "\n")
+		output.WriteString("----- DITERBITKAN UNTUK -----\n")
+		output.WriteString(fmt.Sprintf("%s\n", invoice.Customer.Name))
+		output.WriteString("------------------------------\n")
+
+		// Aligned key-values
+		output.WriteString(formatKV("Nomor", invoice.ID, 30) + "\n")
+		output.WriteString(formatKV("Tanggal", invoice.CreatedAt.Format("02-01-2006"), 30) + "\n")
+
+		output.WriteString("------------------------------\n")
+		output.WriteString(centerText("DETAIL", 30) + "\n")
+
+		// Compact item list
+		for _, item := range invoice.InvoiceItems {
+			output.WriteString("- " + item.Name + "\n")
+		}
+
+		output.WriteString("------------------------------\n")
+		output.WriteString(formatKV("Total", "Rp "+formatCurrency(invoice.Amount), 30) + "\n")
+		output.WriteString(formatKV("Dibayar", "Rp 0", 30) + "\n")
+		output.WriteString(formatKV("Saldo", "Rp "+formatCurrency(invoice.Amount), 30) + "\n")
+
+		// Keep a single blank line between invoices, none at the end
+		if i < len(invoices)-1 {
+			output.WriteString("\n")
+		}
+	}
+
+	// Trim trailing whitespace/newlines to reduce extra blank page risk
+	return strings.TrimRight(output.String(), "\n\r\t ")
+}
+
+// formatCurrency formats currency in Indonesian Rupiah format
+func formatCurrency(amount int64) string {
+	return fmt.Sprintf("%.0f", float64(amount))
+}
+
+// padRight pads s with spaces to the right up to width
+
+// padLeft pads s with spaces to the left up to width
+func padLeft(s string, width int) string {
+	if len(s) >= width {
+		return s
+	}
+	return strings.Repeat(" ", width-len(s)) + s
+}
+
+func centerText(text string, width int) string {
+	l := len(text)
+	if l >= width || width <= 0 {
+		return text
+	}
+	pad := (width - l) / 2
+	if pad < 0 {
+		pad = 0
+	}
+	return strings.Repeat(" ", pad) + text
+}
+
+func padRight(s string, width int) string {
+	if len(s) >= width {
+		return s
+	}
+	return s + strings.Repeat(" ", width-len(s))
+}
+
+func formatKV(label, value string, width int) string {
+	maxLabel := width - len(value) - 1
+	if maxLabel < 1 {
+		maxLabel = 1
+	}
+	if len(label) > maxLabel {
+		label = label[:maxLabel]
+	}
+	return padRight(label, maxLabel) + " " + value
 }

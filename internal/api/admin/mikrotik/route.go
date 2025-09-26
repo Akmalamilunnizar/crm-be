@@ -22,9 +22,17 @@ func MikroTikRoutes(app fiber.Router) {
 	app.Get("/logs", handler.GetLogs)
 	app.Get("/logs/realtime", handler.GetRealTimeLogs)
 
+	// Netwatch devices
+	app.Get("/netwatch/devices", handler.GetNetwatchDevices)
+
 	// System information
 	app.Get("/system/info", handler.GetSystemInfo)
 
 	// Command execution
 	app.Post("/execute", handler.ExecuteCommand)
+
+	// Hotspot IP binding management
+	app.Post("/hotspot/ip-binding/set-type", handler.SetHotspotIPBindingType)
+	app.Get("/hotspot/ip-bindings", handler.GetHotspotIPBindings)
+	app.Get("/hotspot/ip-binding/:mac", handler.GetHotspotIPBindingByMAC)
 }

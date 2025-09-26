@@ -4,6 +4,7 @@ import (
 	"log"
 	"skripsi-be/internal/config/database"
 	"skripsi-be/internal/helpers"
+	"skripsi-be/internal/services"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -43,6 +44,30 @@ func TicketRoutes(api fiber.Router) {
 	// Polling endpoint for updates
 	g.Get("/updates", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "CUSTOMER_SERVICE", "NOC", "TECHNICIAN"), h.UpdatesSince)
 
+	// Technician workflow
+	g.Post("/:id/accept", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "TECHNICIAN"), h.Accept)
+	// Consolidated team assignment endpoint with validation
+	g.Post("/:id/team", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "TECHNICIAN"), h.UpsertTechnicianTeam)
+	// Fetch current team members for a ticket
+	g.Get("/:id/team-members", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "TECHNICIAN", "CUSTOMER_SERVICE"), h.GetTechnicianTeamMembers)
+	g.Post("/:id/steps", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "TECHNICIAN"), h.AddStep)
+	g.Post("/:id/technician-completed", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "TECHNICIAN"), h.MarkTechnicianCompleted)
+
+	// Network architecture
+	g.Post("/:id/network-architecture", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "TECHNICIAN"), h.SetNetworkArchitecture)
+
+	// Technician workflow routes
+	g.Get("/technician-steps", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "TECHNICIAN"), h.GetTechnicianSteps)
+	g.Get("/spare-parts", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "TECHNICIAN"), h.GetSpareParts)
+	g.Get("/:id/technician-checklist", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "TECHNICIAN"), h.GetTechnicianChecklist)
+	g.Get("/:id/technician-steps", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "TECHNICIAN"), h.GetTicketTechnicianSteps)
+	g.Post("/:id/technician-step", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "TECHNICIAN"), h.UpdateTechnicianStep)
+	g.Get("/:id/technician-progress", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "TECHNICIAN"), h.GetTechnicianStepProgress)
+	g.Post("/:id/technician-complete", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "TECHNICIAN"), h.MarkTechnicianJobCompleted)
+
+	// CS verification/close
+	g.Post("/:id/verify-close", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "CUSTOMER_SERVICE"), h.VerifyAndClose)
+
 	// Debug endpoint to test role extraction
 	g.Get("/debug/role", helpers.VerifyToken, func(c *fiber.Ctx) error {
 		log.Println("Debug endpoint accessed")
@@ -58,6 +83,24 @@ func TicketRoutes(api fiber.Router) {
 			"normalized_role": normalizedRole,
 		})
 	})
+
+	// Accumulation management routes
+	log.Println("TicketRoutes: Registering accumulation routes...")
+	log.Println("TicketRoutes: Creating accumulation service...")
+	accumulationService := services.NewAccumulationService(db)
+	log.Println("TicketRoutes: Accumulation service created successfully")
+	log.Println("TicketRoutes: Creating accumulation handler...")
+	accumulationHandler := NewAccumulationHandler(accumulationService)
+	log.Println("TicketRoutes: Accumulation handler created successfully")
+	
+	// Accumulation endpoints
+	g.Get("/:id/similar", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "CUSTOMER_SERVICE", "NOC", "TECHNICIAN"), accumulationHandler.GetSimilarTroubles)
+	g.Post("/accumulation", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "CUSTOMER_SERVICE"), accumulationHandler.UpdateAccumulation)
+	g.Post("/accumulation/auto-detect", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "CUSTOMER_SERVICE"), accumulationHandler.AutoDetectAndGroup)
+	g.Get("/accumulation/stats", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "CUSTOMER_SERVICE", "NOC", "TECHNICIAN"), accumulationHandler.GetAccumulationStats)
+	g.Get("/accumulation/high", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "CUSTOMER_SERVICE", "NOC", "TECHNICIAN"), accumulationHandler.GetHighAccumulationTickets)
+	
+	log.Println("TicketRoutes: Accumulation routes registered successfully")
 
 	log.Println("TicketRoutes: All routes registered successfully")
 }

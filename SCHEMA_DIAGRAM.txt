@@ -1,0 +1,105 @@
+CUSTOMER MULTIPLE PRODUCTS SCHEMA DIAGRAM
+==========================================
+
+BEFORE (Current Schema - Problematic):
+=====================================
+
+customer
+├── id (PK)
+├── name
+├── product_id (FK) ──────┐
+├── address               │
+└── ...                   │
+                          │
+network_devices           │
+├── id (PK)               │
+├── customer_id (FK) ─────┼──┐
+├── assets_id (FK)        │  │
+└── ...                   │  │
+                          │  │
+products                  │  │
+├── id (PK) ──────────────┘  │
+├── name                     │
+├── price                    │
+└── ...                      │
+                             │
+assets                       │
+├── id (PK) ─────────────────┘
+├── brand
+└── ...
+
+PROBLEM: Customer can only have ONE product, but network devices don't know which product they use.
+
+AFTER (New Schema - Fixed):
+==========================
+
+customer
+├── id (PK)
+├── name
+├── address
+└── ... (NO product_id)
+
+network_devices
+├── id (PK)
+├── customer_id (FK) ──────┐
+├── assets_id (FK)         │
+├── product_id (FK) ───────┼──┐
+└── ...                    │  │
+                           │  │
+products                   │  │
+├── id (PK) ───────────────┘  │
+├── name                      │
+├── price                     │
+└── ...                       │
+                              │
+assets                        │
+├── id (PK) ──────────────────┘
+├── brand
+└── ...
+
+SOLUTION: Each network device knows which product it uses, allowing customers to have multiple devices with different products.
+
+EXAMPLE SCENARIOS:
+==================
+
+Scenario 1: Business Customer
+-----------------------------
+Customer: "PT Maju Bersama"
+├── Device 1: Office Router
+│   ├── Product: "Business 100 Mbps" (ID: business-100)
+│   └── Price: 800,000/month
+├── Device 2: Warehouse Router
+│   ├── Product: "Standard 50 Mbps" (ID: standard-50)
+│   └── Price: 500,000/month
+└── Device 3: Branch Office Router
+    ├── Product: "Basic 25 Mbps" (ID: basic-25)
+    └── Price: 350,000/month
+
+Scenario 2: Residential Customer
+--------------------------------
+Customer: "Cha Eunwoo"
+├── Device 1: Main Router
+│   ├── Product: "Premium 100 Mbps" (ID: 196df683-76ae-4a60-8357-87ce6c7a74a5)
+│   └── Price: 100,000/month
+└── Device 2: Guest Network Router
+    ├── Product: "Basic 20 Mbps" (ID: ad24e250-fa6a-4685-b0cd-bda226ec11fd)
+    └── Price: 150,000/month
+
+BENEFITS:
+=========
+✅ Customers can have multiple internet services
+✅ Each device can have different speeds/products
+✅ Better billing accuracy (per device, not per customer)
+✅ More flexible service offerings
+✅ Realistic representation of business scenarios
+✅ Support for complex network setups
+
+MIGRATION STEPS:
+================
+1. Add product_id column to network_devices table
+2. Add foreign key constraint
+3. Add index for performance
+4. Migrate existing data (copy from customer.product_id)
+5. Test the new schema
+6. Remove product_id from customer table
+7. Update application code

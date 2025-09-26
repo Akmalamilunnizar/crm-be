@@ -13,6 +13,7 @@ import (
 	"skripsi-be/internal/api/admin/mikrotik"
 	networkdevice "skripsi-be/internal/api/admin/network-device"
 	"skripsi-be/internal/api/admin/product"
+	"skripsi-be/internal/api/admin/recurring_invoice"
 	"skripsi-be/internal/api/admin/report"
 	"skripsi-be/internal/api/admin/role"
 	"skripsi-be/internal/api/admin/transaction"
@@ -64,6 +65,7 @@ func RouteFiber(app *fiber.App) {
 	asset.AdminAssetRoute(admin.Group("/asset"))
 	transaction.AdminTrasactionRoute(admin.Group("/transaction"))
 	invoice.AdminInvoiceRoute(admin.Group("/invoice"))
+	recurring_invoice.AdminRecurringInvoiceRoute(admin.Group("/recurring-invoice"))
 	mikrotik.MikroTikRoutes(admin.Group("/mikrotik"))
 
 	// Network Device routes

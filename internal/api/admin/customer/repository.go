@@ -35,9 +35,22 @@ func (r AdminCustomerRepositoryStruct) FindAdminCustomerRepository() ([]Customer
 	// Build response with network device data
 	var response []CustomerListResponse
 	for _, customer := range customers {
-		// Get network devices for this customer
+		// Get network devices for this customer (with Product)
 		networkDevices := []entities.NetworkDevice{}
-		r.db.Where("customer_id = ?", customer.ID).Find(&networkDevices)
+		r.db.Preload("Product").Where("customer_id = ?", customer.ID).Find(&networkDevices)
+
+		// If product is managed on network_devices, prefer first device with a loaded product
+		for _, device := range networkDevices {
+			if device.Product != nil && device.Product.ID != "" {
+				customer.Product = device.Product
+				customer.ProductID = device.Product.ID
+				break
+			}
+			if device.ProductID != nil && *device.ProductID != "" {
+				customer.ProductID = *device.ProductID
+				break
+			}
+		}
 
 		// Aggregate IP and MAC addresses from network devices
 		var ipAddresses []string
@@ -156,9 +169,22 @@ func (r AdminCustomerRepositoryStruct) FindByIdDetailAdminCustomerRepository(req
 	installations := []entities.CustomerInstallation{}
 	r.db.Preload("Technician").Preload("Images").Where("customer_id = ?", request.Id).Find(&installations)
 
-	// Get network devices for this customer
+	// Get network devices for this customer (with Product)
 	networkDevices := []entities.NetworkDevice{}
-	r.db.Where("customer_id = ?", request.Id).Find(&networkDevices)
+	r.db.Preload("Product").Where("customer_id = ?", request.Id).Find(&networkDevices)
+
+	// Prefer product from network_devices if present
+	for _, device := range networkDevices {
+		if device.Product != nil && device.Product.ID != "" {
+			customer.Product = device.Product
+			customer.ProductID = device.Product.ID
+			break
+		}
+		if device.ProductID != nil && *device.ProductID != "" {
+			customer.ProductID = *device.ProductID
+			break
+		}
+	}
 
 	// Get recent invoices for this customer (optional)
 	invoices := []entities.Invoice{}

@@ -42,3 +42,4 @@ func (n *NetworkDevice) BeforeCreate(tx *gorm.DB) error {
 func (NetworkDevice) TableName() string {
 	return "network_devices"
 }
+

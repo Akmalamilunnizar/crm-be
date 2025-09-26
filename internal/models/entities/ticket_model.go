@@ -20,7 +20,7 @@ const (
 
 	// Use role names instead of hardcoded UUIDs - these will be looked up dynamically
 	AssignCS   Assignee = "CUSTOMER SERVICE"
-	AssignNOC  Assignee = "NOC"
+	AssignNOC  Assignee = "CUSTOMER SERVICE" // NOC now uses CUSTOMER_SERVICE role
 	AssignTech Assignee = "TECHNICIAN"
 )
 
@@ -43,6 +43,19 @@ type TroubleTicket struct {
 	ImgTechBF *string `gorm:"type:varchar(60)" json:"img_tech_bf,omitempty"`
 	ImgTechAF *string `gorm:"type:varchar(60)" json:"img_tech_af,omitempty"`
 
+	// CS verification fields
+	VerifiedByCS *bool      `gorm:"type:tinyint(1);default:0" json:"verified_by_cs,omitempty"`
+	VerifiedAt   *time.Time `gorm:"type:datetime" json:"verified_at,omitempty"`
+
+	// Technician completion tracking
+	TechnicianCompleted *bool `gorm:"type:tinyint(1);default:0" json:"technician_completed,omitempty"`
+
+	// Network architecture type selection
+	NetworkArchitecture *string `gorm:"type:varchar(50)" json:"network_architecture,omitempty"` // FTTH or HTB
+
+	// Accumulation tracking - number of customers affected by the same problem
+	Accumulation int `gorm:"type:int;default:1" json:"accumulation"` // Default 1 for single customer
+
 	// Netwatch integration fields - DISABLED FOR TESTING
 	// CreatedByNetwatch bool            `gorm:"default:false" json:"created_by_netwatch"`
 	// NetwatchEventID   *string         `gorm:"type:varchar(36)" json:"netwatch_event_id"`
@@ -55,6 +68,31 @@ type TroubleTicket struct {
 }
 
 func (TroubleTicket) TableName() string { return "trouble_tickets" }
+
+// GetClassification returns the ticket classification based on verified_by_cs
+// 1 = Information (Info), 0 = Trouble (Gangguan)
+func (t *TroubleTicket) GetClassification() string {
+	if t.VerifiedByCS != nil && *t.VerifiedByCS {
+		return "info"
+	}
+	return "gangguan"
+}
+
+// SetClassification sets the ticket classification
+// "info" = 1, "gangguan" = 0
+func (t *TroubleTicket) SetClassification(classification string) {
+	switch classification {
+	case "info":
+		verified := true
+		t.VerifiedByCS = &verified
+	case "gangguan":
+		verified := false
+		t.VerifiedByCS = &verified
+	default:
+		verified := false
+		t.VerifiedByCS = &verified
+	}
+}
 
 // Enforce sane defaults before insert regardless of caller
 func (t *TroubleTicket) BeforeCreate(tx *gorm.DB) (err error) {

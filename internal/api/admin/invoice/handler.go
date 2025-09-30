@@ -54,6 +54,11 @@ func (h AdminInvoiceHandlerStruct) CreateAdminInvoiceHandler(c *fiber.Ctx) error
 		return helpers.ResponseUtils(c, fiber.StatusBadRequest, false, err.Error(), nil)
 	}
 
+	// If backend attached warning/error context (e.g., Mikrotik scheduler not found), surface as HTTP 400
+	if area.Link != "" && (strings.Contains(area.Link, "MikroTik") || strings.Contains(strings.ToLower(area.Link), "scheduler")) {
+		return helpers.ResponseUtils(c, fiber.StatusBadRequest, false, area.Link, area)
+	}
+
 	return helpers.ResponseUtils(c, fiber.StatusOK, true, "Success Create Invoice", area)
 }
 
@@ -78,6 +83,10 @@ func (h AdminInvoiceHandlerStruct) UpdateAdminInvoiceHandler(c *fiber.Ctx) error
 		return helpers.ResponseUtils(c, fiber.StatusBadRequest, false, err.Error(), nil)
 	}
 
+	if area.Link != "" && (strings.Contains(area.Link, "MikroTik") || strings.Contains(strings.ToLower(area.Link), "scheduler")) {
+		return helpers.ResponseUtils(c, fiber.StatusBadRequest, false, area.Link, area)
+	}
+
 	return helpers.ResponseUtils(c, fiber.StatusOK, true, "Success Update Invoice", area)
 }
 
@@ -100,6 +109,10 @@ func (h AdminInvoiceHandlerStruct) UpdateStatusAdminInvoiceHandler(c *fiber.Ctx)
 	area, err := h.service.UpdateStatusAdminInvoiceService(*request)
 	if err != nil {
 		return helpers.ResponseUtils(c, fiber.StatusBadRequest, false, err.Error(), nil)
+	}
+
+	if area.Link != "" && (strings.Contains(area.Link, "MikroTik") || strings.Contains(strings.ToLower(area.Link), "scheduler")) {
+		return helpers.ResponseUtils(c, fiber.StatusBadRequest, false, area.Link, area)
 	}
 
 	return helpers.ResponseUtils(c, fiber.StatusOK, true, "Success Update Invoice", area)

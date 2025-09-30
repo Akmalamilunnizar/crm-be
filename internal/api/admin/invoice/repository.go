@@ -268,6 +268,21 @@ func (r AdminInvoiceRepositoryStruct) CreateAdminInvoiceRepository(request Creat
 		return entities.Invoice{}, err.Error
 	}
 
+	// Synchronous preflight for unpaid scheduler existence so errors can bubble to API
+	svc := services.GetSharedMikroTikService()
+	if completeInvoice.Status == entities.InvoiceStatusUnpaid && completeInvoice.DueDate != nil && svc != nil && svc.IsConnected() {
+		name := r.generateSchedulerName(completeInvoice.CustomerID, completeInvoice.Customer.Name)
+		checkCmd := fmt.Sprintf("/system scheduler print count-only where name=\"%s\"", name)
+		if out, e := svc.ExecuteCommand(checkCmd); e == nil {
+			if strings.TrimSpace(out) == "0" {
+				msg := fmt.Sprintf("MikroTik scheduler not found: name=%s for invoice=%s", name, completeInvoice.ID)
+				log.Printf("[mikrotik] %s", msg)
+				_, _ = svc.ExecuteCommand(fmt.Sprintf(":log error \"CRM: %s\"", strings.ReplaceAll(msg, "\"", "'")))
+				return entities.Invoice{}, fmt.Errorf(msg)
+			}
+		}
+	}
+
 	// Create a Winbox (MikroTik) scheduler once per invoice based on status
 	go func(inv entities.Invoice) {
 		defer func() { _ = recover() }()
@@ -306,7 +321,29 @@ func (r AdminInvoiceRepositoryStruct) CreateAdminInvoiceRepository(request Creat
 				dueDateFormatted := inv.DueDate.Format("Jan/02/2006")
 				// Convert to lowercase for MikroTik format
 				dueDateFormatted = strings.ToLower(dueDateFormatted)
-				cmd := fmt.Sprintf("/system scheduler set [find name=\"%s\"] start-date=%s", schedulerName, dueDateFormatted)
+				// Pre-check: ensure the scheduler exists; if not, log error both in Go and RouterOS
+				checkCmd := fmt.Sprintf("/system scheduler print count-only where name=\"%s\"", schedulerName)
+				outCheck, errCheck := svc.ExecuteCommand(checkCmd)
+				if errCheck != nil {
+					log.Printf("[mikrotik] scheduler check error invoice=%s: %v", inv.ID, errCheck)
+					// attempt to emit router log about the failure context
+					_, _ = svc.ExecuteCommand(fmt.Sprintf(":log error \"CRM: scheduler check error name='%s' invoice=%s\"", schedulerName, inv.ID))
+					return
+				}
+				if strings.TrimSpace(outCheck) == "0" {
+					msg := fmt.Sprintf("MikroTik scheduler not found: name=%s for invoice=%s", schedulerName, inv.ID)
+					log.Printf("[mikrotik] %s", msg)
+					_, _ = svc.ExecuteCommand(fmt.Sprintf(":log error \"CRM: %s\"", strings.ReplaceAll(msg, "\"", "'")))
+					// Surface this as hard error by updating DB status -> error and attaching message
+					_ = r.db.Model(&entities.Invoice{}).Where("id = ?", inv.ID).Updates(map[string]interface{}{
+						"status": string(entities.InvoiceStatusPending),
+						"link":   msg,
+					}).Error
+					// Also return immediately to avoid executing the set
+					return
+				}
+				// Append a RouterOS log so it is visible in Winbox logs
+				cmd := fmt.Sprintf("/system scheduler set [find name=\"%s\"] start-date=%s; :log info \"CRM: scheduler set name='%s' start-date=%s for invoice=%s\"", schedulerName, dueDateFormatted, schedulerName, dueDateFormatted, inv.ID)
 				log.Printf("[mikrotik] scheduler: set %s start-date=%s for unpaid invoice=%s", schedulerName, dueDateFormatted, inv.ID)
 				if out, err := svc.ExecuteCommand(cmd); err != nil {
 					log.Printf("[mikrotik] scheduler set error invoice=%s: %v", inv.ID, err)
@@ -326,7 +363,8 @@ func (r AdminInvoiceRepositoryStruct) CreateAdminInvoiceRepository(request Creat
 				onEvent = fmt.Sprintf("ip/hotspot/ip-binding/set disabled=y [find mac-address=%s]; sys/script/set comment=belumbayar [find name=\"%s\"];", mac, scriptName)
 			}
 
-			cmd := fmt.Sprintf("/system scheduler add name=\"%s\" on-event=\"%s\" start-time=startup", schedulerName, onEvent)
+			// Append a RouterOS log so it is visible in Winbox logs
+			cmd := fmt.Sprintf("/system scheduler add name=\"%s\" on-event=\"%s\" start-time=startup; :log info \"CRM: scheduler add name='%s' status=%s\"", schedulerName, onEvent, schedulerName, string(inv.Status))
 			log.Printf("[mikrotik] scheduler: create name=%s invoice=%s status=%s mac=%s", schedulerName, inv.ID, string(inv.Status), mac)
 			if out, err := svc.ExecuteCommand(cmd); err != nil {
 				log.Printf("[mikrotik] scheduler create error invoice=%s: %v", inv.ID, err)
@@ -393,8 +431,11 @@ func (r AdminInvoiceRepositoryStruct) UpdateStatusAdminInvoiceRepository(request
 		return invoice, tx.Error
 	}
 
-	// Update only the status field directly
-	tx = r.db.Model(&invoice).Update("status", request.Status)
+	// Clear previous error link and update status
+	tx = r.db.Model(&invoice).Updates(map[string]interface{}{
+		"status": request.Status,
+		"link":   "",
+	})
 	if tx.Error != nil {
 		return invoice, tx.Error
 	}
@@ -402,14 +443,81 @@ func (r AdminInvoiceRepositoryStruct) UpdateStatusAdminInvoiceRepository(request
 	// Reload the invoice to get updated data
 	r.db.Preload("Customer").Preload("InvoiceItems.Invoice").Preload("Transaction").First(&invoice, "id = ?", request.Id)
 
-	// Trigger MikroTik enforcement based on status
+	// Trigger MikroTik enforcement based on status (synchronous for unpaid to bubble errors)
 	if request.Status == "paid" {
 		go r.enforceMikroTikForPaidInvoice(invoice)
+		// Also run customer-specific open_ script
+		r.runOpenScriptForInvoice(invoice)
 	} else if request.Status == "unpaid" {
-		go r.setTLSKSchedulerForUnpaidInvoice(invoice)
+		// Run synchronously so pre-checks can alter outcome
+		r.setTLSKSchedulerForUnpaidInvoice(invoice)
+		// Reload to capture any link/message written during scheduler checks
+		r.db.Preload("Customer").First(&invoice, "id = ?", invoice.ID)
+		if invoice.Link != "" && (strings.Contains(invoice.Link, "MikroTik") || strings.Contains(strings.ToLower(invoice.Link), "scheduler")) {
+			return invoice, fmt.Errorf(invoice.Link)
+		}
+	} else if request.Status == "pending" {
+		// Run the customer-specific open_ script for pending state as requested
+		r.runOpenScriptForInvoice(invoice)
 	}
 
 	return invoice, nil
+}
+
+// runOpenScriptForInvoice executes RouterOS script named "open_<Code - Customer>"
+func (r AdminInvoiceRepositoryStruct) runOpenScriptForInvoice(invoice entities.Invoice) {
+	defer func() { _ = recover() }()
+	mt := services.GetSharedMikroTikService()
+	if mt == nil || !mt.IsConnected() {
+		log.Printf("[open-script] MikroTik not connected; skipping invoice %s", invoice.ID)
+		return
+	}
+	// Ensure customer is loaded
+	if invoice.Customer.ID == "" {
+		r.db.Preload("Customer").First(&invoice, "id = ?", invoice.ID)
+	}
+	// Build script name from code_name - customer name
+	schedulerName := r.generateSchedulerName(invoice.CustomerID, invoice.Customer.Name)
+	scriptName := "open_" + schedulerName
+	// Verify the script exists (exact name)
+	check := fmt.Sprintf("/system script print count-only where name=\"%s\"", scriptName)
+	out, err := mt.ExecuteCommand(check)
+	if err != nil {
+		log.Printf("[open-script] check failed invoice=%s: %v", invoice.ID, err)
+		return
+	}
+	if strings.TrimSpace(out) == "0" {
+		// Fallback: try pattern search by customer name regardless of code_name
+		pattern := fmt.Sprintf("open_.* - %s", invoice.Customer.Name)
+		check2 := fmt.Sprintf("/system script print count-only where name~\"%s\"", pattern)
+		if out2, err2 := mt.ExecuteCommand(check2); err2 == nil && strings.TrimSpace(out2) != "0" {
+			// Run by pattern find
+			cmd := fmt.Sprintf("/system script run [find name~\"%s\"]; :log info \"CRM: run script by pattern '%s' for invoice=%s\"", pattern, pattern, invoice.ID)
+			log.Printf("[open-script] run by pattern %s for invoice %s", pattern, invoice.ID)
+			if out, err := mt.ExecuteCommand(cmd); err != nil {
+				log.Printf("[open-script] error running pattern script for invoice %s: %v", invoice.ID, err)
+				_ = r.db.Model(&entities.Invoice{}).Where("id = ?", invoice.ID).Update("link", err.Error()).Error
+			} else {
+				log.Printf("[open-script] run out: %s", strings.TrimSpace(out))
+			}
+			return
+		}
+		msg := fmt.Sprintf("MikroTik script not found: name=%s for invoice=%s", scriptName, invoice.ID)
+		log.Printf("[open-script] %s", msg)
+		_, _ = mt.ExecuteCommand(fmt.Sprintf(":log error \"CRM: %s\"", strings.ReplaceAll(msg, "\"", "'")))
+		// Persist message to surface to API/UI
+		_ = r.db.Model(&entities.Invoice{}).Where("id = ?", invoice.ID).Update("link", msg).Error
+		return
+	}
+	// Run the script (exact)
+	cmd := fmt.Sprintf("/system script run \"%s\"; :log info \"CRM: run script '%s' for invoice=%s\"", scriptName, scriptName, invoice.ID)
+	log.Printf("[open-script] run %s for invoice %s", scriptName, invoice.ID)
+	if out, err := mt.ExecuteCommand(cmd); err != nil {
+		log.Printf("[open-script] error running script for invoice %s: %v", invoice.ID, err)
+		_ = r.db.Model(&entities.Invoice{}).Where("id = ?", invoice.ID).Update("link", err.Error()).Error
+	} else {
+		log.Printf("[open-script] run out: %s", strings.TrimSpace(out))
+	}
 }
 
 func (r AdminInvoiceRepositoryStruct) DeleteAdminInvoiceRepository(request IdAdminInvoiceRequest) (entities.Invoice, error) {
@@ -602,11 +710,28 @@ func (r AdminInvoiceRepositoryStruct) setTLSKSchedulerForUnpaidInvoice(invoice e
 	// Generate scheduler name in format "Area - Customer Name"
 	schedulerName := r.generateSchedulerName(invoice.CustomerID, invoice.Customer.Name)
 
+	// Pre-check existence of the target scheduler; RouterOS may accept set with empty find silently
+	checkCmd := fmt.Sprintf("/system scheduler print count-only where name=\"%s\"", schedulerName)
+	if out, err := mt.ExecuteCommand(checkCmd); err != nil {
+		log.Printf("[tlsk-scheduler] scheduler check error for invoice %s: %v", invoice.ID, err)
+		return
+	} else if strings.TrimSpace(out) == "0" {
+		msg := fmt.Sprintf("MikroTik scheduler not found: name=%s for invoice=%s", schedulerName, invoice.ID)
+		log.Printf("[tlsk-scheduler] %s", msg)
+		_, _ = mt.ExecuteCommand(fmt.Sprintf(":log error \"CRM: %s\"", strings.ReplaceAll(msg, "\"", "'")))
+		// Persist message so the synchronous caller can return an error and the UI can show a toast
+		_ = r.db.Model(&entities.Invoice{}).Where("id = ?", invoice.ID).Updates(map[string]interface{}{
+			"link":   msg,
+			"status": string(entities.InvoiceStatusPending),
+		}).Error
+		return
+	}
+
 	// Format the due date for MikroTik scheduler (e.g., "oct/28/2025")
 	dueDateFormatted := invoice.DueDate.Format("Jan/02/2006")
 	// Convert to lowercase for MikroTik format
 	dueDateFormatted = strings.ToLower(dueDateFormatted)
-	cmd := fmt.Sprintf("/system scheduler set [find name=\"%s\"] start-date=%s", schedulerName, dueDateFormatted)
+	cmd := fmt.Sprintf("/system scheduler set [find name=\"%s\"] start-date=%s; :log info \"CRM: scheduler set name='%s' start-date=%s for invoice=%s\"", schedulerName, dueDateFormatted, schedulerName, dueDateFormatted, invoice.ID)
 
 	log.Printf("[tlsk-scheduler] setting %s start-date=%s for unpaid invoice %s", schedulerName, dueDateFormatted, invoice.ID)
 	if out, err := mt.ExecuteCommand(cmd); err != nil {

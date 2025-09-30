@@ -15,10 +15,12 @@ ALTER TABLE `network_devices`
 ADD KEY `idx_network_devices_product_id` (`product_id`);
 
 -- Step 4: Migrate existing data (copy product_id from customer to network_devices)
-UPDATE `network_devices` nd
-JOIN `customer` c ON nd.customer_id = c.id
-SET nd.product_id = c.product_id
-WHERE nd.product_id IS NULL;
+-- Note: Since customer table doesn't have product_id column, we'll skip this step
+-- You may need to manually set product_id for existing network_devices based on your business logic
+-- UPDATE `network_devices` nd
+-- JOIN `customer` c ON nd.customer_id = c.id
+-- SET nd.product_id = c.product_id
+-- WHERE nd.product_id IS NULL;
 
 -- Step 5: Remove product_id from customer table (commented out for safety)
 -- Uncomment the following lines after verifying the migration worked correctly:

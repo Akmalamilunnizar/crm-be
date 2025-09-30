@@ -30,6 +30,8 @@ func AdminDashboardRoute(app fiber.Router) {
 	app.Get("recent-transactions", handler.GetRecentTransactions)
 	app.Get("customer-growth", handler.GetCustomerGrowth)
 	app.Get("revenue-chart", handler.GetRevenueChart)
+	app.Get("expenses-chart", handler.GetExpensesChart)
+	app.Get("unpaid-customers-chart", handler.GetUnpaidCustomersChart)
 
 	// analityc := app.Group("analytic-graph")
 	// analityc.Get("customer")

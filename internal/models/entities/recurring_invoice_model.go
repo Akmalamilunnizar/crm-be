@@ -38,6 +38,7 @@ type RecurringInvoice struct {
 	InvoiceDate      time.Time                 `gorm:"column:invoice_date;type:date;not null" json:"invoice_date"`
 	DueDate          time.Time                 `gorm:"column:due_date;type:date;not null" json:"due_date"`
 	NextInvoiceDate  time.Time                 `gorm:"column:next_invoice_date;type:date;not null" json:"next_invoice_date"`
+	OriginalDay      int                       `gorm:"column:original_day;type:int;not null" json:"original_day"` // Preserve the original template day (1-31)
 	Frequency        RecurringInvoiceFrequency `gorm:"column:frequency;type:enum('monthly','quarterly','yearly');default:'monthly'" json:"frequency"`
 	Status           RecurringInvoiceStatus    `gorm:"column:status;type:enum('active','stopped','completed');default:'active'" json:"status"`
 	Description      *string                   `gorm:"column:description;type:text" json:"description"`

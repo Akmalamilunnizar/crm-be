@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"time"
 
-	inv "skripsi-be/internal/api/admin/invoice"
 	"skripsi-be/internal/api/admin/recurring_invoice"
 	"skripsi-be/internal/config/database"
 	"skripsi-be/internal/routes"
@@ -30,11 +29,11 @@ func main() {
 	})
 	// CORS configuration
 	app.Use(cors.New(cors.Config{
-    	AllowOrigins: "http://localhost:3000, http://127.0.0.1:3000, http://192.168.1.7:3000, http://192.168.1.11:3000, http://localhost:3002, http://127.0.0.1:3002, http://192.168.1.11:3002",
-    	AllowHeaders: "Origin, Content-Type, Accept, Authorization",
-    	AllowMethods: "GET, POST, PUT, DELETE, OPTIONS",
-    	AllowCredentials: true,
-    }))
+		AllowOrigins:     "http://localhost:3000, http://127.0.0.1:3000, http://192.168.1.7:3000, http://192.168.1.11:3000, http://localhost:3002, http://127.0.0.1:3002, http://192.168.1.11:3002",
+		AllowHeaders:     "Origin, Content-Type, Accept, Authorization",
+		AllowMethods:     "GET, POST, PUT, DELETE, OPTIONS",
+		AllowCredentials: true,
+	}))
 
 	// Recovery and request logging for diagnostics
 	app.Use(recovermw.New())
@@ -76,11 +75,8 @@ func main() {
 		}
 	}()
 
-	// Background scheduler to process due recurring invoices periodically
+	// Background scheduler: ONLY recurring invoice generation (MikroTik enforcement removed)
 	go func() {
-		// Track processed invoices to avoid re-enforcement
-		processedInvoices := make(map[string]bool)
-
 		run := func() {
 			defer func() {
 				if r := recover(); r != nil {
@@ -88,96 +84,7 @@ func main() {
 				}
 			}()
 			start := time.Now()
-			log.Printf("[recurring] run startawdasdwadwawsda: %s", start.Format(time.RFC3339))
 			db := database.GetDB()
-
-			// First: Enforcement tick and precheck so we always see logs even if recurring blocks
-			// Enforcement tick marker
-			log.Printf("[enforce] tick")
-			// Precheck: get newest invoice per customer and enforce based on status
-			invRepo := inv.NewAdminInvoiceRepository(db)
-			mt := services.GetSharedMikroTikService()
-			mtConnected := mt != nil && mt.IsConnected()
-			log.Printf("[enforce] precheck: mt_connected=%t", mtConnected)
-
-			if mtConnected && mt != nil {
-				// Get newest invoice for each customer
-				newestInvoices, err := invRepo.FindNewestInvoicePerCustomer()
-				if err != nil {
-					log.Printf("[enforce] precheck: fetch newest invoices error: %v", err)
-				} else {
-					regularChanged := 0
-					bypassedChanged := 0
-					seen := map[string]bool{}
-
-					for _, iv := range newestInvoices {
-						// Skip if already processed this invoice
-						if processedInvoices[iv.ID] {
-							continue
-						}
-
-						var devices []struct{ MacAddress *string }
-						if err := db.Table("network_devices").
-							Select("mac_address").
-							Where("customer_id = ? AND mac_address IS NOT NULL AND mac_address <> ''", iv.CustomerID).
-							Scan(&devices).Error; err != nil {
-							log.Printf("[enforce] devices fetch error customer=%s: %v", iv.CustomerID, err)
-							continue
-						}
-
-						deviceCount := 0
-						bindingType := ""
-
-						// Determine binding type based on invoice status and due date
-						if iv.Status == "unpaid" && iv.DueDate != nil && iv.DueDate.Before(time.Now()) {
-							bindingType = "regular" // Restrict due unpaid
-						} else if iv.Status == "paid" {
-							bindingType = "bypassed" // Unlock paid
-						} else if iv.Status == "unpaid" && (iv.DueDate == nil || iv.DueDate.After(time.Now())) {
-							bindingType = "bypassed" // Allow unpaid but not due yet
-						} else {
-							continue // Skip if not unpaid or paid
-						}
-
-						for _, d := range devices {
-							if d.MacAddress == nil {
-								continue
-							}
-							mac := *d.MacAddress
-							if seen[mac] {
-								continue
-							}
-							if err := mt.SetHotspotIPBindingType(mac, bindingType); err != nil {
-								log.Printf("[enforce] set %s failed mac=%s: %v", bindingType, mac, err)
-							} else {
-								deviceCount++
-								seen[mac] = true
-								if bindingType == "regular" {
-									regularChanged++
-								} else {
-									bypassedChanged++
-								}
-							}
-						}
-
-						// Mark this invoice as processed if we found devices for it
-						if deviceCount > 0 {
-							processedInvoices[iv.ID] = true
-							log.Printf("[enforce] processed invoice %s (%d devices) -> %s", iv.ID, deviceCount, bindingType)
-						}
-					}
-
-					if regularChanged > 0 || bypassedChanged > 0 {
-						log.Printf("[enforce] set type=regular for %d device(s), type=bypassed for %d device(s)", regularChanged, bypassedChanged)
-					} else {
-						log.Printf("[enforce] no devices updated (newest invoices: %d, already processed: %d)", len(newestInvoices), len(processedInvoices))
-					}
-				}
-			} else {
-				log.Printf("[enforce] MikroTik not connected; skipping")
-			}
-
-			// Then: process recurring invoices
 			repo := recurring_invoice.NewAdminRecurringInvoiceRepository(db)
 			n, err := repo.ProcessDueRecurringInvoices()
 			dur := time.Since(start)
@@ -185,16 +92,12 @@ func main() {
 				log.Printf("[recurring] run error after %s: %v", dur, err)
 			} else if n > 0 {
 				log.Printf("[recurring] generated %d invoices in %s", n, dur)
-			} else {
-				log.Printf("[recurring] nothing due (duration %s)", dur)
 			}
 		}
 
-		// immediate run for faster feedback
 		run()
-
-		ticker := time.NewTicker(1 * time.Minute) // adjust cadence as needed
-		log.Printf("[recurring] scheduler started, interval=1m")
+		ticker := time.NewTicker(1 * time.Minute)
+		log.Printf("[recurring] scheduler started, interval=1m (mikrotik enforcement disabled)")
 		defer ticker.Stop()
 		for range ticker.C {
 			run()

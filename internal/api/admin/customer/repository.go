@@ -39,18 +39,8 @@ func (r AdminCustomerRepositoryStruct) FindAdminCustomerRepository() ([]Customer
 		networkDevices := []entities.NetworkDevice{}
 		r.db.Preload("Product").Where("customer_id = ?", customer.ID).Find(&networkDevices)
 
-		// If product is managed on network_devices, prefer first device with a loaded product
-		for _, device := range networkDevices {
-			if device.Product != nil && device.Product.ID != "" {
-				customer.Product = device.Product
-				customer.ProductID = device.Product.ID
-				break
-			}
-			if device.ProductID != nil && *device.ProductID != "" {
-				customer.ProductID = *device.ProductID
-				break
-			}
-		}
+		// Product information is now managed through network_devices
+		// We'll include the first device's product info in the response if needed
 
 		// Aggregate IP and MAC addresses from network devices
 		var ipAddresses []string
@@ -173,18 +163,8 @@ func (r AdminCustomerRepositoryStruct) FindByIdDetailAdminCustomerRepository(req
 	networkDevices := []entities.NetworkDevice{}
 	r.db.Preload("Product").Where("customer_id = ?", request.Id).Find(&networkDevices)
 
-	// Prefer product from network_devices if present
-	for _, device := range networkDevices {
-		if device.Product != nil && device.Product.ID != "" {
-			customer.Product = device.Product
-			customer.ProductID = device.Product.ID
-			break
-		}
-		if device.ProductID != nil && *device.ProductID != "" {
-			customer.ProductID = *device.ProductID
-			break
-		}
-	}
+	// Product information is now managed through network_devices
+	// The networkDevices slice contains the product information
 
 	// Get recent invoices for this customer (optional)
 	invoices := []entities.Invoice{}

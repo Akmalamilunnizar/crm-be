@@ -263,7 +263,7 @@ func (r AdminInvoiceRepositoryStruct) CreateAdminInvoiceRepository(request Creat
 
 	// Fetch the complete invoice with all relationships
 	var completeInvoice entities.Invoice
-	err := r.db.Preload("Customer.Product").Preload("InvoiceItems").First(&completeInvoice, "id = ?", invoice.ID)
+	err := r.db.Preload("Customer").Preload("InvoiceItems").First(&completeInvoice, "id = ?", invoice.ID)
 	if err.Error != nil {
 		return entities.Invoice{}, err.Error
 	}
@@ -289,6 +289,8 @@ func (r AdminInvoiceRepositoryStruct) CreateAdminInvoiceRepository(request Creat
 		}
 		mac := strings.TrimSpace(*dev[0].MacAddress)
 
+		// Generate scheduler name in format "Area - Customer Name"
+		schedulerName := r.generateSchedulerName(inv.CustomerID, inv.Customer.Name)
 		customerName := inv.Customer.Name
 		if customerName == "" {
 			customerName = inv.CustomerID
@@ -296,14 +298,14 @@ func (r AdminInvoiceRepositoryStruct) CreateAdminInvoiceRepository(request Creat
 		scriptName := "open_" + customerName
 
 		if inv.Status == entities.InvoiceStatusUnpaid {
-			// For unpaid invoices, set the TLSK - Center scheduler with due_date
+			// For unpaid invoices, update the scheduler with due_date using the new naming format
 			if inv.DueDate != nil {
 				// Format the due date for MikroTik scheduler (e.g., "oct/28/2025")
 				dueDateFormatted := inv.DueDate.Format("Jan/02/2006")
 				// Convert to lowercase for MikroTik format
 				dueDateFormatted = strings.ToLower(dueDateFormatted)
-				cmd := fmt.Sprintf("/system scheduler set [find name=\"TLSK - Center\"] start-date=%s", dueDateFormatted)
-				log.Printf("[mikrotik] scheduler: set TLSK - Center start-date=%s for unpaid invoice=%s", dueDateFormatted, inv.ID)
+				cmd := fmt.Sprintf("/system scheduler set [find name=\"%s\"] start-date=%s", schedulerName, dueDateFormatted)
+				log.Printf("[mikrotik] scheduler: set %s start-date=%s for unpaid invoice=%s", schedulerName, dueDateFormatted, inv.ID)
 				if out, err := svc.ExecuteCommand(cmd); err != nil {
 					log.Printf("[mikrotik] scheduler set error invoice=%s: %v", inv.ID, err)
 				} else {
@@ -313,7 +315,7 @@ func (r AdminInvoiceRepositoryStruct) CreateAdminInvoiceRepository(request Creat
 				log.Printf("[mikrotik] scheduler: no due date for unpaid invoice=%s", inv.ID)
 			}
 		} else {
-			// For paid and pending invoices, use the original scheduler logic
+			// For paid and pending invoices, use the original scheduler logic with new naming format
 			var onEvent string
 			if inv.Status == entities.InvoiceStatusPaid {
 				onEvent = fmt.Sprintf("ip/hotspot/ip-binding/set type=byp [find mac-address=%s]; sys/script/set comment=sudahbayar [find name=\"%s\"];", mac, scriptName)
@@ -322,7 +324,6 @@ func (r AdminInvoiceRepositoryStruct) CreateAdminInvoiceRepository(request Creat
 				onEvent = fmt.Sprintf("ip/hotspot/ip-binding/set disabled=y [find mac-address=%s]; sys/script/set comment=belumbayar [find name=\"%s\"];", mac, scriptName)
 			}
 
-			schedulerName := "invoice_" + inv.ID
 			cmd := fmt.Sprintf("/system scheduler add name=\"%s\" on-event=\"%s\" start-time=startup", schedulerName, onEvent)
 			log.Printf("[mikrotik] scheduler: create name=%s invoice=%s status=%s mac=%s", schedulerName, inv.ID, string(inv.Status), mac)
 			if out, err := svc.ExecuteCommand(cmd); err != nil {
@@ -334,6 +335,39 @@ func (r AdminInvoiceRepositoryStruct) CreateAdminInvoiceRepository(request Creat
 	}(completeInvoice)
 
 	return completeInvoice, nil
+}
+
+// generateSchedulerName creates a scheduler name in format "CodeName - Customer Name"
+func (r AdminInvoiceRepositoryStruct) generateSchedulerName(customerID, customerName string) string {
+	// Fetch customer with area information
+	var customer entities.Customer
+	if err := r.db.Preload("Area").Where("id = ?", customerID).First(&customer).Error; err != nil {
+		log.Printf("[scheduler] error fetching customer area for customer=%s: %v", customerID, err)
+		// Fallback to customer name only if area fetch fails
+		if customerName == "" {
+			return "Unknown - " + customerID
+		}
+		return "Unknown - " + customerName
+	}
+
+	// Get area code name (use code_name as the area identifier)
+	areaCode := "Unknown"
+	if customer.Area != nil && customer.Area.CodeName != "" {
+		areaCode = customer.Area.CodeName
+	}
+
+	// Use customer name or fallback to customer ID
+	if customerName == "" {
+		customerName = customerID
+	}
+
+	// Create scheduler name in format "CodeName - Customer Name"
+	schedulerName := fmt.Sprintf("%s - %s", areaCode, customerName)
+
+	// Log the generated scheduler name for debugging
+	log.Printf("[scheduler] generated scheduler name: %s for customer=%s", schedulerName, customerID)
+
+	return schedulerName
 }
 
 func (r AdminInvoiceRepositoryStruct) UpdateAdminInvoiceRepository(request UpdateAdminInvoiceRequest) (entities.Invoice, error) {
@@ -544,7 +578,7 @@ func (r AdminInvoiceRepositoryStruct) MarkPdfViewedRepository(request IdAdminInv
 	return invoice, nil
 }
 
-// setTLSKSchedulerForUnpaidInvoice sets the TLSK - Center scheduler with due_date for unpaid invoices
+// setTLSKSchedulerForUnpaidInvoice sets the scheduler with due_date for unpaid invoices using Area - Customer Name format
 func (r AdminInvoiceRepositoryStruct) setTLSKSchedulerForUnpaidInvoice(invoice entities.Invoice) {
 	defer func() {
 		if rec := recover(); rec != nil {
@@ -563,13 +597,16 @@ func (r AdminInvoiceRepositoryStruct) setTLSKSchedulerForUnpaidInvoice(invoice e
 		return
 	}
 
+	// Generate scheduler name in format "Area - Customer Name"
+	schedulerName := r.generateSchedulerName(invoice.CustomerID, invoice.Customer.Name)
+
 	// Format the due date for MikroTik scheduler (e.g., "oct/28/2025")
 	dueDateFormatted := invoice.DueDate.Format("Jan/02/2006")
 	// Convert to lowercase for MikroTik format
 	dueDateFormatted = strings.ToLower(dueDateFormatted)
-	cmd := fmt.Sprintf("/system scheduler set [find name=\"TLSK - Center\"] start-date=%s", dueDateFormatted)
+	cmd := fmt.Sprintf("/system scheduler set [find name=\"%s\"] start-date=%s", schedulerName, dueDateFormatted)
 
-	log.Printf("[tlsk-scheduler] setting TLSK - Center start-date=%s for unpaid invoice %s", dueDateFormatted, invoice.ID)
+	log.Printf("[tlsk-scheduler] setting %s start-date=%s for unpaid invoice %s", schedulerName, dueDateFormatted, invoice.ID)
 	if out, err := mt.ExecuteCommand(cmd); err != nil {
 		log.Printf("[tlsk-scheduler] error setting scheduler for invoice %s: %v", invoice.ID, err)
 	} else {

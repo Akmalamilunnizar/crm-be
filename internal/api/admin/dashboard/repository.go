@@ -273,11 +273,9 @@ func (r AdminDashboardRepositoryStruct) GetDashboardStats() (map[string]interfac
 		return nil, err
 	}
 
-	// Get total trouble tickets accumulation (sum of accumulation column)
-	var totalTicketsAccumulation int64
-	if err := r.db.Model(&entities.TroubleTicket{}).
-		Select("COALESCE(SUM(accumulation), 0)").
-		Scan(&totalTicketsAccumulation).Error; err != nil {
+	// Get total trouble tickets (count of tickets)
+	var totalTickets int64
+	if err := r.db.Model(&entities.TroubleTicket{}).Count(&totalTickets).Error; err != nil {
 		return nil, err
 	}
 
@@ -292,7 +290,7 @@ func (r AdminDashboardRepositoryStruct) GetDashboardStats() (map[string]interfac
 		"total_invoices":  totalInvoices,
 		"total_areas":     totalAreas,
 		"total_products":  totalProducts,
-		"total_tickets":   totalTicketsAccumulation,
+		"total_tickets":   totalTickets,
 	}
 
 	return data, nil

@@ -83,7 +83,7 @@ type Company struct {
 	Address     string     `json:"address"`
 	CreatedAt   time.Time  `json:"createdAt" gorm:"column:createdAt; default:current_timestamp"`
 	UpdatedAt   time.Time  `json:"updatedAt"  gorm:"column:updatedAt" `
-	Customers   []Customer `json:"customer" gorm:"foreignKey:company_id"`
+	Customers   []Customer `json:"customers" gorm:"foreignKey:CompanyID;references:ID"`
 }
 
 func (c *Company) TableName() string {
@@ -107,6 +107,7 @@ type Customer struct {
 	Longitude             float64   `gorm:"column:longitude" json:"longitude"`
 	Name                  string    `gorm:"column:name" json:"name"`
 	Alias                 string    `gorm:"column:alias" json:"alias"`
+	Email                 string    `gorm:"column:email" json:"email"`
 	Phone                 string    `gorm:"column:phone" json:"phone"`
 	Password              string    `gorm:"column:password" json:"password"`
 	ServiceRequestDate    string    `gorm:"column:service_request_date;type:date" json:"service_request_date"`
@@ -118,6 +119,8 @@ type Customer struct {
 	NextPaymentDate       time.Time `gorm:"column:next_payment_date;type:date" json:"next_payment_date"`
 	SalesRepresentativeID *string   `gorm:"column:sales_representative_id" json:"sales_representative_id"`
 	SalesRepresentative   *User     `gorm:"foreignKey:SalesRepresentativeID" json:"sales_representative"`
+	CompanyID             *string   `gorm:"column:company_id" json:"company_id"`
+	Company               *Company  `gorm:"foreignKey:CompanyID" json:"company"`
 }
 
 func (u *Customer) TableName() string {
@@ -146,6 +149,7 @@ type Areas struct {
 	NameCity        string     `json:"name_city"`
 	NameSubdistrict string     `json:"name_subdistrict"`
 	NameVillage     string     `json:"name_village"`
+	CodeName        string     `json:"code_name" gorm:"column:code_name"`
 	CreatedAt       time.Time  `json:"createdAt" gorm:"column:createdAt;default:current_timestamp"`
 	UpdatedAt       time.Time  `json:"updatedAt" gorm:"column:updatedAt;"`
 	Customers       []Customer `json:"customer" gorm:"foreignKey:area_id"`

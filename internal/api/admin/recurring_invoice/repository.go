@@ -227,7 +227,7 @@ func (r AdminRecurringInvoiceRepositoryStruct) GenerateInvoiceFromRecurring(requ
 	err := r.db.Transaction(func(tx *gorm.DB) error {
 		// lock the recurring record to avoid double generation
 		var recurringInvoice entities.RecurringInvoice
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Preload("Customer.Product").First(&recurringInvoice, "id = ?", request.Id).Error; err != nil {
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Preload("Customer").First(&recurringInvoice, "id = ?", request.Id).Error; err != nil {
 			return err
 		}
 
@@ -276,7 +276,8 @@ func (r AdminRecurringInvoiceRepositoryStruct) GenerateInvoiceFromRecurring(requ
 			recurringInvoice.CustomerID, []entities.InvoiceStatus{entities.InvoiceStatusUnpaid, entities.InvoiceStatusPending},
 		).Order("invoice_date ASC, createdAt ASC").First(&inv).Error; err != nil {
 			if err == gorm.ErrRecordNotFound {
-				// Create new invoice
+				// No existing unpaid/pending invoice found - this is normal, create new one
+				log.Printf("[recurring-gen] no existing unpaid invoice found for customer=%s, creating new invoice", recurringInvoice.CustomerID)
 				inv = entities.Invoice{
 					CustomerID:  recurringInvoice.CustomerID,
 					Amount:      0,
@@ -316,8 +317,10 @@ func (r AdminRecurringInvoiceRepositoryStruct) GenerateInvoiceFromRecurring(requ
 		var addedTotal int64 = 0
 		for _, it := range items {
 			name := it.Name
-			if name == "" && recurringInvoice.Customer.Product.ID != "" {
-				name = recurringInvoice.Customer.Product.Name
+			// Product information is now managed through network_devices
+			// Use the item name as provided, or use a default if empty
+			if name == "" {
+				name = "Internet Service"
 			}
 			qty := it.Qty
 			if qty <= 0 {

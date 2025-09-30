@@ -295,7 +295,9 @@ func (r AdminInvoiceRepositoryStruct) CreateAdminInvoiceRepository(request Creat
 		if customerName == "" {
 			customerName = inv.CustomerID
 		}
-		scriptName := "open_" + customerName
+		// Match script name with scheduler naming to keep things consistent on MikroTik
+		// Result: open_<CodeName - Customer Name>
+		scriptName := "open_" + schedulerName
 
 		if inv.Status == entities.InvoiceStatusUnpaid {
 			// For unpaid invoices, update the scheduler with due_date using the new naming format
@@ -345,7 +347,7 @@ func (r AdminInvoiceRepositoryStruct) generateSchedulerName(customerID, customer
 		log.Printf("[scheduler] error fetching customer area for customer=%s: %v", customerID, err)
 		// Fallback to customer name only if area fetch fails
 		if customerName == "" {
-			return "Unknown - " + customerID
+			return "Unknown - Unknown"
 		}
 		return "Unknown - " + customerName
 	}
@@ -356,9 +358,9 @@ func (r AdminInvoiceRepositoryStruct) generateSchedulerName(customerID, customer
 		areaCode = customer.Area.CodeName
 	}
 
-	// Use customer name or fallback to customer ID
+	// Use customer name; if missing, show Unknown (avoid exposing internal IDs)
 	if customerName == "" {
-		customerName = customerID
+		customerName = "Unknown"
 	}
 
 	// Create scheduler name in format "CodeName - Customer Name"

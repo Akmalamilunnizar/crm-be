@@ -101,13 +101,19 @@ func (r AdminRecurringInvoiceRepositoryStruct) FindRecurringInvoiceByID(request 
 }
 
 func (r AdminRecurringInvoiceRepositoryStruct) CreateRecurringInvoice(request CreateRecurringInvoiceRequest, userID string) (entities.RecurringInvoice, error) {
-	// Calculate next invoice date based on frequency
-	nextInvoiceDate := calculateNextInvoiceDate(request.InvoiceDate, request.Frequency)
+	// Next invoice should be the same as provided due_date
+	nextInvoiceDate := request.DueDate
 
 	// Marshal invoice items to JSON
 	itemsJSON, err := json.Marshal(request.InvoiceItems)
 	if err != nil {
 		return entities.RecurringInvoice{}, fmt.Errorf("failed to marshal invoice items: %v", err)
+	}
+
+	// Determine original day from the provided invoice_date (EOM-friendly)
+	originalDay := request.InvoiceDate.Day()
+	if originalDay >= 30 {
+		originalDay = 31
 	}
 
 	recurringInvoice := entities.RecurringInvoice{
@@ -121,6 +127,7 @@ func (r AdminRecurringInvoiceRepositoryStruct) CreateRecurringInvoice(request Cr
 		Description:     request.Description,
 		InvoiceItems:    string(itemsJSON),
 		CreatedBy:       &userID,
+		OriginalDay:     originalDay,
 	}
 
 	tx := r.db.Create(&recurringInvoice)
@@ -152,8 +159,8 @@ func (r AdminRecurringInvoiceRepositoryStruct) UpdateRecurringInvoice(request Up
 		return recurringInvoice, tx.Error
 	}
 
-	// Calculate next invoice date based on frequency
-	nextInvoiceDate := calculateNextInvoiceDate(request.InvoiceDate, request.Frequency)
+	// Next invoice should mirror the provided due_date
+	nextInvoiceDate := request.DueDate
 
 	// Marshal invoice items to JSON
 	itemsJSON, err := json.Marshal(request.InvoiceItems)
@@ -170,6 +177,12 @@ func (r AdminRecurringInvoiceRepositoryStruct) UpdateRecurringInvoice(request Up
 	recurringInvoice.Frequency = entities.RecurringInvoiceFrequency(request.Frequency)
 	recurringInvoice.Description = request.Description
 	recurringInvoice.InvoiceItems = string(itemsJSON)
+	// Keep original template day in sync with new invoice_date
+	od := request.InvoiceDate.Day()
+	if od >= 30 {
+		od = 31
+	}
+	recurringInvoice.OriginalDay = od
 
 	tx = r.db.Save(&recurringInvoice)
 	if tx.Error != nil {
@@ -260,8 +273,11 @@ func (r AdminRecurringInvoiceRepositoryStruct) GenerateInvoiceFromRecurring(requ
 			default:
 				monthsToAdd = 1
 			}
-			// Prefer end-of-month ordering: for day >= 30, request 31 then clamp.
-			preferredDay := invoiceDate.Day()
+			// Prefer template original day when available; fallback to invoice day.
+			preferredDay := recurringInvoice.OriginalDay
+			if preferredDay <= 0 {
+				preferredDay = invoiceDate.Day()
+			}
 			if preferredDay >= 30 {
 				preferredDay = 31
 			}
@@ -354,7 +370,8 @@ func (r AdminRecurringInvoiceRepositoryStruct) GenerateInvoiceFromRecurring(requ
 		}
 
 		// Update recurring dates (force), with fallback when RowsAffected == 0
-		newNext := calculateNextInvoiceDate(*invoiceDate, string(recurringInvoice.Frequency))
+		// Business rule: next_invoice_date should equal computed dueDate
+		newNext := *dueDate
 		res := tx.Model(&entities.RecurringInvoice{}).Where("id = ?", recurringInvoice.ID).
 			Updates(map[string]interface{}{
 				"invoice_date":      *invoiceDate,

@@ -51,8 +51,25 @@ func (r *ReportInstallationRepository) CreateReportInstallationRepository(reques
 	}
 
 	if request.InstallationCompletedAt != "" {
-		if parsed, err := time.Parse("2006-01-02 15:04:05", request.InstallationCompletedAt); err == nil {
-			installationCompletedAt = &parsed
+		// Try different date formats
+		formats := []string{
+			"2006-01-02T15:04",    // datetime-local format from frontend
+			"2006-01-02 15:04:05", // standard datetime format
+			"2006-01-02T15:04:05", // ISO format
+		}
+
+		for _, format := range formats {
+			if parsed, err := time.Parse(format, request.InstallationCompletedAt); err == nil {
+				installationCompletedAt = &parsed
+				break
+			}
+		}
+
+		// Log for debugging
+		if installationCompletedAt != nil {
+			log.Printf("Successfully parsed installation_completed_at: %s -> %v", request.InstallationCompletedAt, *installationCompletedAt)
+		} else {
+			log.Printf("Failed to parse installation_completed_at: %s", request.InstallationCompletedAt)
 		}
 	}
 
@@ -121,7 +138,7 @@ func (r *ReportInstallationRepository) CreateReportInstallationRepository(reques
 		networkDevice := entities.NetworkDevice{
 			ID:                     "",
 			CustomerID:             request.CustomerID,
-			AssetsID:               request.AssetsID,
+			AssetsID:               &request.AssetsID,
 			CustomerInstallationID: &installation.ID,
 			SwitchID:               &request.SwitchID,
 			PortNumber:             &request.PortNumber,

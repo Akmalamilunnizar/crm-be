@@ -39,22 +39,14 @@ func (r AdminCustomerRepositoryStruct) FindAdminCustomerRepository() ([]Customer
 		networkDevices := []entities.NetworkDevice{}
 		r.db.Preload("Product").Where("customer_id = ?", customer.ID).Find(&networkDevices)
 
-		// If product is managed on network_devices, prefer first device with a loaded product
-		for _, device := range networkDevices {
-			if device.Product != nil && device.Product.ID != "" {
-				customer.Product = device.Product
-				customer.ProductID = device.Product.ID
-				break
-			}
-			if device.ProductID != nil && *device.ProductID != "" {
-				customer.ProductID = *device.ProductID
-				break
-			}
-		}
+		// Note: Product information is now managed through network_devices table
+		// Customer no longer has direct Product relationship
 
 		// Aggregate IP and MAC addresses from network devices
 		var ipAddresses []string
 		var macAddresses []string
+		var productName *string
+		var productPrice *int64
 
 		for _, device := range networkDevices {
 			if device.IPStatic != nil && *device.IPStatic != "" {
@@ -62,6 +54,11 @@ func (r AdminCustomerRepositoryStruct) FindAdminCustomerRepository() ([]Customer
 			}
 			if device.MacAddress != nil && *device.MacAddress != "" {
 				macAddresses = append(macAddresses, *device.MacAddress)
+			}
+			// Get product information from the first device with a product
+			if device.Product != nil && productName == nil {
+				productName = &device.Product.Name
+				productPrice = &device.Product.Price
 			}
 		}
 
@@ -80,9 +77,11 @@ func (r AdminCustomerRepositoryStruct) FindAdminCustomerRepository() ([]Customer
 		}
 
 		customerResponse := CustomerListResponse{
-			Customer:   customer,
-			IPStatic:   combinedIP,
-			MacAddress: combinedMAC,
+			Customer:     customer,
+			IPStatic:     combinedIP,
+			MacAddress:   combinedMAC,
+			ProductName:  productName,
+			ProductPrice: productPrice,
 		}
 
 		response = append(response, customerResponse)
@@ -153,8 +152,10 @@ type CustomerDetailResponse struct {
 // CustomerListResponse represents customer with network device data for list view
 type CustomerListResponse struct {
 	entities.Customer
-	IPStatic   *string `json:"ip_static"`
-	MacAddress *string `json:"mac_address"`
+	IPStatic     *string `json:"ip_static"`
+	MacAddress   *string `json:"mac_address"`
+	ProductName  *string `json:"product_name"`
+	ProductPrice *int64  `json:"product_price"`
 }
 
 func (r AdminCustomerRepositoryStruct) FindByIdDetailAdminCustomerRepository(request IdAdminCustomerRequest) (*CustomerDetailResponse, error) {
@@ -173,18 +174,8 @@ func (r AdminCustomerRepositoryStruct) FindByIdDetailAdminCustomerRepository(req
 	networkDevices := []entities.NetworkDevice{}
 	r.db.Preload("Product").Where("customer_id = ?", request.Id).Find(&networkDevices)
 
-	// Prefer product from network_devices if present
-	for _, device := range networkDevices {
-		if device.Product != nil && device.Product.ID != "" {
-			customer.Product = device.Product
-			customer.ProductID = device.Product.ID
-			break
-		}
-		if device.ProductID != nil && *device.ProductID != "" {
-			customer.ProductID = *device.ProductID
-			break
-		}
-	}
+	// Note: Product information is now managed through network_devices table
+	// Customer no longer has direct Product relationship
 
 	// Get recent invoices for this customer (optional)
 	invoices := []entities.Invoice{}

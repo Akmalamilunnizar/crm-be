@@ -301,9 +301,8 @@ func (r AdminRecurringInvoiceRepositoryStruct) GenerateInvoiceFromRecurring(requ
 		// Items
 		for _, it := range items {
 			name := it.Name
-			if name == "" && recurringInvoice.Customer.Product.ID != "" {
-				name = recurringInvoice.Customer.Product.Name
-			}
+			// Note: Product information is now managed through network_devices table
+			// Customer no longer has direct Product relationship
 			qty := it.Qty
 			if qty <= 0 {
 				qty = 1

@@ -72,27 +72,27 @@ func (u *Asset) BeforeCreate(tx *gorm.DB) error {
 
 // Company model
 type Company struct {
-	ID          string     `json:"id" gorm:"primaryKey"`
-	Name        string     `json:"name"`
-	URL         string     `json:"url"`
-	Email       string     `json:"email"`
-	Phone       string     `json:"phone"`
-	LogoURL     string     `json:"logo_url"`
-	Description string     `json:"description"`
-	Npwp        string     `json:"npwp"`
-	Address     string     `json:"address"`
-	CreatedAt   time.Time  `json:"createdAt" gorm:"column:createdAt; default:current_timestamp"`
-	UpdatedAt   time.Time  `json:"updatedAt"  gorm:"column:updatedAt" `
-	Customers   []Customer `json:"customer" gorm:"foreignKey:company_id"`
+	ID          string    `json:"id" gorm:"primaryKey"`
+	Name        string    `json:"name"`
+	URL         string    `json:"url"`
+	Email       string    `json:"email"`
+	Phone       string    `json:"phone"`
+	LogoURL     string    `json:"logo_url"`
+	Description string    `json:"description"`
+	Npwp        string    `json:"npwp"`
+	Address     string    `json:"address"`
+	CreatedAt   time.Time `json:"createdAt" gorm:"column:createdAt; default:current_timestamp"`
+	UpdatedAt   time.Time `json:"updatedAt"  gorm:"column:updatedAt" `
+	// Note: No direct relationship with Customer - customers are not directly linked to companies
 }
 
 func (c *Company) TableName() string {
 	return "company"
 }
 
-func (u *Company) BeforeCreate(tx *gorm.DB) error {
-	if u.ID == "" {
-		u.ID = uuid.New().String()
+func (c *Company) BeforeCreate(tx *gorm.DB) error {
+	if c.ID == "" {
+		c.ID = uuid.New().String()
 	}
 	return nil
 }
@@ -123,11 +123,11 @@ type Customer struct {
 func (u *Customer) TableName() string {
 	return "customer"
 }
-func (u *Customer) BeforeCreate(tx *gorm.DB) error {
-	if u.ID == "" {
-		u.ID = uuid.New().String()
-		u.InstallationDate = time.Now()
-		u.NextPaymentDate = time.Now().AddDate(0, 1, 0)
+func (c *Customer) BeforeCreate(tx *gorm.DB) error {
+	if c.ID == "" {
+		c.ID = uuid.New().String()
+		c.InstallationDate = time.Now()
+		c.NextPaymentDate = time.Now().AddDate(0, 1, 0)
 	}
 	return nil
 }
@@ -184,9 +184,9 @@ type Products struct {
 func (u *Products) TableName() string {
 	return "products"
 }
-func (u *Products) BeforeCreate(tx *gorm.DB) error {
-	if u.ID == "" {
-		u.ID = uuid.New().String()
+func (p *Products) BeforeCreate(tx *gorm.DB) error {
+	if p.ID == "" {
+		p.ID = uuid.New().String()
 	}
 	return nil
 }
@@ -310,9 +310,9 @@ type Role struct {
 func (u *Role) TableName() string {
 	return "roles"
 }
-func (u *Role) BeforeCreate(tx *gorm.DB) error {
-	if u.ID == "" {
-		u.ID = uuid.New().String()
+func (r *Role) BeforeCreate(tx *gorm.DB) error {
+	if r.ID == "" {
+		r.ID = uuid.New().String()
 	}
 	return nil
 }

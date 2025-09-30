@@ -6,6 +6,7 @@ import (
 
 type AdminInstallationReportServiceInterface interface {
 	GetCompleteInstallationReportService(installationId string) (entities.CustomerInstallation, error)
+	GetCompleteInstallationReportByViewService(installationId string) (InstallationReportCompleteResponse, error)
 	GetAllCompleteInstallationReportsService() ([]InstallationReportCompleteResponse, error)
 	GetInstallationSummaryPerCustomerService() ([]InstallationSummaryResponse, error)
 	GetInstallationAssetReportService(installationId string) (InstallationAssetReportResponse, error)
@@ -28,6 +29,15 @@ func (s AdminInstallationReportServiceStruct) GetCompleteInstallationReportServi
 		return installation, err
 	}
 	return installation, nil
+}
+
+// GetCompleteInstallationReportByViewService - Get complete installation report using database view
+func (s AdminInstallationReportServiceStruct) GetCompleteInstallationReportByViewService(installationId string) (InstallationReportCompleteResponse, error) {
+	report, err := s.repository.FindCompleteInstallationReportByViewRepository(installationId)
+	if err != nil {
+		return report, err
+	}
+	return report, nil
 }
 
 // GetAllCompleteInstallationReportsService - Get all complete installation reports

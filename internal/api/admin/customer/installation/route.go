@@ -22,6 +22,7 @@ func AdminCustomerInstallationRoute(app fiber.Router) {
 
 	// Installation Report endpoints (must be before /:id route to avoid conflicts)
 	app.Get("/report/complete/:id", reportHandler.GetCompleteInstallationReport)
+	app.Get("/report/complete-view/:id", reportHandler.GetCompleteInstallationReportByView)
 	app.Get("/report-complete", reportHandler.GetAllCompleteInstallationReports)
 	app.Get("/report/summary/customer", reportHandler.GetInstallationSummaryPerCustomer)
 	app.Get("/report/asset/:id", reportHandler.GetInstallationAssetReport)

@@ -43,9 +43,9 @@ func (r AdminNetworkDeviceRepositoryStruct) GetByCustomerIdAdminNetworkDeviceRep
 }
 
 func (r AdminNetworkDeviceRepositoryStruct) CreateAdminNetworkDeviceRepository(request CreateNetworkDeviceRequest) (entities.NetworkDevice, error) {
-	assetsID := ""
-	if request.AssetsID != nil {
-		assetsID = *request.AssetsID
+	var assetsID *string
+	if request.AssetsID != nil && *request.AssetsID != "" {
+		assetsID = request.AssetsID
 	}
 
 	networkDevice := entities.NetworkDevice{
@@ -56,6 +56,7 @@ func (r AdminNetworkDeviceRepositoryStruct) CreateAdminNetworkDeviceRepository(r
 		StatusPerangkat: request.StatusPerangkat,
 		LastPingStatus:  request.LastPingStatus,
 		AssetsID:        assetsID,
+		ProductID:       request.ProductID,
 	}
 
 	err := r.db.Create(&networkDevice).Error
@@ -69,9 +70,9 @@ func (r AdminNetworkDeviceRepositoryStruct) UpdateAdminNetworkDeviceRepository(r
 		return networkDevice, err
 	}
 
-	assetsID := ""
-	if request.AssetsID != nil {
-		assetsID = *request.AssetsID
+	var assetsID *string
+	if request.AssetsID != nil && *request.AssetsID != "" {
+		assetsID = request.AssetsID
 	}
 
 	networkDevice.CustomerID = request.CustomerID
@@ -80,6 +81,7 @@ func (r AdminNetworkDeviceRepositoryStruct) UpdateAdminNetworkDeviceRepository(r
 	networkDevice.StatusPerangkat = request.StatusPerangkat
 	networkDevice.LastPingStatus = request.LastPingStatus
 	networkDevice.AssetsID = assetsID
+	networkDevice.ProductID = request.ProductID
 
 	err = r.db.Save(&networkDevice).Error
 	return networkDevice, err

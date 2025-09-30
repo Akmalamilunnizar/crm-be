@@ -30,6 +30,22 @@ func (c AdminInstallationReportControllerStruct) GetCompleteInstallationReport(c
 	return helpers.ResponseUtils(ctx, fiber.StatusOK, true, "Installation report retrieved successfully", installation)
 }
 
+// GetCompleteInstallationReportByView - Get complete installation report using database view
+func (c AdminInstallationReportControllerStruct) GetCompleteInstallationReportByView(ctx *fiber.Ctx) error {
+	installationId := ctx.Params("id")
+
+	if installationId == "" {
+		return helpers.ResponseUtils(ctx, fiber.StatusBadRequest, false, "Installation ID is required", nil)
+	}
+
+	report, err := c.service.GetCompleteInstallationReportByViewService(installationId)
+	if err != nil {
+		return helpers.ResponseUtils(ctx, fiber.StatusInternalServerError, false, "Failed to get installation report", err.Error())
+	}
+
+	return helpers.ResponseUtils(ctx, fiber.StatusOK, true, "Installation report retrieved successfully", report)
+}
+
 // GetAllCompleteInstallationReports - Get all complete installation reports
 func (c AdminInstallationReportControllerStruct) GetAllCompleteInstallationReports(ctx *fiber.Ctx) error {
 	reports, err := c.service.GetAllCompleteInstallationReportsService()

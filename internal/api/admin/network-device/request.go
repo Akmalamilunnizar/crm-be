@@ -7,6 +7,7 @@ type CreateNetworkDeviceRequest struct {
 	StatusPerangkat string  `json:"status_perangkat" validate:"required"`
 	LastPingStatus  string  `json:"last_ping_status" validate:"required"`
 	AssetsID        *string `json:"assets_id"`
+	ProductID       *string `json:"product_id"`
 }
 
 type UpdateNetworkDeviceRequest struct {
@@ -17,6 +18,7 @@ type UpdateNetworkDeviceRequest struct {
 	StatusPerangkat string  `json:"status_perangkat" validate:"required"`
 	LastPingStatus  string  `json:"last_ping_status" validate:"required"`
 	AssetsID        *string `json:"assets_id"`
+	ProductID       *string `json:"product_id"`
 }
 
 type IdNetworkDeviceRequest struct {

@@ -86,12 +86,16 @@ type InstallationSummaryResponse struct {
 	CustomerName            string     `json:"customer_name"`
 	CustomerAddress         string     `json:"customer_address"`
 	CustomerPhone           string     `json:"customer_phone"`
+	TglPermintaanPsb        *time.Time `json:"tgl_permintaan_psb"`
 	TotalInstallations      int64      `json:"total_installations"`
 	CompletedInstallations  int64      `json:"completed_installations"`
 	PendingInstallations    int64      `json:"pending_installations"`
 	InProgressInstallations int64      `json:"in_progress_installations"`
 	LatestOnAirDate         *time.Time `json:"latest_on_air_date"`
 	LatestCompletionDate    *time.Time `json:"latest_completion_date"`
+	AvgDurasiPsb            *float64   `json:"avg_durasi_psb"`
+	TepatWaktuCount         int64      `json:"tepat_waktu_count"`
+	TerlambatCount          int64      `json:"terlambat_count"`
 }
 
 // InstallationAssetReportResponse - Response untuk laporan aset instalasi
@@ -130,6 +134,7 @@ type InstallationReportCompleteResponse struct {
 	CustomerName            string     `json:"customer_name"`
 	CustomerAddress         string     `json:"customer_address"`
 	CustomerPhone           string     `json:"customer_phone"`
+	TglPermintaanPsb        *time.Time `json:"tgl_permintaan_psb"`
 	TechnicianId            string     `json:"technician_id"`
 	TechnicianName          string     `json:"technician_name"`
 	TechnicianPhone         string     `json:"technician_phone"`
@@ -140,6 +145,8 @@ type InstallationReportCompleteResponse struct {
 	TrialEndDate            *time.Time `json:"trial_end_date"`
 	ServiceReadyDate        *time.Time `json:"service_ready_date"`
 	InstallationCompletedAt *time.Time `json:"installation_completed_at"`
+	DurasiPsb               *int       `json:"durasi_psb"`
+	StatusPsb               string     `json:"status_psb"`
 	DocumentType            string     `json:"document_type"`
 	DocumentPhoto           string     `json:"document_photo"`
 	TotalAssetsOut          int        `json:"total_assets_out"`

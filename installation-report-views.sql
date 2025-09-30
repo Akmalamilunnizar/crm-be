@@ -10,6 +10,7 @@ SELECT
     c.name as customer_name,
     c.address as customer_address,
     c.phone as customer_phone,
+    c.service_request_date as tgl_permintaan_psb,
     ci.technician_id,
     u.name as technician_name,
     u.phone as technician_phone,
@@ -22,6 +23,23 @@ SELECT
     ci.trial_end_date,
     ci.service_ready_date,
     ci.installation_completed_at,
+    
+    -- PSB Duration and Status
+    CASE 
+        WHEN c.service_request_date IS NOT NULL AND ci.installation_completed_at IS NOT NULL 
+        THEN DATEDIFF(ci.installation_completed_at, c.service_request_date)
+        ELSE NULL 
+    END as durasi_psb,
+    CASE 
+        WHEN c.service_request_date IS NOT NULL AND ci.installation_completed_at IS NOT NULL 
+        THEN 
+            CASE 
+                WHEN DATEDIFF(ci.installation_completed_at, c.service_request_date) <= 3 
+                THEN 'Tepat Waktu'
+                ELSE 'Terlambat'
+            END
+        ELSE NULL 
+    END as status_psb,
     
     -- Document Info
     ci.document_type,
@@ -88,15 +106,31 @@ SELECT
     c.name as customer_name,
     c.address as customer_address,
     c.phone as customer_phone,
+    c.service_request_date as tgl_permintaan_psb,
     COUNT(ci.id) as total_installations,
     COUNT(CASE WHEN ci.status = 'completed' THEN 1 END) as completed_installations,
     COUNT(CASE WHEN ci.status = 'pending' THEN 1 END) as pending_installations,
     COUNT(CASE WHEN ci.status = 'in_progress' THEN 1 END) as in_progress_installations,
     MAX(ci.on_air_date) as latest_on_air_date,
-    MAX(ci.installation_completed_at) as latest_completion_date
+    MAX(ci.installation_completed_at) as latest_completion_date,
+    AVG(CASE 
+        WHEN c.service_request_date IS NOT NULL AND ci.installation_completed_at IS NOT NULL 
+        THEN DATEDIFF(ci.installation_completed_at, c.service_request_date)
+        ELSE NULL 
+    END) as avg_durasi_psb,
+    COUNT(CASE 
+        WHEN c.service_request_date IS NOT NULL AND ci.installation_completed_at IS NOT NULL 
+             AND DATEDIFF(ci.installation_completed_at, c.service_request_date) <= 3 
+        THEN 1 
+    END) as tepat_waktu_count,
+    COUNT(CASE 
+        WHEN c.service_request_date IS NOT NULL AND ci.installation_completed_at IS NOT NULL 
+             AND DATEDIFF(ci.installation_completed_at, c.service_request_date) > 3 
+        THEN 1 
+    END) as terlambat_count
 FROM customer c
 LEFT JOIN customer_installations ci ON c.id = ci.customer_id
-GROUP BY c.id, c.name, c.address, c.phone
+GROUP BY c.id, c.name, c.address, c.phone, c.service_request_date
 ORDER BY total_installations DESC;
 
 -- Step 3: Buat view untuk laporan aset per instalasi

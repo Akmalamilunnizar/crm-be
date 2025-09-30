@@ -1,6 +1,7 @@
 package customerinstallation
 
 import (
+	"fmt"
 	"skripsi-be/internal/models/entities"
 	"time"
 
@@ -9,6 +10,7 @@ import (
 
 type AdminInstallationReportRepositoryInterface interface {
 	FindCompleteInstallationReportRepository(installationId string) (entities.CustomerInstallation, error)
+	FindCompleteInstallationReportByViewRepository(installationId string) (InstallationReportCompleteResponse, error)
 	FindAllCompleteInstallationReportsRepository() ([]InstallationReportCompleteResponse, error)
 	FindInstallationSummaryPerCustomerRepository() ([]InstallationSummaryResponse, error)
 	FindInstallationAssetReportRepository(installationId string) (InstallationAssetReportResponse, error)
@@ -43,6 +45,71 @@ func (r AdminInstallationReportRepositoryStruct) FindCompleteInstallationReportR
 	return installation, err
 }
 
+// FindCompleteInstallationReportByViewRepository - Get complete installation report using database view
+func (r AdminInstallationReportRepositoryStruct) FindCompleteInstallationReportByViewRepository(installationId string) (InstallationReportCompleteResponse, error) {
+	var report InstallationReportCompleteResponse
+
+	query := `
+		SELECT 
+			installation_id,
+			customer_id,
+			customer_name,
+			customer_address,
+			customer_phone,
+			tgl_permintaan_psb,
+			technician_id,
+			technician_name,
+			technician_phone,
+			installation_status,
+			installation_type,
+			installation_notes,
+			on_air_date,
+			trial_end_date,
+			service_ready_date,
+			installation_completed_at,
+			durasi_psb,
+			status_psb,
+			document_type,
+			document_photo,
+			total_assets_out,
+			total_assets_in,
+			network_device_id,
+			switch_id,
+			port_number,
+			remote_port,
+			eth_port,
+			mac_address,
+			ip_static,
+			status_perangkat,
+			kepemilikan_perangkat,
+			last_ping_status,
+			last_ping_timestamp,
+			router_brand,
+			router_type,
+			router_model,
+			router_serial,
+			customer_service_id,
+			user_login,
+			password,
+			user_status,
+			service_notes,
+			cable_id,
+			cable_name,
+			cable_type,
+			cable_length,
+			cable_status,
+			end_port_type,
+			installation_created_at,
+			installation_updated_at
+		FROM installation_report_complete
+		WHERE installation_id = ?
+		LIMIT 1
+	`
+
+	err := r.db.Raw(query, installationId).Scan(&report).Error
+	return report, err
+}
+
 // FindAllCompleteInstallationReportsRepository - Get all complete installation reports using database view
 func (r AdminInstallationReportRepositoryStruct) FindAllCompleteInstallationReportsRepository() ([]InstallationReportCompleteResponse, error) {
 	var reports []InstallationReportCompleteResponse
@@ -55,6 +122,7 @@ func (r AdminInstallationReportRepositoryStruct) FindAllCompleteInstallationRepo
 			customer_name,
 			customer_address,
 			customer_phone,
+			tgl_permintaan_psb,
 			technician_id,
 			technician_name,
 			technician_phone,
@@ -65,6 +133,8 @@ func (r AdminInstallationReportRepositoryStruct) FindAllCompleteInstallationRepo
 			trial_end_date,
 			service_ready_date,
 			installation_completed_at,
+			durasi_psb,
+			status_psb,
 			document_type,
 			document_photo,
 			total_assets_out,
@@ -115,15 +185,31 @@ func (r AdminInstallationReportRepositoryStruct) FindInstallationSummaryPerCusto
 			c.name as customer_name,
 			c.address as customer_address,
 			c.phone as customer_phone,
+			c.service_request_date as tgl_permintaan_psb,
 			COUNT(ci.id) as total_installations,
 			COUNT(CASE WHEN ci.status = 'completed' THEN 1 END) as completed_installations,
 			COUNT(CASE WHEN ci.status = 'pending' THEN 1 END) as pending_installations,
 			COUNT(CASE WHEN ci.status = 'in_progress' THEN 1 END) as in_progress_installations,
 			MAX(ci.on_air_date) as latest_on_air_date,
-			MAX(ci.installation_completed_at) as latest_completion_date
+			MAX(ci.installation_completed_at) as latest_completion_date,
+			AVG(CASE 
+				WHEN c.service_request_date IS NOT NULL AND ci.installation_completed_at IS NOT NULL
+				THEN DATEDIFF(ci.installation_completed_at, c.service_request_date)
+				ELSE NULL
+			END) as avg_durasi_psb,
+			COUNT(CASE 
+				WHEN c.service_request_date IS NOT NULL AND ci.installation_completed_at IS NOT NULL
+				AND DATEDIFF(ci.installation_completed_at, c.service_request_date) <= 3
+				THEN 1
+			END) as tepat_waktu_count,
+			COUNT(CASE 
+				WHEN c.service_request_date IS NOT NULL AND ci.installation_completed_at IS NOT NULL
+				AND DATEDIFF(ci.installation_completed_at, c.service_request_date) > 3
+				THEN 1
+			END) as terlambat_count
 		FROM customer c
 		LEFT JOIN customer_installations ci ON c.id = ci.customer_id
-		GROUP BY c.id, c.name, c.address, c.phone
+		GROUP BY c.id, c.name, c.address, c.phone, c.service_request_date
 		ORDER BY total_installations DESC
 	`
 
@@ -218,10 +304,31 @@ func (r AdminInstallationReportRepositoryStruct) CreateCompleteInstallationRepor
 	}
 
 	if request.InstallationCompletedAt != "" {
-		if parsed, err := time.Parse("2006-01-02 15:04:05", request.InstallationCompletedAt); err == nil {
-			installationCompletedAt = &parsed
+		// Try different date formats
+		formats := []string{
+			"2006-01-02T15:04",    // datetime-local format from frontend
+			"2006-01-02 15:04:05", // standard datetime format
+			"2006-01-02T15:04:05", // ISO format
+		}
+
+		for _, format := range formats {
+			if parsed, err := time.Parse(format, request.InstallationCompletedAt); err == nil {
+				installationCompletedAt = &parsed
+				break
+			}
+		}
+
+		// Log for debugging
+		if installationCompletedAt != nil {
+			fmt.Printf("Successfully parsed installation_completed_at: %s -> %v\n", request.InstallationCompletedAt, *installationCompletedAt)
+		} else {
+			fmt.Printf("Failed to parse installation_completed_at: %s\n", request.InstallationCompletedAt)
 		}
 	}
+
+	// Log document photo for debugging
+	fmt.Printf("Document Photo from request: '%s'\n", request.DocumentPhoto)
+	fmt.Printf("Document Type from request: '%s'\n", request.DocumentType)
 
 	// Create main installation record
 	installation := entities.CustomerInstallation{
@@ -244,6 +351,19 @@ func (r AdminInstallationReportRepositoryStruct) CreateCompleteInstallationRepor
 	if err := tx.Create(&installation).Error; err != nil {
 		tx.Rollback()
 		return installation, err
+	}
+
+	// Log what was actually saved to database
+	fmt.Printf("Installation created with ID: %s\n", installation.ID)
+	if installation.DocumentPhoto != nil {
+		fmt.Printf("Document Photo saved to DB: '%s'\n", *installation.DocumentPhoto)
+	} else {
+		fmt.Printf("Document Photo is NULL in DB\n")
+	}
+	if installation.DocumentType != nil {
+		fmt.Printf("Document Type saved to DB: '%s'\n", *installation.DocumentType)
+	} else {
+		fmt.Printf("Document Type is NULL in DB\n")
 	}
 
 	// Create asset transactions
@@ -281,7 +401,7 @@ func (r AdminInstallationReportRepositoryStruct) CreateCompleteInstallationRepor
 		networkDevice := entities.NetworkDevice{
 			ID:                     "",
 			CustomerID:             request.CustomerId,
-			AssetsID:               device.AssetsID,
+			AssetsID:               &device.AssetsID,
 			CustomerInstallationID: &installation.ID,
 			SwitchID:               &device.SwitchID,
 			PortNumber:             &device.PortNumber,

@@ -506,29 +506,39 @@ func (s *MikroTikService) parseNetwatchDevices(output string) []map[string]inter
 
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
-		if line == "" || strings.HasPrefix(line, "#") {
+		if line == "" || strings.HasPrefix(line, "#") || strings.HasPrefix(line, "Columns:") {
+			continue
+		}
+
+		// Parse MikroTik netwatch output format:
+		// "0 simple  10.0.130.34  10s      1m        down    2025-09-28 17:16:56"
+		// "1 icmp    10.10.21.10                     down    2025-09-29 19:44:36"
+		parts := strings.Fields(line)
+		if len(parts) < 3 {
 			continue
 		}
 
 		device := make(map[string]interface{})
-
-		// Parse netwatch device information
-		// Example format: "0 host=192.168.1.1 interval=30s timeout=5s status=up"
-		parts := strings.Fields(line)
-		for _, part := range parts {
-			if strings.Contains(part, "=") {
-				kv := strings.SplitN(part, "=", 2)
-				if len(kv) == 2 {
-					key := strings.TrimSpace(kv[0])
-					value := strings.TrimSpace(kv[1])
-
-					// Convert status to uppercase for consistency
-					if key == "status" {
-						value = strings.ToUpper(value)
+		
+		// Extract fields based on position
+		device[".id"] = parts[0]        // ID
+		device["type"] = parts[1]       // TYPE
+		device["host"] = parts[2]       // HOST
+		
+		// Handle optional fields
+		if len(parts) > 3 {
+			// Check if next field is timeout (contains 's' or 'm')
+			if strings.Contains(parts[3], "s") || strings.Contains(parts[3], "m") {
+				device["timeout"] = parts[3]
+				if len(parts) > 4 {
+					device["interval"] = parts[4]
+					if len(parts) > 5 {
+						device["status"] = strings.ToLower(parts[5])
 					}
-
-					device[key] = value
 				}
+			} else {
+				// No timeout/interval, status is in position 3
+				device["status"] = strings.ToLower(parts[3])
 			}
 		}
 

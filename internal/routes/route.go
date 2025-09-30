@@ -12,6 +12,7 @@ import (
 	"skripsi-be/internal/api/admin/invoice"
 	"skripsi-be/internal/api/admin/mikrotik"
 	networkdevice "skripsi-be/internal/api/admin/network-device"
+	network_monitoring "skripsi-be/internal/api/admin/network_monitoring"
 	"skripsi-be/internal/api/admin/product"
 	"skripsi-be/internal/api/admin/recurring_invoice"
 	"skripsi-be/internal/api/admin/report"
@@ -28,6 +29,7 @@ import (
 	"skripsi-be/internal/api/webhook/moota"
 	waapi "skripsi-be/internal/api/webhook/wa"
 	"skripsi-be/internal/config/database"
+	"skripsi-be/internal/services"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -67,6 +69,17 @@ func RouteFiber(app *fiber.App) {
 	invoice.AdminInvoiceRoute(admin.Group("/invoice"))
 	recurring_invoice.AdminRecurringInvoiceRoute(admin.Group("/recurring-invoice"))
 	mikrotik.MikroTikRoutes(admin.Group("/mikrotik"))
+
+	// Network Monitoring routes
+	networkMonitoringHandler := network_monitoring.NewNetworkMonitoringHandler(
+		services.NewNetworkMonitoringAssistant(database.GetDB(), services.GetSharedMikroTikService()),
+	)
+	// Update the handler in the route registration
+	admin.Group("/network-monitoring").Use(func(c *fiber.Ctx) error {
+		c.Locals("networkMonitoringHandler", networkMonitoringHandler)
+		return c.Next()
+	})
+	network_monitoring.NetworkMonitoringRoutes(admin.Group("/network-monitoring"))
 
 	// Network Device routes
 	networkdeviceHandler := networkdevice.NewAdminNetworkDeviceHandler(

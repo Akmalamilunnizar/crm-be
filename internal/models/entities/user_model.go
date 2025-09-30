@@ -392,6 +392,17 @@ type Invoice struct {
 	Transaction  Transaction    `gorm:"foreignKey:invoice_id;constraint:OnUpdate:RESTRICT" json:"transaction"`
 }
 
+// InvoicePendingReason stores customer's reason when invoice is pending
+type InvoicePendingReason struct {
+	ID        string    `gorm:"column:id;type:varchar;primaryKey" json:"id"`
+	InvoiceID string    `gorm:"column:invoice_id;type:varchar;not null" json:"invoice_id"`
+	Reason    string    `gorm:"column:reason;type:text;not null" json:"reason"`
+	CreatedAt time.Time `gorm:"column:created_at;default:current_timestamp" json:"created_at"`
+	UpdatedAt time.Time `gorm:"column:updated_at;not null" json:"updated_at"`
+}
+
+func (InvoicePendingReason) TableName() string { return "invoice_pending_reasons" }
+
 func (Invoice) TableName() string {
 	return "invoices"
 }

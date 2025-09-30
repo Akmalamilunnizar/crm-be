@@ -100,10 +100,20 @@ func (r AdminInvoiceRepositoryStruct) FindByIdAdminInvoiceRepository(request IdA
 
 func (r AdminInvoiceRepositoryStruct) CreateAdminInvoiceRepository(request CreateAdminInvoiceRequest) (entities.Invoice, error) {
 	// Create invoice entity manually to ensure proper field mapping
+	// Determine status from request; default unpaid
+	status := entities.InvoiceStatusUnpaid
+	if request.Status != nil {
+		if *request.Status == string(entities.InvoiceStatusPaid) {
+			status = entities.InvoiceStatusPaid
+		} else if *request.Status == string(entities.InvoiceStatusPending) {
+			status = entities.InvoiceStatusPending
+		}
+	}
+
 	invoice := entities.Invoice{
 		CustomerID: request.CustomerID,
 		Amount:     request.Amount,
-		Status:     entities.InvoiceStatusUnpaid, // Set default status
+		Status:     status,
 	}
 
 	// Set invoice date to today and derive due date based on the first item's quantity interpreted as number of months
@@ -196,12 +206,132 @@ func (r AdminInvoiceRepositoryStruct) CreateAdminInvoiceRepository(request Creat
 
 	tx.Commit()
 
+	// If pending with reason, store it
+	if invoice.Status == entities.InvoiceStatusPending && request.PendingReason != nil && *request.PendingReason != "" {
+		pr := entities.InvoicePendingReason{ID: uuid.New().String(), InvoiceID: invoice.ID, Reason: *request.PendingReason}
+		if err := r.db.Create(&pr).Error; err != nil {
+			log.Printf("failed to store pending reason: %v", err)
+		}
+	}
+
+	// Trigger MikroTik based on status (best-effort)
+	go func(inv entities.Invoice) {
+		defer func() { _ = recover() }()
+		svc := services.GetSharedMikroTikService()
+		if svc == nil || !svc.IsConnected() {
+			log.Printf("[mikrotik] skip: not connected (invoice=%s status=%s)", inv.ID, string(inv.Status))
+			return
+		}
+		// Fetch customer's network devices to get MACs
+		var devices []entities.NetworkDevice
+		if err := r.db.Where("customer_id = ? AND mac_address IS NOT NULL", inv.CustomerID).Find(&devices).Error; err != nil {
+			log.Printf("[mikrotik] fetch devices error invoice=%s: %v", inv.ID, err)
+			return
+		}
+		log.Printf("[mikrotik] applying status=%s to %d device(s) for customer=%s invoice=%s", string(inv.Status), len(devices), inv.CustomerID, inv.ID)
+		for _, d := range devices {
+			mac := strings.TrimSpace(*d.MacAddress)
+			if mac == "" {
+				continue
+			}
+			switch inv.Status {
+			case entities.InvoiceStatusPaid:
+				// bypass binding and mark script comment sudahbayar
+				cmd1 := fmt.Sprintf("/ip hotspot ip-binding set [find mac-address=%s] type=byp", mac)
+				log.Printf("[mikrotik] exec: %s", cmd1)
+				if out, err := svc.ExecuteCommand(cmd1); err != nil {
+					log.Printf("[mikrotik] error: %v", err)
+				} else {
+					log.Printf("[mikrotik] out: %s", strings.TrimSpace(out))
+				}
+				// optional: set script comment if script exists
+			case entities.InvoiceStatusUnpaid:
+				// disable binding and mark belumbayar
+				cmd2 := fmt.Sprintf("/ip hotspot ip-binding set [find mac-address=%s] disabled=yes", mac)
+				log.Printf("[mikrotik] exec: %s", cmd2)
+				if out, err := svc.ExecuteCommand(cmd2); err != nil {
+					log.Printf("[mikrotik] error: %v", err)
+				} else {
+					log.Printf("[mikrotik] out: %s", strings.TrimSpace(out))
+				}
+			case entities.InvoiceStatusPending:
+				// keep bypassed; no change
+				log.Printf("[mikrotik] pending: no change for mac=%s", mac)
+			}
+		}
+	}(invoice)
+
 	// Fetch the complete invoice with all relationships
 	var completeInvoice entities.Invoice
 	err := r.db.Preload("Customer.Product").Preload("InvoiceItems").First(&completeInvoice, "id = ?", invoice.ID)
 	if err.Error != nil {
 		return entities.Invoice{}, err.Error
 	}
+
+	// Create a Winbox (MikroTik) scheduler once per invoice based on status
+	go func(inv entities.Invoice) {
+		defer func() { _ = recover() }()
+		svc := services.GetSharedMikroTikService()
+		if svc == nil || !svc.IsConnected() {
+			log.Printf("[mikrotik] scheduler: skip (not connected) invoice=%s status=%s", inv.ID, string(inv.Status))
+			return
+		}
+
+		// Get first MAC for this customer
+		var dev []entities.NetworkDevice
+		if err := r.db.Where("customer_id = ? AND mac_address IS NOT NULL AND mac_address <> ''", inv.CustomerID).Order("created_at ASC").Limit(1).Find(&dev).Error; err != nil {
+			log.Printf("[mikrotik] scheduler: devices fetch error invoice=%s: %v", inv.ID, err)
+			return
+		}
+		if len(dev) == 0 || dev[0].MacAddress == nil || strings.TrimSpace(*dev[0].MacAddress) == "" {
+			log.Printf("[mikrotik] scheduler: no MAC found for customer=%s invoice=%s", inv.CustomerID, inv.ID)
+			return
+		}
+		mac := strings.TrimSpace(*dev[0].MacAddress)
+
+		customerName := inv.Customer.Name
+		if customerName == "" {
+			customerName = inv.CustomerID
+		}
+		scriptName := "open_" + customerName
+
+		if inv.Status == entities.InvoiceStatusUnpaid {
+			// For unpaid invoices, set the TLSK - Center scheduler with due_date
+			if inv.DueDate != nil {
+				// Format the due date for MikroTik scheduler (e.g., "oct/28/2025")
+				dueDateFormatted := inv.DueDate.Format("Jan/02/2006")
+				// Convert to lowercase for MikroTik format
+				dueDateFormatted = strings.ToLower(dueDateFormatted)
+				cmd := fmt.Sprintf("/system scheduler set [find name=\"TLSK - Center\"] start-date=%s", dueDateFormatted)
+				log.Printf("[mikrotik] scheduler: set TLSK - Center start-date=%s for unpaid invoice=%s", dueDateFormatted, inv.ID)
+				if out, err := svc.ExecuteCommand(cmd); err != nil {
+					log.Printf("[mikrotik] scheduler set error invoice=%s: %v", inv.ID, err)
+				} else {
+					log.Printf("[mikrotik] scheduler set out: %s", strings.TrimSpace(out))
+				}
+			} else {
+				log.Printf("[mikrotik] scheduler: no due date for unpaid invoice=%s", inv.ID)
+			}
+		} else {
+			// For paid and pending invoices, use the original scheduler logic
+			var onEvent string
+			if inv.Status == entities.InvoiceStatusPaid {
+				onEvent = fmt.Sprintf("ip/hotspot/ip-binding/set type=byp [find mac-address=%s]; sys/script/set comment=sudahbayar [find name=\"%s\"];", mac, scriptName)
+			} else {
+				// treat pending the same as unpaid for this scheduler request
+				onEvent = fmt.Sprintf("ip/hotspot/ip-binding/set disabled=y [find mac-address=%s]; sys/script/set comment=belumbayar [find name=\"%s\"];", mac, scriptName)
+			}
+
+			schedulerName := "invoice_" + inv.ID
+			cmd := fmt.Sprintf("/system scheduler add name=\"%s\" on-event=\"%s\" start-time=startup", schedulerName, onEvent)
+			log.Printf("[mikrotik] scheduler: create name=%s invoice=%s status=%s mac=%s", schedulerName, inv.ID, string(inv.Status), mac)
+			if out, err := svc.ExecuteCommand(cmd); err != nil {
+				log.Printf("[mikrotik] scheduler create error invoice=%s: %v", inv.ID, err)
+			} else {
+				log.Printf("[mikrotik] scheduler create out: %s", strings.TrimSpace(out))
+			}
+		}
+	}(completeInvoice)
 
 	return completeInvoice, nil
 }
@@ -236,9 +366,11 @@ func (r AdminInvoiceRepositoryStruct) UpdateStatusAdminInvoiceRepository(request
 	// Reload the invoice to get updated data
 	r.db.Preload("Customer.Product").Preload("InvoiceItems.Invoice").Preload("Transaction").First(&invoice, "id = ?", request.Id)
 
-	// Trigger MikroTik enforcement if invoice is paid
+	// Trigger MikroTik enforcement based on status
 	if request.Status == "paid" {
 		go r.enforceMikroTikForPaidInvoice(invoice)
+	} else if request.Status == "unpaid" {
+		go r.setTLSKSchedulerForUnpaidInvoice(invoice)
 	}
 
 	return invoice, nil
@@ -308,9 +440,9 @@ func (r AdminInvoiceRepositoryStruct) ProcessPartialPaymentRepository(request Pa
 	// Start transaction
 	tx := r.db.Begin()
 
-	// Get invoice with related data
+	// Get invoice (no customer preload to avoid selecting legacy customer.product_id column)
 	invoice := entities.Invoice{}
-	err := tx.Preload("Customer").Preload("InvoiceItems").First(&invoice, "id = ?", request.Id).Error
+	err := tx.Preload("InvoiceItems").First(&invoice, "id = ?", request.Id).Error
 	if err != nil {
 		tx.Rollback()
 		return invoice, err
@@ -345,6 +477,11 @@ func (r AdminInvoiceRepositoryStruct) ProcessPartialPaymentRepository(request Pa
 		Amount:      request.Amount,
 		Category:    "partial_payment",
 		Method:      "manual",
+	}
+
+	// If a reason/note was provided, append it to description
+	if request.Reason != nil && *request.Reason != "" {
+		transaction.Description = fmt.Sprintf("%s | Reason: %s", transaction.Description, *request.Reason)
 	}
 
 	err = tx.Create(&transaction).Error
@@ -405,6 +542,39 @@ func (r AdminInvoiceRepositoryStruct) MarkPdfViewedRepository(request IdAdminInv
 	r.db.Preload("Customer").Preload("InvoiceItems").Preload("Transaction").First(&invoice, "id = ?", request.Id)
 
 	return invoice, nil
+}
+
+// setTLSKSchedulerForUnpaidInvoice sets the TLSK - Center scheduler with due_date for unpaid invoices
+func (r AdminInvoiceRepositoryStruct) setTLSKSchedulerForUnpaidInvoice(invoice entities.Invoice) {
+	defer func() {
+		if rec := recover(); rec != nil {
+			log.Printf("[tlsk-scheduler] panic: %v", rec)
+		}
+	}()
+
+	mt := services.GetSharedMikroTikService()
+	if mt == nil || !mt.IsConnected() {
+		log.Printf("[tlsk-scheduler] MikroTik not connected; skipping invoice %s", invoice.ID)
+		return
+	}
+
+	if invoice.DueDate == nil {
+		log.Printf("[tlsk-scheduler] no due date for unpaid invoice %s", invoice.ID)
+		return
+	}
+
+	// Format the due date for MikroTik scheduler (e.g., "oct/28/2025")
+	dueDateFormatted := invoice.DueDate.Format("Jan/02/2006")
+	// Convert to lowercase for MikroTik format
+	dueDateFormatted = strings.ToLower(dueDateFormatted)
+	cmd := fmt.Sprintf("/system scheduler set [find name=\"TLSK - Center\"] start-date=%s", dueDateFormatted)
+
+	log.Printf("[tlsk-scheduler] setting TLSK - Center start-date=%s for unpaid invoice %s", dueDateFormatted, invoice.ID)
+	if out, err := mt.ExecuteCommand(cmd); err != nil {
+		log.Printf("[tlsk-scheduler] error setting scheduler for invoice %s: %v", invoice.ID, err)
+	} else {
+		log.Printf("[tlsk-scheduler] scheduler set successfully for invoice %s: %s", invoice.ID, strings.TrimSpace(out))
+	}
 }
 
 // enforceMikroTikForPaidInvoice sets IP binding type to "bypassed" for paid invoices

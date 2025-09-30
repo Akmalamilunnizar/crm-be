@@ -8,9 +8,11 @@ type InvoiceItem struct {
 }
 
 type CreateAdminInvoiceRequest struct {
-	Amount       int64         `json:"amount" validate:"required"`
-	CustomerID   string        `json:"customer_id" validate:"required"`
-	InvoiceItems []InvoiceItem `json:"invoice_items" validate:"required"`
+	Amount        int64         `json:"amount" validate:"required"`
+	CustomerID    string        `json:"customer_id" validate:"required"`
+	InvoiceItems  []InvoiceItem `json:"invoice_items" validate:"required"`
+	Status        *string       `json:"status,omitempty"`
+	PendingReason *string       `json:"pending_reason,omitempty"`
 }
 
 type IdAdminInvoiceRequest struct {
@@ -29,5 +31,6 @@ type UpdateAdminInvoiceRequest struct {
 
 type PartialPaymentRequest struct {
 	IdAdminInvoiceRequest
-	Amount int64 `json:"amount" validate:"required,min=1"`
+	Amount int64   `json:"amount" validate:"required,min=1"`
+	Reason *string `json:"reason,omitempty"`
 }

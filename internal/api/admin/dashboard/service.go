@@ -1,5 +1,7 @@
 package dashboard
 
+import "time"
+
 type AdminDashboardServiceInterface interface {
 	CardCustomer() (map[string]interface{}, error)
 	CardPacketPopular() (map[string]interface{}, error)
@@ -11,8 +13,10 @@ type AdminDashboardServiceInterface interface {
 	GetDashboardStats() (map[string]interface{}, error)
 	GetRecentInvoices() ([]map[string]interface{}, error)
 	GetRecentTransactions() ([]map[string]interface{}, error)
-	GetCustomerGrowth() (map[string]interface{}, error)
-	GetRevenueChart() (map[string]interface{}, error)
+	GetCustomerGrowth(start *time.Time, end *time.Time) (map[string]interface{}, error)
+	GetRevenueChart(start *time.Time, end *time.Time) (map[string]interface{}, error)
+	GetExpensesChart(start *time.Time, end *time.Time) (map[string]interface{}, error)
+    GetUnpaidCustomersChart(start *time.Time, end *time.Time) (map[string]interface{}, error)
 }
 
 type AdminDashboardServiceStruct struct {
@@ -113,8 +117,8 @@ func (s AdminDashboardServiceStruct) GetRecentTransactions() ([]map[string]inter
 	return data, nil
 }
 
-func (s AdminDashboardServiceStruct) GetCustomerGrowth() (map[string]interface{}, error) {
-	data, err := s.repository.GetCustomerGrowth()
+func (s AdminDashboardServiceStruct) GetCustomerGrowth(start *time.Time, end *time.Time) (map[string]interface{}, error) {
+	data, err := s.repository.GetCustomerGrowth(start, end)
 	if err != nil {
 		return nil, err
 	}
@@ -122,11 +126,27 @@ func (s AdminDashboardServiceStruct) GetCustomerGrowth() (map[string]interface{}
 	return data, nil
 }
 
-func (s AdminDashboardServiceStruct) GetRevenueChart() (map[string]interface{}, error) {
-	data, err := s.repository.GetRevenueChart()
+func (s AdminDashboardServiceStruct) GetRevenueChart(start *time.Time, end *time.Time) (map[string]interface{}, error) {
+	data, err := s.repository.GetRevenueChart(start, end)
 	if err != nil {
 		return nil, err
 	}
 
 	return data, nil
+}
+
+func (s AdminDashboardServiceStruct) GetExpensesChart(start *time.Time, end *time.Time) (map[string]interface{}, error) {
+	data, err := s.repository.GetExpensesChart(start, end)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+
+func (s AdminDashboardServiceStruct) GetUnpaidCustomersChart(start *time.Time, end *time.Time) (map[string]interface{}, error) {
+    data, err := s.repository.GetUnpaidCustomersChart(start, end)
+    if err != nil {
+        return nil, err
+    }
+    return data, nil
 }

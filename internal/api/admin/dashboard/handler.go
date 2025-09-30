@@ -1,10 +1,25 @@
 package dashboard
 
 import (
+	"time"
+
 	"github.com/gofiber/fiber/v2"
 
 	"skripsi-be/internal/helpers"
 )
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
 
 type AdminDashboardHandlerStruct struct {
 	service AdminDashboardServiceInterface
@@ -161,7 +176,27 @@ func (h AdminDashboardHandlerStruct) GetRecentTransactions(c *fiber.Ctx) error {
 }
 
 func (h AdminDashboardHandlerStruct) GetCustomerGrowth(c *fiber.Ctx) error {
-	data, err := h.service.GetCustomerGrowth()
+	// Optional query params: days, year_start, year_end
+	days := c.QueryInt("days", 0)
+	yStart := c.QueryInt("year_start", 0)
+	yEnd := c.QueryInt("year_end", 0)
+
+	var startPtr *time.Time
+	var endPtr *time.Time
+	if yStart != 0 && yEnd != 0 {
+		// Year range has priority
+		start := time.Date(min(yStart, yEnd), 1, 1, 0, 0, 0, 0, time.UTC)
+		end := time.Date(max(yStart, yEnd), 12, 31, 0, 0, 0, 0, time.UTC)
+		startPtr = &start
+		endPtr = &end
+	} else if days > 0 {
+		end := time.Now().Truncate(24 * time.Hour)
+		start := end.AddDate(0, 0, -days+1)
+		startPtr = &start
+		endPtr = &end
+	}
+
+	data, err := h.service.GetCustomerGrowth(startPtr, endPtr)
 	if err != nil {
 		return helpers.ResponseUtils(c, fiber.StatusBadRequest, false, "Failed Get Customer Growth", nil)
 	}
@@ -170,10 +205,82 @@ func (h AdminDashboardHandlerStruct) GetCustomerGrowth(c *fiber.Ctx) error {
 }
 
 func (h AdminDashboardHandlerStruct) GetRevenueChart(c *fiber.Ctx) error {
-	data, err := h.service.GetRevenueChart()
+	days := c.QueryInt("days", 0)
+	yStart := c.QueryInt("year_start", 0)
+	yEnd := c.QueryInt("year_end", 0)
+
+	var startPtr *time.Time
+	var endPtr *time.Time
+	if yStart != 0 && yEnd != 0 {
+		start := time.Date(min(yStart, yEnd), 1, 1, 0, 0, 0, 0, time.UTC)
+		end := time.Date(max(yStart, yEnd), 12, 31, 0, 0, 0, 0, time.UTC)
+		startPtr = &start
+		endPtr = &end
+	} else if days > 0 {
+		end := time.Now().Truncate(24 * time.Hour)
+		start := end.AddDate(0, 0, -days+1)
+		startPtr = &start
+		endPtr = &end
+	}
+
+	data, err := h.service.GetRevenueChart(startPtr, endPtr)
 	if err != nil {
 		return helpers.ResponseUtils(c, fiber.StatusBadRequest, false, "Failed Get Revenue Chart", nil)
 	}
 
 	return helpers.ResponseUtils(c, fiber.StatusOK, true, "Success Get Revenue Chart", data)
+}
+
+func (h AdminDashboardHandlerStruct) GetExpensesChart(c *fiber.Ctx) error {
+	days := c.QueryInt("days", 0)
+	yStart := c.QueryInt("year_start", 0)
+	yEnd := c.QueryInt("year_end", 0)
+
+	var startPtr *time.Time
+	var endPtr *time.Time
+	if yStart != 0 && yEnd != 0 {
+		start := time.Date(min(yStart, yEnd), 1, 1, 0, 0, 0, 0, time.UTC)
+		end := time.Date(max(yStart, yEnd), 12, 31, 0, 0, 0, 0, time.UTC)
+		startPtr = &start
+		endPtr = &end
+	} else if days > 0 {
+		end := time.Now().Truncate(24 * time.Hour)
+		start := end.AddDate(0, 0, -days+1)
+		startPtr = &start
+		endPtr = &end
+	}
+
+	data, err := h.service.GetExpensesChart(startPtr, endPtr)
+	if err != nil {
+		return helpers.ResponseUtils(c, fiber.StatusBadRequest, false, "Failed Get Expenses Chart", nil)
+	}
+
+	return helpers.ResponseUtils(c, fiber.StatusOK, true, "Success Get Expenses Chart", data)
+}
+
+func (h AdminDashboardHandlerStruct) GetUnpaidCustomersChart(c *fiber.Ctx) error {
+	days := c.QueryInt("days", 0)
+	yStart := c.QueryInt("year_start", 0)
+	yEnd := c.QueryInt("year_end", 0)
+
+	var startPtr *time.Time
+	var endPtr *time.Time
+	if yStart != 0 && yEnd != 0 {
+		start := time.Date(min(yStart, yEnd), 1, 1, 0, 0, 0, 0, time.UTC)
+		end := time.Date(max(yStart, yEnd), 12, 31, 0, 0, 0, 0, time.UTC)
+		startPtr = &start
+		endPtr = &end
+	} else if days > 0 {
+		end := time.Now().Truncate(24 * time.Hour)
+		start := end.AddDate(0, 0, -days+1)
+		startPtr = &start
+		endPtr = &end
+	}
+
+	data, err := h.service.GetUnpaidCustomersChart(startPtr, endPtr)
+	if err != nil {
+		return helpers.ResponseUtils(c, fiber.StatusBadRequest, false, "Failed Get Unpaid Customers Chart", nil)
+	}
+
+	return helpers.ResponseUtils(c, fiber.StatusOK, true, "Success Get Unpaid Customers Chart", data)
 }

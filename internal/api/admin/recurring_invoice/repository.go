@@ -245,8 +245,7 @@ func (r AdminRecurringInvoiceRepositoryStruct) GenerateInvoiceFromRecurring(requ
 			invoiceDate = &recurringInvoice.NextInvoiceDate
 		}
 
-		// Helper to clamp preferred day within target month
-		clampMonthly := clampToMonth
+		// Helper removed: use clampToMonth directly
 
 		if dueDate == nil {
 			// Due date should be next period relative to invoice_date
@@ -266,39 +265,55 @@ func (r AdminRecurringInvoiceRepositoryStruct) GenerateInvoiceFromRecurring(requ
 			if preferredDay >= 30 {
 				preferredDay = 31
 			}
-			dv := clampMonthly(*invoiceDate, monthsToAdd, preferredDay)
+			dv := clampToMonth(*invoiceDate, monthsToAdd, preferredDay)
 			dueDate = &dv
 		}
 		log.Printf("[recurring-gen] computed dates id=%s invoice_date=%s due_date=%s (freq=%s preferredDay=%d)", request.Id, invoiceDate.Format("2006-01-02"), dueDate.Format("2006-01-02"), string(recurringInvoice.Frequency), recurringInvoice.DueDate.Day())
 
-		// Create invoice with dates
-		inv := entities.Invoice{
-			CustomerID:  recurringInvoice.CustomerID,
-			Amount:      recurringInvoice.Amount,
-			Link:        fmt.Sprintf("/invoice/%s", recurringInvoice.ID),
-			Status:      entities.InvoiceStatusUnpaid,
-			InvoiceDate: invoiceDate,
-			DueDate:     dueDate,
-		}
-		if err := tx.Create(&inv).Error; err != nil {
-			return err
-		}
-
-		// Ensure dates are persisted even if the ORM omitted pointer fields
-		if err := tx.Model(&inv).Updates(map[string]interface{}{
-			"invoice_date": *invoiceDate,
-			"due_date":     *dueDate,
-		}).Error; err != nil {
-			return err
-		}
-		// Reload to verify
-		if err := tx.First(&inv, "id = ?", inv.ID).Error; err == nil {
-			log.Printf("[recurring-gen] persisted id=%s invoice_date=%v due_date=%v", inv.ID, inv.InvoiceDate, inv.DueDate)
+		// Consolidate: collapse all unpaid months into a single invoice for the customer
+		var inv entities.Invoice
+		if err := tx.Where("customer_id = ? AND status IN (?)",
+			recurringInvoice.CustomerID, []entities.InvoiceStatus{entities.InvoiceStatusUnpaid, entities.InvoiceStatusPending},
+		).Order("invoice_date ASC, createdAt ASC").First(&inv).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				// Create new invoice
+				inv = entities.Invoice{
+					CustomerID:  recurringInvoice.CustomerID,
+					Amount:      0,
+					Link:        fmt.Sprintf("/invoice/%s", recurringInvoice.ID),
+					Status:      entities.InvoiceStatusUnpaid,
+					InvoiceDate: invoiceDate,
+					DueDate:     dueDate,
+				}
+				if err := tx.Create(&inv).Error; err != nil {
+					return err
+				}
+				// Ensure dates are persisted even if the ORM omitted pointer fields
+				if err := tx.Model(&inv).Updates(map[string]interface{}{
+					"invoice_date": *invoiceDate,
+					"due_date":     *dueDate,
+				}).Error; err != nil {
+					return err
+				}
+			} else {
+				return err
+			}
 		} else {
-			log.Printf("[recurring-gen] reload error id=%s: %v", inv.ID, err)
+			// Merge dates: keep earliest invoice_date, latest due_date
+			if inv.InvoiceDate != nil && invoiceDate.Before(*inv.InvoiceDate) {
+				if err := tx.Model(&inv).Update("invoice_date", *invoiceDate).Error; err != nil {
+					return err
+				}
+			}
+			if inv.DueDate != nil && dueDate.After(*inv.DueDate) {
+				if err := tx.Model(&inv).Update("due_date", *dueDate).Error; err != nil {
+					return err
+				}
+			}
 		}
 
 		// Items
+		var addedTotal int64 = 0
 		for _, it := range items {
 			name := it.Name
 			if name == "" && recurringInvoice.Customer.Product.ID != "" {
@@ -317,6 +332,14 @@ func (r AdminRecurringInvoiceRepositoryStruct) GenerateInvoiceFromRecurring(requ
 			// Ensure primary key is set (ID is varchar PK, no BeforeCreate hook)
 			ii.ID = uuid.New().String()
 			if err := tx.Create(&ii).Error; err != nil {
+				return err
+			}
+			addedTotal += total
+		}
+
+		// Update invoice amount by added items
+		if addedTotal > 0 {
+			if err := tx.Model(&inv).Update("amount", gorm.Expr("amount + ?", addedTotal)).Error; err != nil {
 				return err
 			}
 		}

@@ -26,7 +26,7 @@ func NewAdminCustomerRepository(db *gorm.DB) AdminCustomerRepositoryStruct {
 
 func (r AdminCustomerRepositoryStruct) FindAdminCustomerRepository() ([]CustomerListResponse, error) {
 	customers := []entities.Customer{}
-	tx := r.db.Preload("Area").Preload("Company").Preload("Product").Find(&customers)
+	tx := r.db.Preload("Area").Find(&customers)
 
 	if tx.Error != nil {
 		return nil, tx.Error
@@ -92,7 +92,7 @@ func (r AdminCustomerRepositoryStruct) FindAdminCustomerRepository() ([]Customer
 }
 func (r AdminCustomerRepositoryStruct) FindByIdAdminCustomerRepository(request IdAdminCustomerRequest) (entities.Customer, error) {
 	customer := entities.Customer{}
-	tx := r.db.Preload("Area").Preload("Company").Preload("Product").Find(&customer, "id = ?", request.Id)
+	tx := r.db.Preload("Area").Find(&customer, "id = ?", request.Id)
 	if tx.Error != nil {
 		return customer, tx.Error
 	}
@@ -110,7 +110,7 @@ func (r AdminCustomerRepositoryStruct) CreateAdminCustomerRepository(customer en
 }
 func (r AdminCustomerRepositoryStruct) UpdateAdminCustomerRepository(request UpdateAdminCustomerRequest) (entities.Customer, error) {
 	customer := entities.Customer{}
-	tx := r.db.Preload("Area").Preload("Company").Preload("Product").Find(&customer, "id = ?", request.Id)
+	tx := r.db.Preload("Area").Find(&customer, "id = ?", request.Id)
 	if tx.Error != nil {
 		return customer, tx.Error
 	}
@@ -127,7 +127,7 @@ func (r AdminCustomerRepositoryStruct) UpdateAdminCustomerRepository(request Upd
 
 func (r AdminCustomerRepositoryStruct) DeleteAdminCustomerRepository(request IdAdminCustomerRequest) (entities.Customer, error) {
 	customer := entities.Customer{}
-	tx := r.db.Preload("Area").Preload("Company").Preload("Product").Find(&customer, "id = ?", request.Id)
+	tx := r.db.Preload("Area").Find(&customer, "id = ?", request.Id)
 	if tx.Error != nil {
 		return customer, tx.Error
 	}
@@ -160,7 +160,7 @@ type CustomerListResponse struct {
 func (r AdminCustomerRepositoryStruct) FindByIdDetailAdminCustomerRepository(request IdAdminCustomerRequest) (*CustomerDetailResponse, error) {
 	// Get customer with all related data
 	customer := entities.Customer{}
-	tx := r.db.Preload("Area").Preload("Company").Preload("Product").First(&customer, "id = ?", request.Id)
+	tx := r.db.Preload("Area").First(&customer, "id = ?", request.Id)
 	if tx.Error != nil {
 		return nil, tx.Error
 	}

@@ -26,14 +26,14 @@ func (r *Repo) GetCustomerDevice(customerID string) (*entities.NetwatchDevice, e
 func (r *Repo) GetDeviceEvents(deviceID string, startTime, endTime time.Time) ([]entities.NetwatchEvent, error) {
 	var events []entities.NetwatchEvent
 	query := r.db.Where("device_id = ?", deviceID)
-	
+
 	if !startTime.IsZero() {
 		query = query.Where("event_time >= ?", startTime)
 	}
 	if !endTime.IsZero() {
 		query = query.Where("event_time <= ?", endTime)
 	}
-	
+
 	err := query.Order("event_time DESC").Find(&events).Error
 	return events, err
 }
@@ -50,7 +50,7 @@ func (r *Repo) GetLatestDeviceEvent(deviceID string) (*entities.NetwatchEvent, e
 // GetCustomerInfo returns customer information with related data
 func (r *Repo) GetCustomerInfo(customerID string) (*entities.Customer, error) {
 	var customer entities.Customer
-	err := r.db.Preload("Product").Preload("Area").Preload("Company").
+	err := r.db.Preload("Area").
 		Where("id = ?", customerID).First(&customer).Error
 	return &customer, err
 }
@@ -58,7 +58,7 @@ func (r *Repo) GetCustomerInfo(customerID string) (*entities.Customer, error) {
 // GetDeviceStatusHistory returns status history for a device
 func (r *Repo) GetDeviceStatusHistory(deviceID string, timeRange string) ([]entities.NetwatchEvent, error) {
 	var startTime time.Time
-	
+
 	switch timeRange {
 	case "1h":
 		startTime = time.Now().Add(-1 * time.Hour)
@@ -80,20 +80,20 @@ func (r *Repo) GetDeviceStatusHistory(deviceID string, timeRange string) ([]enti
 // GetUptimeStats calculates uptime statistics for a device
 func (r *Repo) GetUptimeStats(deviceID string, days int) (map[string]interface{}, error) {
 	startTime := time.Now().Add(-time.Duration(days) * 24 * time.Hour)
-	
+
 	events, err := r.GetDeviceEvents(deviceID, startTime, time.Time{})
 	if err != nil {
 		return nil, err
 	}
 
 	stats := map[string]interface{}{
-		"total_events":    len(events),
-		"up_events":       0,
-		"down_events":     0,
-		"uptime_percent":  100.0,
-		"total_downtime":  "0h 0m",
-		"last_down_time":  nil,
-		"last_up_time":    nil,
+		"total_events":   len(events),
+		"up_events":      0,
+		"down_events":    0,
+		"uptime_percent": 100.0,
+		"total_downtime": "0h 0m",
+		"last_down_time": nil,
+		"last_up_time":   nil,
 	}
 
 	if len(events) == 0 {

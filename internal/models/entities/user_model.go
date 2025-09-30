@@ -37,29 +37,7 @@ func (u *Accounts) BeforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-type CustomerInstallation struct {
-	ID           string    `gorm:"column:id;type:varchar;primaryKey" json:"id"`
-	CustomerID   string    `gorm:"column:customer_id;type:varchar;index:archive_installation_ibfk_1" json:"customer_id,omitempty"`
-	TechnicianID string    `gorm:"column:technician_id;type:varchar;index:technician_id" json:"technician_id"`
-	Description  string    `gorm:"column:description;type:text" json:"description,omitempty"`
-	Date         string    `gorm:"column:date;type:date" json:"date"`
-	CreatedAt    time.Time `gorm:"column:createdAt;default:current_timestamp" json:"createdAt"`
-	UpdatedAt    time.Time `gorm:"column:updatedAt" json:"updatedAt"`
-	Customer     Customer  `gorm:"foreignKey:CustomerID;references:id;constraint:OnDelete:RESTRICT,OnUpdate:RESTRICT" json:"customer,omitempty"`
-	Technician   User      `gorm:"foreignKey:TechnicianID;references:id;constraint:OnUpdate:RESTRICT" json:"technician,omitempty"`
-	Images       []Image   `gorm:"foreignKey:archive_installation_id;constraint:OnUpdate:RESTRICT" json:"images,omitempty"`
-}
-
-func (c *CustomerInstallation) TableName() string {
-	return "customer_installations"
-}
-
-func (u *CustomerInstallation) BeforeCreate(tx *gorm.DB) error {
-	if u.ID == "" {
-		u.ID = uuid.New().String()
-	}
-	return nil
-}
+// CustomerInstallation model moved to customer_installation_model.go
 
 // Assets model
 type Asset struct {
@@ -121,31 +99,25 @@ func (u *Company) BeforeCreate(tx *gorm.DB) error {
 
 // Customer model
 type Customer struct {
-	ID               string    `json:"id" gorm:"primaryKey"`
-	Address          string    `gorm:"column:address" json:"address"`
-	AreaID           string    `gorm:"column:area_id" json:"area_id"`
-	Area             *Areas    `gorm:"foreignKey:AreaID" json:"area"`
-	CardIdentition   string    `gorm:"column:card_identition" json:"card_identition"`
-	CompanyID        string    `gorm:"column:company_id" json:"company_id"`
-	Company          *Company  `gorm:"foreignKey:CompanyID" json:"company"`
-	Email            string    `gorm:"column:email;unique" json:"email"`
-	Gender           string    `gorm:"column:gender" json:"gender"`
-	StatusUser       string    `gorm:"column:status_user" json:"status_user"`
-	ProductID        string    `gorm:"column:product_id" json:"product_id"`
-	Product          *Products `gorm:"foreignKey:ProductID" json:"product"`
-	Job              string    `gorm:"column:job" json:"job"`
-	Latitude         float64   `gorm:"column:latitude" json:"latitude"`
-	Longitude        float64   `gorm:"column:longitude" json:"longitude"`
-	Name             string    `gorm:"column:name" json:"name"`
-	Alias            string    `gorm:"column:alias" json:"alias"`
-	NoIdentition     int       `gorm:"column:no_identition" json:"no_identition"`
-	Password         string    `gorm:"column:password" json:"password"`
-	Phone            string    `gorm:"column:phone" json:"phone"`
-	TypeOfService    string    `gorm:"column:type_of_service" json:"type_of_service"`
-	CreatedAt        time.Time `gorm:"column:createdAt;autoCreateTime" json:"created_at"`
-	UpdatedAt        time.Time `gorm:"column:updatedAt;autoUpdateTime" json:"updated_at"`
-	InstallationDate time.Time `gorm:"column:installation_date;type:date" json:"installation_date"`
-	NextPaymentDate  time.Time `gorm:"column:next_payment_date;type:date" json:"next_payment_date"`
+	ID                    string    `json:"id" gorm:"primaryKey"`
+	Address               string    `gorm:"column:address" json:"address"`
+	AreaID                string    `gorm:"column:area_id" json:"area_id"`
+	Area                  *Areas    `gorm:"foreignKey:AreaID" json:"area"`
+	Latitude              float64   `gorm:"column:latitude" json:"latitude"`
+	Longitude             float64   `gorm:"column:longitude" json:"longitude"`
+	Name                  string    `gorm:"column:name" json:"name"`
+	Alias                 string    `gorm:"column:alias" json:"alias"`
+	Phone                 string    `gorm:"column:phone" json:"phone"`
+	Password              string    `gorm:"column:password" json:"password"`
+	ServiceRequestDate    string    `gorm:"column:service_request_date;type:date" json:"service_request_date"`
+	ProposedPackage       string    `gorm:"column:proposed_package" json:"proposed_package"`
+	BandwidthCapacity     string    `gorm:"column:bandwidth_capacity" json:"bandwidth_capacity"`
+	CreatedAt             time.Time `gorm:"column:createdAt;autoCreateTime" json:"created_at"`
+	UpdatedAt             time.Time `gorm:"column:updatedAt;autoUpdateTime" json:"updated_at"`
+	InstallationDate      time.Time `gorm:"column:installation_date;type:date" json:"installation_date"`
+	NextPaymentDate       time.Time `gorm:"column:next_payment_date;type:date" json:"next_payment_date"`
+	SalesRepresentativeID *string   `gorm:"column:sales_representative_id" json:"sales_representative_id"`
+	SalesRepresentative   *User     `gorm:"foreignKey:SalesRepresentativeID" json:"sales_representative"`
 }
 
 func (u *Customer) TableName() string {
@@ -361,6 +333,34 @@ func (u *Image) TableName() string {
 func (u *Image) BeforeCreate(tx *gorm.DB) error {
 	if u.ID == "" {
 		u.ID = uuid.New().String()
+	}
+	return nil
+}
+
+// AssetTransaction model untuk tracking aset keluar/masuk
+type AssetTransaction struct {
+	ID                     string                `gorm:"column:id;type:varchar;primaryKey" json:"id"`
+	CustomerInstallationID string                `gorm:"column:customer_installation_id;type:varchar;index:idx_asset_transactions_customer_installation_id" json:"customer_installation_id"`
+	AssetID                string                `gorm:"column:asset_id;type:varchar;index:idx_asset_transactions_asset_id" json:"asset_id"`
+	TransactionType        string                `gorm:"column:transaction_type;type:enum('out','in')" json:"transaction_type"`
+	Quantity               int                   `gorm:"column:quantity;type:int;default:1" json:"quantity"`
+	Notes                  string                `gorm:"column:notes;type:text" json:"notes,omitempty"`
+	TransactionDate        time.Time             `gorm:"column:transaction_date;type:datetime(3);default:current_timestamp" json:"transaction_date"`
+	CreatedBy              string                `gorm:"column:created_by;type:varchar;index:idx_asset_transactions_created_by" json:"created_by"`
+	CreatedAt              time.Time             `gorm:"column:createdAt;default:current_timestamp" json:"createdAt"`
+	UpdatedAt              time.Time             `gorm:"column:updatedAt;default:current_timestamp on update current_timestamp" json:"updatedAt"`
+	CustomerInstallation   *CustomerInstallation `gorm:"foreignKey:CustomerInstallationID;references:ID;constraint:OnDelete:CASCADE,OnUpdate:CASCADE" json:"customer_installation,omitempty"`
+	Asset                  *Asset                `gorm:"foreignKey:AssetID;references:ID;constraint:OnDelete:CASCADE,OnUpdate:CASCADE" json:"asset,omitempty"`
+	User                   *User                 `gorm:"foreignKey:CreatedBy;references:ID;constraint:OnDelete:CASCADE,OnUpdate:CASCADE" json:"user,omitempty"`
+}
+
+func (a *AssetTransaction) TableName() string {
+	return "asset_transactions"
+}
+
+func (a *AssetTransaction) BeforeCreate(tx *gorm.DB) error {
+	if a.ID == "" {
+		a.ID = uuid.New().String()
 	}
 	return nil
 }

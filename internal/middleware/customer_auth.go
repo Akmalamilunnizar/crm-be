@@ -79,7 +79,7 @@ func CustomerAuthMiddleware(c *fiber.Ctx) error {
 
 	// Set customer information in context
 	c.Locals("customer_id", customer.ID)
-	c.Locals("customer_email", customer.Email)
+	c.Locals("customer_phone", customer.Phone)
 	c.Locals("customer_name", customer.Name)
 	c.Locals("user_id", subject)
 	c.Locals("role", audience[0])

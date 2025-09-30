@@ -40,8 +40,8 @@ type DailyCount struct {
 }
 
 type PacketCount struct {
-	Name  string `json:"name"`
-	Count int    `json:"count"`
+	Name  string `json:"name" gorm:"column:name"`
+	Count int    `json:"count" gorm:"column:count"`
 }
 
 type AreaCount struct {
@@ -114,7 +114,8 @@ func (r AdminDashboardRepositoryStruct) CardPacketPopular() (map[string]interfac
 		Group("products.id, products.name").
 		Scan(&results).Error
 	if err != nil {
-		return nil, err
+		// If no data found, return empty results instead of error
+		results = []PacketCount{}
 	}
 
 	// Final result

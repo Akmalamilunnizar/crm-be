@@ -2,11 +2,14 @@ package invoice
 
 import (
 	"strings"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 
 	"skripsi-be/internal/api/common/validation"
+	"skripsi-be/internal/config/database"
 	"skripsi-be/internal/helpers"
+	"skripsi-be/internal/models/entities"
 )
 
 type AdminInvoiceHandlerStruct struct {
@@ -181,4 +184,35 @@ func (h AdminInvoiceHandlerStruct) PrintAllUnpaidInvoicesHandler(c *fiber.Ctx) e
 		return helpers.ResponseUtils(c, fiber.StatusBadRequest, false, err.Error(), nil)
 	}
 	return helpers.ResponseUtils(c, fiber.StatusOK, true, "All unpaid invoices printed successfully", result)
+}
+
+// GetRouterJobsByInvoice returns all router jobs for an invoice
+func (h AdminInvoiceHandlerStruct) GetRouterJobsByInvoice(c *fiber.Ctx) error {
+	id := c.Params("id")
+	if id == "" {
+		return helpers.ResponseUtils(c, fiber.StatusBadRequest, false, "missing id", nil)
+	}
+	db := database.GetDB()
+	var jobs []entities.RouterJob
+	if err := db.Where("invoice_id = ?", id).Order("created_at DESC").Find(&jobs).Error; err != nil {
+		return helpers.ResponseUtils(c, fiber.StatusBadRequest, false, err.Error(), nil)
+	}
+	return helpers.ResponseUtils(c, fiber.StatusOK, true, "", jobs)
+}
+
+// RetryRouterJobsByInvoice resets failed jobs to pending
+func (h AdminInvoiceHandlerStruct) RetryRouterJobsByInvoice(c *fiber.Ctx) error {
+	id := c.Params("id")
+	if id == "" {
+		return helpers.ResponseUtils(c, fiber.StatusBadRequest, false, "missing id", nil)
+	}
+	db := database.GetDB()
+	// reset error jobs and schedule soon
+	now := time.Now().Add(2 * time.Second)
+	if err := db.Model(&entities.RouterJob{}).
+		Where("invoice_id = ? AND status = ?", id, entities.RouterJobStatusError).
+		Updates(map[string]interface{}{"status": entities.RouterJobStatusPending, "next_run_at": now, "updated_at": time.Now(), "last_error": nil}).Error; err != nil {
+		return helpers.ResponseUtils(c, fiber.StatusBadRequest, false, err.Error(), nil)
+	}
+	return helpers.ResponseUtils(c, fiber.StatusOK, true, "Jobs retried", nil)
 }

@@ -446,19 +446,22 @@ func (r AdminInvoiceRepositoryStruct) UpdateStatusAdminInvoiceRepository(request
 	// Trigger MikroTik enforcement based on status (synchronous for unpaid to bubble errors)
 	if request.Status == "paid" {
 		go r.enforceMikroTikForPaidInvoice(invoice)
+		// For PAID, still ensure scheduler start-date gets updated to the invoice due_date
+		_, _ = services.EnqueueRouterJob(r.db, invoice.ID, services.RouterActionSetUnpaidScheduler, 0)
 		// Also run customer-specific open_ script
-		r.runOpenScriptForInvoice(invoice)
+		_, _ = services.EnqueueRouterJob(r.db, invoice.ID, services.RouterActionRunOpenScript, 0)
 	} else if request.Status == "unpaid" {
-		// Run synchronously so pre-checks can alter outcome
-		r.setTLSKSchedulerForUnpaidInvoice(invoice)
+		// Enqueue unpaid scheduler update instead of synchronous call
+		_, _ = services.EnqueueRouterJob(r.db, invoice.ID, services.RouterActionSetUnpaidScheduler, 0)
 		// Reload to capture any link/message written during scheduler checks
 		r.db.Preload("Customer").First(&invoice, "id = ?", invoice.ID)
 		if invoice.Link != "" && (strings.Contains(invoice.Link, "MikroTik") || strings.Contains(strings.ToLower(invoice.Link), "scheduler")) {
 			return invoice, fmt.Errorf(invoice.Link)
 		}
 	} else if request.Status == "pending" {
-		// Run the customer-specific open_ script for pending state as requested
-		r.runOpenScriptForInvoice(invoice)
+		// For PENDING, keep scheduler aligned with due_date and run open script
+		_, _ = services.EnqueueRouterJob(r.db, invoice.ID, services.RouterActionSetUnpaidScheduler, 0)
+		_, _ = services.EnqueueRouterJob(r.db, invoice.ID, services.RouterActionRunOpenScript, 0)
 	}
 
 	return invoice, nil

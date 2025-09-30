@@ -23,4 +23,8 @@ func AdminInvoiceRoute(app fiber.Router) {
 	app.Post("/:id/mark-pdf-viewed", handler.MarkPdfViewedHandler)
 	app.Post("/print-all-unpaid", handler.PrintAllUnpaidInvoicesHandler)
 	app.Delete("/:id", handler.DeleteAdminInvoiceHandler)
+
+	// Router job status & retry endpoints (minimal)
+	app.Get("/:id/router-jobs", handler.GetRouterJobsByInvoice)
+	app.Post("/:id/router-jobs/retry", handler.RetryRouterJobsByInvoice)
 }

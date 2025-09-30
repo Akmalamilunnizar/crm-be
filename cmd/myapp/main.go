@@ -104,6 +104,12 @@ func main() {
 		}
 	}()
 
+	// Start RouterJobs worker
+	go func() {
+		db := database.GetDB()
+		services.StartRouterJobWorker(db)
+	}()
+
 	log.Fatal(app.Listen(":3001"))
 }
 

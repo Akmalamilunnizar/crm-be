@@ -10,6 +10,7 @@ import (
 	"gorm.io/gorm/clause"
 
 	"skripsi-be/internal/models/entities"
+	"skripsi-be/internal/services"
 
 	"github.com/google/uuid"
 )
@@ -399,6 +400,11 @@ func (r AdminRecurringInvoiceRepositoryStruct) GenerateInvoiceFromRecurring(requ
 	}
 	// reload invoice with relations for response (explicit condition to avoid malformed WHERE)
 	r.db.Preload("Customer").Preload("InvoiceItems").First(&out, "id = ?", out.ID)
+
+	// Enqueue router job for unpaid scheduler after generation (best-effort)
+	if out.Status == entities.InvoiceStatusUnpaid {
+		_, _ = services.EnqueueRouterJob(r.db, out.ID, services.RouterActionSetUnpaidScheduler, 0)
+	}
 	return out, nil
 }
 

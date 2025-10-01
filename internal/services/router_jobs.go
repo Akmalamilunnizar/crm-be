@@ -58,21 +58,50 @@ func EnqueueRouterJob(db *gorm.DB, invoiceID string, action RouterAction, delay 
 
 // StartRouterJobWorker runs a background loop to process jobs
 func StartRouterJobWorker(db *gorm.DB) {
+	log.Printf("[routerjobs] ✅ Router jobs worker started - monitoring for pending MikroTik operations")
+
+	// Start with 2 second polling
 	ticker := time.NewTicker(2 * time.Second)
-	log.Printf("[routerjobs] worker started")
+	noJobsCount := 0
+	lastStatusLog := time.Now()
+
 	for range ticker.C {
-		processDueJobs(db)
+		hasJobs := processDueJobs(db)
+
+		if hasJobs {
+			// Reset to fast polling when jobs are found
+			noJobsCount = 0
+			ticker.Reset(2 * time.Second)
+		} else {
+			noJobsCount++
+			// Gradually increase polling interval when no jobs
+			if noJobsCount > 5 { // After 10 seconds of no jobs
+				ticker.Reset(10 * time.Second)
+			} else if noJobsCount > 2 { // After 4 seconds of no jobs
+				ticker.Reset(5 * time.Second)
+			}
+
+			// Log status every 5 minutes when idle
+			if time.Since(lastStatusLog) > 5*time.Minute {
+				log.Printf("[routerjobs] 💤 Worker idle - no pending jobs")
+				lastStatusLog = time.Now()
+			}
+		}
 	}
 }
 
-func processDueJobs(db *gorm.DB) {
+func processDueJobs(db *gorm.DB) bool {
 	// Fetch one due job to avoid stampede; simple approach
 	var job entities.RouterJob
-	if err := db.Where("status = ? AND next_run_at <= ?", entities.RouterJobStatusPending, time.Now()).Order("next_run_at ASC").First(&job).Error; err != nil {
-		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			log.Printf("[routerjobs] query error: %v", err)
-		}
-		return
+	// Use Find instead of First to avoid "record not found" logs
+	result := db.Where("status = ? AND next_run_at <= ?", entities.RouterJobStatusPending, time.Now()).Order("next_run_at ASC").Limit(1).Find(&job)
+	if result.Error != nil {
+		log.Printf("[routerjobs] query error: %v", result.Error)
+		return false
+	}
+	if result.RowsAffected == 0 {
+		// No jobs found - this is normal, don't log
+		return false
 	}
 
 	// Mark as pending (already), ensure UpdatedAt bumps
@@ -83,14 +112,14 @@ func processDueJobs(db *gorm.DB) {
 	var invoice entities.Invoice
 	if err := db.Preload("Customer").Preload("Customer.Area").First(&invoice, "id = ?", job.InvoiceID).Error; err != nil {
 		setJobError(db, &job, fmt.Errorf("invoice not found: %w", err))
-		return
+		return true // Job was processed (even if failed)
 	}
 
 	// Acquire MikroTik connection
 	mt := GetSharedMikroTikService()
 	if mt == nil || !mt.IsConnected() {
 		setJobRetry(db, &job, fmt.Errorf("mikrotik not connected"))
-		return
+		return true // Job was processed (even if failed)
 	}
 
 	var err error
@@ -111,7 +140,7 @@ func processDueJobs(db *gorm.DB) {
 			setJobError(db, &job, err)
 			log.Printf("[routerjobs] error unique=%s invoice=%s action=%s err=%v", job.UniqueKey, job.InvoiceID, job.Action, err)
 		}
-		return
+		return true // Job was processed (even if failed)
 	}
 
 	// Success
@@ -120,6 +149,7 @@ func processDueJobs(db *gorm.DB) {
 	job.UpdatedAt = time.Now()
 	_ = db.Save(&job)
 	log.Printf("[routerjobs] success unique=%s invoice=%s action=%s", job.UniqueKey, job.InvoiceID, job.Action)
+	return true
 }
 
 func isRetryableError(err error) bool {

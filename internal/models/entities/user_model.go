@@ -107,12 +107,10 @@ type Customer struct {
 	Longitude             float64   `gorm:"column:longitude" json:"longitude"`
 	Name                  string    `gorm:"column:name" json:"name"`
 	Alias                 string    `gorm:"column:alias" json:"alias"`
-	Email                 string    `gorm:"column:email" json:"email"`
 	Phone                 string    `gorm:"column:phone" json:"phone"`
 	Password              string    `gorm:"column:password" json:"password"`
 	ServiceRequestDate    string    `gorm:"column:service_request_date;type:date" json:"service_request_date"`
 	ProposedPackage       string    `gorm:"column:proposed_package" json:"proposed_package"`
-	BandwidthCapacity     string    `gorm:"column:bandwidth_capacity" json:"bandwidth_capacity"`
 	CreatedAt             time.Time `gorm:"column:createdAt;autoCreateTime" json:"created_at"`
 	UpdatedAt             time.Time `gorm:"column:updatedAt;autoUpdateTime" json:"updated_at"`
 	InstallationDate      time.Time `gorm:"column:installation_date;type:date" json:"installation_date"`

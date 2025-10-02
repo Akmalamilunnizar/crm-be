@@ -10,6 +10,7 @@ type AdminCustomerInstallationServiceInterface interface {
 	CreateAdminCustomerInstallationService(request CreateAdminCustomerInstallationRequest) (entities.CustomerInstallation, error)
 	UpdateAdminCustomerInstallationService(request UpdateAdminCustomerInstallationRequest) (entities.CustomerInstallation, error)
 	DeleteAdminCustomerInstallationService(request IdAdminCustomerInstallationRequest) (entities.CustomerInstallation, error)
+	GetInstallationReportsByCustomerService(customerId string) ([]entities.CustomerInstallation, error) // NEW
 }
 
 type AdminCustomerInstallationServiceStruct struct {
@@ -64,4 +65,14 @@ func (s AdminCustomerInstallationServiceStruct) DeleteAdminCustomerInstallationS
 	}
 
 	return customer, err
+}
+
+// NEW: Service method to get installation reports by customer ID
+func (s AdminCustomerInstallationServiceStruct) GetInstallationReportsByCustomerService(customerId string) ([]entities.CustomerInstallation, error) {
+	reports, err := s.repository.GetInstallationReportsByCustomerRepository(customerId)
+	if err != nil {
+		return reports, err
+	}
+
+	return reports, err
 }

@@ -15,6 +15,7 @@ type AdminCustomerInstallationRepositoryInterface interface {
 	DeleteAdminCustomerInstallationRepository(request IdAdminCustomerInstallationRequest) (entities.CustomerInstallation, error)
 	FindByIdAdminCustomerInstallationRepository(request IdAdminCustomerInstallationRequest) (entities.CustomerInstallation, error)
 	FindAdminCustomerInstallationRepository() ([]entities.CustomerInstallation, error)
+	GetInstallationReportsByCustomerRepository(customerId string) ([]entities.CustomerInstallation, error) // NEW
 }
 type AdminCustomerInstallationRepositoryStruct struct {
 	db *gorm.DB
@@ -136,4 +137,21 @@ func (r AdminCustomerInstallationRepositoryStruct) DeleteAdminCustomerInstallati
 	}
 
 	return customer, tx.Error
+}
+
+// NEW: Repository method to get installation reports by customer ID
+func (r AdminCustomerInstallationRepositoryStruct) GetInstallationReportsByCustomerRepository(customerId string) ([]entities.CustomerInstallation, error) {
+	reports := []entities.CustomerInstallation{}
+
+	// Get all installation reports for the specified customer with related data
+	tx := r.db.Preload("Customer").Preload("Technician").Preload("Images").
+		Where("customer_id = ?", customerId).
+		Order("created_at DESC").
+		Find(&reports)
+
+	if tx.Error != nil {
+		return reports, tx.Error
+	}
+
+	return reports, nil
 }

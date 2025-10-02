@@ -38,9 +38,9 @@ func (r AdminCustomerRepositoryStruct) FindAdminCustomerRepository() ([]Customer
 	// Build response with network device data
 	var response []CustomerListResponse
 	for _, customer := range customers {
-		// Get network devices for this customer (with Product)
+		// Get network devices for this customer (with Product and Assets)
 		networkDevices := []entities.NetworkDevice{}
-		r.db.Preload("Product").Where("customer_id = ?", customer.ID).Find(&networkDevices)
+		r.db.Preload("Product").Preload("Assets").Where("customer_id = ?", customer.ID).Find(&networkDevices)
 
 		// Note: Product information is now managed through network_devices table
 		// Customer no longer has direct Product relationship
@@ -173,9 +173,9 @@ func (r AdminCustomerRepositoryStruct) FindByIdDetailAdminCustomerRepository(req
 	installations := []entities.CustomerInstallation{}
 	r.db.Preload("Technician").Preload("Images").Where("customer_id = ?", request.Id).Find(&installations)
 
-	// Get network devices for this customer (with Product)
+	// Get network devices for this customer (with Product and Assets)
 	networkDevices := []entities.NetworkDevice{}
-	r.db.Preload("Product").Where("customer_id = ?", request.Id).Find(&networkDevices)
+	r.db.Preload("Product").Preload("Assets").Where("customer_id = ?", request.Id).Find(&networkDevices)
 
 	// Get real-time Netwatch status for each network device from MikroTik
 	for i := range networkDevices {

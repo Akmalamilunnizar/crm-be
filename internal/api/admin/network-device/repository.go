@@ -52,8 +52,13 @@ func (r AdminNetworkDeviceRepositoryStruct) CreateAdminNetworkDeviceRepository(r
 		StatusPerangkat: request.StatusPerangkat,
 		LastPingStatus:  request.LastPingStatus,
 		AssetsID: sql.NullString{
-			String: *request.AssetsID,
-			Valid:  request.AssetsID != nil,
+			String: func() string {
+				if request.AssetsID != nil {
+					return *request.AssetsID
+				}
+				return ""
+			}(),
+			Valid: request.AssetsID != nil && *request.AssetsID != "",
 		},
 		ProductID: request.ProductID,
 	}

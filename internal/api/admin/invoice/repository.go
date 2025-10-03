@@ -651,6 +651,34 @@ func (r AdminInvoiceRepositoryStruct) ProcessPartialPaymentRepository(request Pa
 		return invoice, err
 	}
 
+	// If invoice becomes pending and reason was provided, save it to invoice_pending_reasons
+	if newStatus == entities.InvoiceStatusPending && request.Reason != nil && *request.Reason != "" {
+		// Check if reason already exists for this invoice
+		var existingReason entities.InvoicePendingReason
+		err := tx.Where("invoice_id = ?", request.Id).First(&existingReason).Error
+
+		if err != nil {
+			// No existing reason, create new one
+			pendingReason := entities.InvoicePendingReason{
+				ID:        uuid.New().String(),
+				InvoiceID: request.Id,
+				Reason:    *request.Reason,
+			}
+			err = tx.Create(&pendingReason).Error
+			if err != nil {
+				tx.Rollback()
+				return invoice, fmt.Errorf("failed to save pending reason: %v", err)
+			}
+		} else {
+			// Update existing reason
+			err = tx.Model(&existingReason).Update("reason", *request.Reason).Error
+			if err != nil {
+				tx.Rollback()
+				return invoice, fmt.Errorf("failed to update pending reason: %v", err)
+			}
+		}
+	}
+
 	// Commit transaction
 	tx.Commit()
 

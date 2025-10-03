@@ -96,3 +96,19 @@ func (h AdminCustomerInstallationHandlerStruct) DeleteAdminCustomerInstallationH
 
 	return helpers.ResponseUtils(c, fiber.StatusOK, true, "Success Delete Customer!", customer)
 }
+
+// NEW: Handler to get installation reports by customer ID
+func (h AdminCustomerInstallationHandlerStruct) GetInstallationReportsByCustomerHandler(c *fiber.Ctx) error {
+	customerId := c.Params("customerId")
+
+	if customerId == "" {
+		return helpers.ResponseUtils(c, fiber.StatusBadRequest, false, "Customer ID is required", "")
+	}
+
+	reports, err := h.service.GetInstallationReportsByCustomerService(customerId)
+	if err != nil {
+		return helpers.ResponseUtils(c, fiber.StatusBadRequest, false, err.Error(), "")
+	}
+
+	return helpers.ResponseUtils(c, fiber.StatusOK, true, "Success Get Installation Reports!", reports)
+}

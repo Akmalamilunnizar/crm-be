@@ -119,6 +119,9 @@ type Customer struct {
 	SalesRepresentative   *User     `gorm:"foreignKey:SalesRepresentativeID" json:"sales_representative"`
 	CompanyID             *string   `gorm:"column:company_id" json:"company_id"`
 	Company               *Company  `gorm:"foreignKey:CompanyID" json:"company"`
+
+	// One-to-Many relationship with CustomerInstallation
+	InstallationReports []CustomerInstallation `gorm:"foreignKey:CustomerID;references:ID" json:"installation_reports,omitempty"`
 }
 
 func (u *Customer) TableName() string {

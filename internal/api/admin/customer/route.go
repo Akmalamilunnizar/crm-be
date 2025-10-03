@@ -17,8 +17,10 @@ func AdminCustomerRoute(app fiber.Router) {
 	app.Get("", handler.GetAllAdminCustomerHandler)
 	app.Get("/:id", handler.GetByIdAdminCustomerHandler)
 	app.Get("/:id/detail", handler.GetByIdDetailAdminCustomerHandler)
+	app.Get("/:id/related-records", handler.GetCustomerRelatedRecords)
 	app.Post("", handler.CreateAdminCustomerHandler)
 	app.Put("/:id", handler.UpdateAdminCustomerHandler)
 	app.Delete("/:id", handler.DeleteAdminCustomerHandler)
+	app.Delete("/:id/with-related", handler.DeleteAdminCustomerWithRelated)
 
 }

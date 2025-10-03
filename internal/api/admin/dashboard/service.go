@@ -1,6 +1,9 @@
 package dashboard
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 type AdminDashboardServiceInterface interface {
 	CardCustomer() (map[string]interface{}, error)
@@ -16,7 +19,8 @@ type AdminDashboardServiceInterface interface {
 	GetCustomerGrowth(start *time.Time, end *time.Time) (map[string]interface{}, error)
 	GetRevenueChart(start *time.Time, end *time.Time) (map[string]interface{}, error)
 	GetExpensesChart(start *time.Time, end *time.Time) (map[string]interface{}, error)
-    GetUnpaidCustomersChart(start *time.Time, end *time.Time) (map[string]interface{}, error)
+	GetUnpaidCustomersChart(start *time.Time, end *time.Time) (map[string]interface{}, error)
+	GetUnpaidCustomersList() ([]map[string]interface{}, error)
 }
 
 type AdminDashboardServiceStruct struct {
@@ -144,9 +148,22 @@ func (s AdminDashboardServiceStruct) GetExpensesChart(start *time.Time, end *tim
 }
 
 func (s AdminDashboardServiceStruct) GetUnpaidCustomersChart(start *time.Time, end *time.Time) (map[string]interface{}, error) {
-    data, err := s.repository.GetUnpaidCustomersChart(start, end)
-    if err != nil {
-        return nil, err
-    }
-    return data, nil
+	data, err := s.repository.GetUnpaidCustomersChart(start, end)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+
+func (s AdminDashboardServiceStruct) GetUnpaidCustomersList() ([]map[string]interface{}, error) {
+	fmt.Println("🔧 [DEBUG] GetUnpaidCustomersList: Service method called")
+
+	data, err := s.repository.GetUnpaidCustomersList()
+	if err != nil {
+		fmt.Printf("🔧 [DEBUG] GetUnpaidCustomersList: Repository error - %v\n", err)
+		return nil, err
+	}
+
+	fmt.Printf("🔧 [DEBUG] GetUnpaidCustomersList: Repository returned %d records\n", len(data))
+	return data, nil
 }

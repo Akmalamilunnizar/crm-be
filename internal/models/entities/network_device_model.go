@@ -1,6 +1,7 @@
 package entities
 
 import (
+	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
@@ -12,7 +13,7 @@ type NetworkDevice struct {
 	ID                     string                `json:"id" gorm:"primaryKey;type:varchar(191)"`
 	CustomerID             string                `json:"customer_id" gorm:"type:varchar(191);not null"`
 	Customer               *Customer             `json:"customer,omitempty" gorm:"foreignKey:CustomerID;references:ID"`
-	AssetsID               *string               `json:"assets_id" gorm:"type:varchar(191)"`
+	AssetsID               sql.NullString        `json:"assets_id" gorm:"type:varchar(191)"`
 	Assets                 *Asset                `json:"assets,omitempty" gorm:"foreignKey:AssetsID;references:ID"`
 	CustomerInstallationID *string               `json:"customer_installation_id,omitempty" gorm:"type:varchar(191);index:idx_network_devices_customer_installation_id"`
 	CustomerInstallation   *CustomerInstallation `json:"customer_installation,omitempty" gorm:"foreignKey:CustomerInstallationID;references:ID;constraint:OnDelete:SET NULL,OnUpdate:CASCADE"`

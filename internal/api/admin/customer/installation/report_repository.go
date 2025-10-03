@@ -1,6 +1,7 @@
 package customerinstallation
 
 import (
+	"database/sql"
 	"fmt"
 	"skripsi-be/internal/models/entities"
 	"time"
@@ -399,9 +400,17 @@ func (r AdminInstallationReportRepositoryStruct) CreateCompleteInstallationRepor
 	// Create network devices
 	for _, device := range request.NetworkDevices {
 		networkDevice := entities.NetworkDevice{
-			ID:                     "",
-			CustomerID:             request.CustomerId,
-			AssetsID:               &device.AssetsID,
+			ID:         "",
+			CustomerID: request.CustomerId,
+			AssetsID: sql.NullString{
+				String: func() string {
+					if device.AssetsID != "" {
+						return device.AssetsID
+					}
+					return ""
+				}(),
+				Valid: device.AssetsID != "",
+			},
 			CustomerInstallationID: &installation.ID,
 			SwitchID:               &device.SwitchID,
 			PortNumber:             &device.PortNumber,

@@ -1,6 +1,7 @@
 package dashboard
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -283,4 +284,19 @@ func (h AdminDashboardHandlerStruct) GetUnpaidCustomersChart(c *fiber.Ctx) error
 	}
 
 	return helpers.ResponseUtils(c, fiber.StatusOK, true, "Success Get Unpaid Customers Chart", data)
+}
+
+func (h AdminDashboardHandlerStruct) GetUnpaidCustomersList(c *fiber.Ctx) error {
+	fmt.Println("🔧 [DEBUG] GetUnpaidCustomersList: Handler called")
+
+	data, err := h.service.GetUnpaidCustomersList()
+	if err != nil {
+		fmt.Printf("🔧 [DEBUG] GetUnpaidCustomersList: Service error - %v\n", err)
+		return helpers.ResponseUtils(c, fiber.StatusBadRequest, false, "Failed Get Unpaid Customers List", nil)
+	}
+
+	fmt.Printf("🔧 [DEBUG] GetUnpaidCustomersList: Success - found %d unpaid customers\n", len(data))
+	return helpers.ResponseUtils(c, fiber.StatusOK, true, "Success Get Unpaid Customers List", map[string]interface{}{
+		"unpaid_customers": data,
+	})
 }

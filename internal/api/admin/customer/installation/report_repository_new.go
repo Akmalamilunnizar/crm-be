@@ -1,6 +1,8 @@
 package customerinstallation
 
 import (
+	"database/sql"
+	"fmt"
 	"log"
 	"skripsi-be/internal/models/entities"
 	"time"
@@ -10,6 +12,7 @@ import (
 
 type ReportInstallationRepositoryInterface interface {
 	CreateReportInstallationRepository(request CreateReportInstallationRequest) (entities.CustomerInstallation, error)
+	CreateInstallationTechnicians(tx *gorm.DB, installationID string, technicians []TechnicianAssignment) error
 }
 
 type ReportInstallationRepository struct {
@@ -18,6 +21,73 @@ type ReportInstallationRepository struct {
 
 func NewReportInstallationRepository(db *gorm.DB) ReportInstallationRepositoryInterface {
 	return &ReportInstallationRepository{db: db}
+}
+
+// CreateInstallationTechnicians creates multiple technician assignments for an installation
+func (r *ReportInstallationRepository) CreateInstallationTechnicians(
+	tx *gorm.DB,
+	installationID string,
+	technicians []TechnicianAssignment,
+) error {
+	if len(technicians) == 0 {
+		return nil
+	}
+
+	// Validate at least one senior exists
+	hasSenior := false
+	for _, tech := range technicians {
+		if tech.Role == "senior" {
+			hasSenior = true
+			break
+		}
+	}
+
+	if !hasSenior {
+		return fmt.Errorf("at least one senior technician is required")
+	}
+
+	// Ensure only one primary technician
+	primaryCount := 0
+	for i := range technicians {
+		if technicians[i].IsPrimary {
+			primaryCount++
+		}
+	}
+
+	// If no primary is set, make the first senior primary
+	if primaryCount == 0 {
+		for i := range technicians {
+			if technicians[i].Role == "senior" {
+				technicians[i].IsPrimary = true
+				break
+			}
+		}
+	}
+
+	// Create pivot records
+	for _, tech := range technicians {
+		pivot := entities.InstallationReportTechnician{
+			CustomerInstallationID: installationID,
+			TechnicianID:           tech.TechnicianID,
+			Role:                   tech.Role,
+			IsPrimary:              tech.IsPrimary,
+			Notes:                  tech.Notes,
+		}
+		if err := tx.Create(&pivot).Error; err != nil {
+			return fmt.Errorf("failed to create technician assignment: %w", err)
+		}
+	}
+
+	log.Printf("✅ Created %d technician assignments for installation %s", len(technicians), installationID)
+	return nil
+}
+
+// Helper function to convert empty string to nil
+func stringToPtr(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
 }
 
 // CreateReportInstallationRepository - Create installation report with all related data
@@ -93,14 +163,38 @@ func (r *ReportInstallationRepository) CreateReportInstallationRepository(reques
 		request.LastPingStatus = "unknown"
 	}
 
+	// Determine technician_id for backward compatibility
+	var technicianID *string
+	if request.TechnicianID != "" {
+		// Legacy: single technician provided
+		technicianID = &request.TechnicianID
+	} else if len(request.Technicians) > 0 {
+		// New: multiple technicians - set primary technician as the legacy technician_id
+		for _, tech := range request.Technicians {
+			if tech.IsPrimary {
+				technicianID = &tech.TechnicianID
+				break
+			}
+		}
+		// If no primary found, use first senior technician
+		if technicianID == nil {
+			for _, tech := range request.Technicians {
+				if tech.Role == "senior" {
+					technicianID = &tech.TechnicianID
+					break
+				}
+			}
+		}
+	}
+
 	// Create main installation record
 	installation := entities.CustomerInstallation{
-		CustomerID:              &request.CustomerID,
-		TechnicianID:            &request.TechnicianID,
+		CustomerID:              stringToPtr(request.CustomerID),
+		TechnicianID:            technicianID,
 		Status:                  request.Status,
 		Notes:                   request.Notes,
-		DocumentType:            &request.DocumentType,
-		DocumentPhoto:           &request.DocumentPhoto,
+		DocumentType:            stringToPtr(request.DocumentType),
+		DocumentPhoto:           stringToPtr(request.DocumentPhoto),
 		InstallationType:        request.InstallationType,
 		TotalAssetsOut:          0, // Will be calculated based on asset transactions
 		TotalAssetsIn:           0, // Will be calculated based on asset transactions
@@ -133,55 +227,92 @@ func (r *ReportInstallationRepository) CreateReportInstallationRepository(reques
 
 	log.Printf("Installation record created successfully with ID: %s", installation.ID)
 
-	// Create network device
-	if request.AssetsID != "" {
+	// Update customer with company_id and sales_representative_id if provided
+	if request.CustomerCompanyID != "" || request.CustomerSalesRepresentativeID != "" {
+		updateData := make(map[string]interface{})
+		if request.CustomerCompanyID != "" {
+			updateData["company_id"] = request.CustomerCompanyID
+		}
+		if request.CustomerSalesRepresentativeID != "" {
+			updateData["sales_representative_id"] = request.CustomerSalesRepresentativeID
+		}
+
+		if err := tx.Model(&entities.Customer{}).
+			Where("id = ?", request.CustomerID).
+			Updates(updateData).Error; err != nil {
+			log.Printf("Failed to update customer with company/sales rep info: %v", err)
+			tx.Rollback()
+			return installation, err
+		}
+		log.Printf("Updated customer with company_id: %s, sales_representative_id: %s",
+			request.CustomerCompanyID, request.CustomerSalesRepresentativeID)
+	}
+
+	// Create network device - only if essential fields are provided
+	if request.AssetsID != "" && (request.MacAddress != "" || request.IPStatic != "" || request.SwitchID != "") {
+		// Prepare ProductID - only set if not empty
+		var productID *string
+		if request.ProductID != "" {
+			productID = &request.ProductID
+		}
+
 		networkDevice := entities.NetworkDevice{
-			ID:                     "",
-			CustomerID:             request.CustomerID,
-			AssetsID:               &request.AssetsID,
+			ID:         "",
+			CustomerID: request.CustomerID,
+			AssetsID: sql.NullString{
+				String: request.AssetsID,
+				Valid:  request.AssetsID != "",
+			},
 			CustomerInstallationID: &installation.ID,
-			SwitchID:               &request.SwitchID,
-			PortNumber:             &request.PortNumber,
-			RemotePort:             &request.RemotePort,
-			EthPort:                &request.EthPort,
-			MacAddress:             &request.MacAddress,
-			IPStatic:               &request.IPStatic,
+			SwitchID:               stringToPtr(request.SwitchID),
+			PortNumber:             stringToPtr(request.PortNumber),
+			RemotePort:             stringToPtr(request.RemotePort),
+			EthPort:                stringToPtr(request.EthPort),
+			MacAddress:             stringToPtr(request.MacAddress),
+			IPStatic:               stringToPtr(request.IPStatic),
 			KepemilikanPerangkat:   request.KepemilikanPerangkat,
 			StatusPerangkat:        request.StatusPerangkat,
 			LastPingStatus:         request.LastPingStatus,
+			ProductID:              productID,
 		}
 
 		if err := tx.Create(&networkDevice).Error; err != nil {
 			tx.Rollback()
 			return installation, err
 		}
+		log.Printf("Created network device for installation %s", installation.ID)
+	} else {
+		log.Printf("Skipping network device creation - insufficient network data provided")
 	}
 
-	// Create customer service
-	if request.UserLogin != "" || request.Password != "" {
+	// Create customer service - only if both login and password are provided
+	if request.UserLogin != "" && request.Password != "" {
 		customerService := entities.CustomerService{
 			ID:                     "",
 			CustomerID:             request.CustomerID,
 			CustomerInstallationID: &installation.ID,
-			UserLogin:              &request.UserLogin,
-			Password:               &request.Password,
+			UserLogin:              stringToPtr(request.UserLogin),
+			Password:               stringToPtr(request.Password),
 			UserStatus:             request.UserStatus,
-			EndPortType:            &request.EndPortType,
-			InstallationNotes:      &request.InstallationNotes,
+			EndPortType:            stringToPtr(request.EndPortType),
+			InstallationNotes:      stringToPtr(request.InstallationNotes),
 		}
 
 		if err := tx.Create(&customerService).Error; err != nil {
 			tx.Rollback()
 			return installation, err
 		}
+		log.Printf("Created customer service for installation %s", installation.ID)
+	} else {
+		log.Printf("Skipping customer service creation - login and/or password not provided")
 	}
 
-	// Create cable
-	if request.CableType != "" || request.CableLength > 0 {
+	// Create cable - only if cable type and length are provided
+	if request.CableType != "" && request.CableLength > 0 {
 		cable := entities.Cable{
 			ID:                     "",
 			Name:                   "Installation Cable",
-			Type:                   &request.CableType,
+			Type:                   stringToPtr(request.CableType),
 			Length:                 &request.CableLength,
 			Status:                 "in_use",
 			CustomerInstallationID: &installation.ID,
@@ -191,6 +322,50 @@ func (r *ReportInstallationRepository) CreateReportInstallationRepository(reques
 			tx.Rollback()
 			return installation, err
 		}
+		log.Printf("Created cable for installation %s", installation.ID)
+	} else {
+		log.Printf("Skipping cable creation - cable type and/or length not provided")
+	}
+
+	// Update images with installation ID
+	if len(request.ImageIds) > 0 {
+		log.Printf("Updating %d images with installation ID: %s", len(request.ImageIds), installation.ID)
+		if err := tx.Model(&entities.Image{}).
+			Where("id IN ?", request.ImageIds).
+			Update("archive_installation_id", installation.ID).Error; err != nil {
+			log.Printf("Failed to update images with installation ID: %v", err)
+			tx.Rollback()
+			return installation, err
+		}
+		log.Printf("Successfully updated images with installation ID")
+	}
+
+	// Create technician assignments
+	if len(request.Technicians) > 0 {
+		log.Printf("Creating technician assignments for installation: %s", installation.ID)
+		if err := r.CreateInstallationTechnicians(tx, installation.ID, request.Technicians); err != nil {
+			log.Printf("Failed to create technician assignments: %v", err)
+			tx.Rollback()
+			return installation, err
+		}
+		log.Printf("Successfully created technician assignments")
+	} else if request.TechnicianID != "" {
+		// Backward compatibility: if old TechnicianID is provided, create a single senior assignment
+		log.Printf("Creating legacy technician assignment for installation: %s", installation.ID)
+		legacyTech := []TechnicianAssignment{
+			{
+				TechnicianID: request.TechnicianID,
+				Role:         "senior",
+				IsPrimary:    true,
+				Notes:        "",
+			},
+		}
+		if err := r.CreateInstallationTechnicians(tx, installation.ID, legacyTech); err != nil {
+			log.Printf("Failed to create legacy technician assignment: %v", err)
+			tx.Rollback()
+			return installation, err
+		}
+		log.Printf("Successfully created legacy technician assignment")
 	}
 
 	if err := tx.Commit().Error; err != nil {
@@ -201,6 +376,9 @@ func (r *ReportInstallationRepository) CreateReportInstallationRepository(reques
 	var result entities.CustomerInstallation
 	err := r.db.Preload("Customer").
 		Preload("Technician").
+		Preload("InstallationTechnicians").
+		Preload("InstallationTechnicians.Technician").
+		Preload("Images").
 		Preload("NetworkDevices").
 		Preload("NetworkDevices.Assets").
 		Preload("CustomerServices").

@@ -1,6 +1,7 @@
 package customerinstallation
 
 import (
+	"database/sql"
 	"fmt"
 	"skripsi-be/internal/models/entities"
 	"time"
@@ -26,6 +27,7 @@ type AdminInstallationReportRepositoryStruct struct {
 func NewAdminInstallationReportRepository(db *gorm.DB) AdminInstallationReportRepositoryStruct {
 	return AdminInstallationReportRepositoryStruct{db}
 }
+
 
 // FindCompleteInstallationReportRepository - Get complete installation report with all related data
 func (r AdminInstallationReportRepositoryStruct) FindCompleteInstallationReportRepository(installationId string) (entities.CustomerInstallation, error) {
@@ -357,7 +359,16 @@ func (r AdminInstallationReportRepositoryStruct) CreateCompleteInstallationRepor
 	// Log what was actually saved to database
 	fmt.Printf("Installation created with ID: %s\n", installation.ID)
 	if installation.DocumentPhoto != nil {
-		fmt.Printf("Document Photo saved to DB: '%s'\n", *installation.DocumentPhoto)
+		// Normalize the document photo path if needed
+		normalizedPath := normalizeDocumentPhotoPath(*installation.DocumentPhoto)
+		if normalizedPath != *installation.DocumentPhoto {
+			// Update the database with the normalized path
+			installation.DocumentPhoto = &normalizedPath
+			tx.Save(&installation)
+			fmt.Printf("Document Photo normalized from '%s' to '%s'\n", *installation.DocumentPhoto, normalizedPath)
+		} else {
+			fmt.Printf("Document Photo saved to DB: '%s'\n", *installation.DocumentPhoto)
+		}
 	} else {
 		fmt.Printf("Document Photo is NULL in DB\n")
 	}
@@ -400,8 +411,17 @@ func (r AdminInstallationReportRepositoryStruct) CreateCompleteInstallationRepor
 	// Create network devices
 	for _, device := range request.NetworkDevices {
 		networkDevice := entities.NetworkDevice{
-			ID:                     "",
-			AssetsID:               &device.AssetsID,
+			ID:         "",
+			CustomerID: request.CustomerId,
+			AssetsID: sql.NullString{
+				String: func() string {
+					if device.AssetsID != "" {
+						return device.AssetsID
+					}
+					return ""
+				}(),
+				Valid: device.AssetsID != "",
+			},
 			CustomerInstallationID: &installation.ID,
 			SwitchID:               &device.SwitchID,
 			PortNumber:             &device.PortNumber,

@@ -113,3 +113,39 @@ func (h AdminCustomerHandlerStruct) DeleteAdminCustomerHandler(c *fiber.Ctx) err
 
 	return helpers.ResponseUtils(c, fiber.StatusOK, true, "Success Delete Customer!", customer)
 }
+
+// DeleteAdminCustomerWithRelated - Delete customer and all related records
+func (h AdminCustomerHandlerStruct) DeleteAdminCustomerWithRelated(c *fiber.Ctx) error {
+	request := IdAdminCustomerRequest{}
+	request.Id = c.Params("id")
+
+	errValidation := validation.ValidationRequest(request)
+	if errValidation != nil {
+		return helpers.ResponseUtils(c, fiber.StatusBadRequest, false, strings.Join(errValidation, ", "), "")
+	}
+
+	customer, err := h.service.DeleteAdminCustomerWithRelatedService(request)
+	if err != nil {
+		return helpers.ResponseUtils(c, fiber.StatusBadRequest, false, err.Error(), "")
+	}
+
+	return helpers.ResponseUtils(c, fiber.StatusOK, true, "Success Delete Customer and All Related Records!", customer)
+}
+
+// GetCustomerRelatedRecords - Get count of related records for a customer
+func (h AdminCustomerHandlerStruct) GetCustomerRelatedRecords(c *fiber.Ctx) error {
+	request := IdAdminCustomerRequest{}
+	request.Id = c.Params("id")
+
+	errValidation := validation.ValidationRequest(request)
+	if errValidation != nil {
+		return helpers.ResponseUtils(c, fiber.StatusBadRequest, false, strings.Join(errValidation, ", "), "")
+	}
+
+	relatedCounts, err := h.service.GetCustomerRelatedRecordsService(request)
+	if err != nil {
+		return helpers.ResponseUtils(c, fiber.StatusBadRequest, false, err.Error(), "")
+	}
+
+	return helpers.ResponseUtils(c, fiber.StatusOK, true, "Success Get Customer Related Records!", relatedCounts)
+}

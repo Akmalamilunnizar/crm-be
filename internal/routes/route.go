@@ -9,6 +9,7 @@ import (
 	"skripsi-be/internal/api/admin/customer"
 	customerinstallation "skripsi-be/internal/api/admin/customer/installation"
 	"skripsi-be/internal/api/admin/dashboard"
+	"skripsi-be/internal/api/admin/geocoding"
 	"skripsi-be/internal/api/admin/invoice"
 	"skripsi-be/internal/api/admin/mikrotik"
 	networkdevice "skripsi-be/internal/api/admin/network-device"
@@ -69,6 +70,7 @@ func RouteFiber(app *fiber.App) {
 	invoice.AdminInvoiceRoute(admin.Group("/invoice"))
 	recurring_invoice.AdminRecurringInvoiceRoute(admin.Group("/recurring-invoice"))
 	mikrotik.MikroTikRoutes(admin.Group("/mikrotik"))
+	geocoding.AdminGeocodingRoute(admin.Group("/geocoding"))
 
 	// Network Monitoring routes
 	networkMonitoringHandler := network_monitoring.NewNetworkMonitoringHandler(

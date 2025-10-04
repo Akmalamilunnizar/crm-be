@@ -40,6 +40,13 @@ func AdminCustomerInstallationRoute(app fiber.Router) {
 
 	// New Installation Report endpoint with multipart form data
 	newReportRepository := NewReportInstallationRepository(db)
+	
+	// Initialize MikroTik provisioning service (stub for now - will be connected to real MikroTik later)
+	// provisioningService := services.NewMikrotikProvisioningService(db, mikrotikConn)
+	// For now, use nil provisioning service (will skip provisioning)
+	// TODO: Replace with real MikroTik connection when ready
+	// var provisioningService *services.MikrotikProvisioningService = nil
+	
 	newReportService := NewReportInstallationService(newReportRepository)
 	newReportHandler := NewReportInstallationController(newReportService)
 	app.Post("/report-installations", newReportHandler.CreateReportInstallation)

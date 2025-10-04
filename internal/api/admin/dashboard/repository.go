@@ -7,6 +7,7 @@ import (
 
 	"fmt"
 	"skripsi-be/internal/models/entities"
+	"sort"
 )
 
 type AdminDashboardRepositoryInterface interface {
@@ -24,6 +25,7 @@ type AdminDashboardRepositoryInterface interface {
 	GetRevenueChart(start *time.Time, end *time.Time) (map[string]interface{}, error)
 	GetExpensesChart(start *time.Time, end *time.Time) (map[string]interface{}, error)
 	GetUnpaidCustomersChart(start *time.Time, end *time.Time) (map[string]interface{}, error)
+	GetUnpaidCustomersList() ([]map[string]interface{}, error)
 }
 
 type AdminDashboardRepositoryStruct struct {
@@ -573,59 +575,145 @@ func (r AdminDashboardRepositoryStruct) GetUnpaidCustomersChart(start *time.Time
 	}
 
 	type DailyDistinct struct {
-		Date  time.Time
-		Count int
+		Date   time.Time
+		Count  int
+		Status string
 	}
 
 	// Normalize dates to local timezone before taking DATE() to avoid off-by-one
 	offsetSeconds := time.Now().In(time.Local).Second() - time.Now().UTC().Second() // dummy to keep imports; replaced below
 	_ = offsetSeconds
-	_, tzOffset := time.Now().Zone() // seconds east of UTC
-	offsetHours := tzOffset / 3600
 
 	var results []DailyDistinct
-	// Use due_date to define the day for unpaid invoices
-	selectExpr := fmt.Sprintf("DATE(TIMESTAMPADD(HOUR, %d, due_date)) as date, COUNT(DISTINCT customer_id) as count", offsetHours)
-	dateExpr := fmt.Sprintf("DATE(TIMESTAMPADD(HOUR, %d, due_date))", offsetHours)
-	query := r.db.Model(&entities.Invoice{}).
+	// Use due_date to define the day for invoices with outstanding balances
+	// This query finds invoices where the total paid is less than the invoice amount
+	// and categorizes them by status (unpaid vs pending)
+
+	// First, let's get all unpaid invoices with their status
+	selectExpr := `
+		DATE(i.due_date) as date,
+		COUNT(DISTINCT i.customer_id) as count,
+		CASE
+			WHEN COALESCE(t.total_paid, 0) = 0 THEN 'unpaid'
+			WHEN COALESCE(t.total_paid, 0) < i.amount THEN 'pending'
+			ELSE 'paid'
+		END as status
+	`
+
+	// Join with transactions to calculate total paid per invoice
+	// Only include invoices where total_paid < amount (meaning they have outstanding balance)
+	query := r.db.Table("invoices i").
 		Select(selectExpr).
-		Where("status = ?", entities.InvoiceStatusUnpaid)
+		Joins(`LEFT JOIN (
+			SELECT invoice_id, COALESCE(SUM(amount), 0) as total_paid 
+			FROM transactions 
+			WHERE invoice_id IS NOT NULL 
+			GROUP BY invoice_id
+		) t ON i.id = t.invoice_id`).
+		Where("COALESCE(t.total_paid, 0) < i.amount").
+		Group("DATE(i.due_date), CASE WHEN COALESCE(t.total_paid, 0) = 0 THEN 'unpaid' WHEN COALESCE(t.total_paid, 0) < i.amount THEN 'pending' ELSE 'paid' END")
+
 	if start != nil && end != nil {
 		// Compare against due_date window
 		s := time.Date(start.In(time.Local).Year(), start.In(time.Local).Month(), start.In(time.Local).Day(), 0, 0, 0, 0, time.Local)
 		e := time.Date(end.In(time.Local).Year(), end.In(time.Local).Month(), end.In(time.Local).Day(), 23, 59, 59, 0, time.Local)
-		query = query.Where("due_date BETWEEN ? AND ?", s, e)
+		query = query.Where("i.due_date BETWEEN ? AND ?", s, e)
 	}
-	if err := query.Group(dateExpr).Order(dateExpr).Scan(&results).Error; err != nil {
+
+	fmt.Println("🔧 [DEBUG] GetUnpaidCustomersChart: Executing database query...")
+	if err := query.Order("DATE(i.due_date), status").Scan(&results).Error; err != nil {
+		fmt.Printf("🔧 [DEBUG] GetUnpaidCustomersChart: Database query error - %v\n", err)
 		return nil, err
 	}
+	fmt.Printf("🔧 [DEBUG] GetUnpaidCustomersChart: Database query successful - found %d records\n", len(results))
 
-	// Map
-	dateMap := make(map[string]int)
+	// Map by date and status
+	dateStatusMap := make(map[string]map[string]int)
 	for _, r := range results {
-		dateMap[r.Date.Format("2006-01-02")] = r.Count
+		dateStr := r.Date.Format("2006-01-02")
+		if dateStatusMap[dateStr] == nil {
+			dateStatusMap[dateStr] = make(map[string]int)
+		}
+		dateStatusMap[dateStr][r.Status] = r.Count
 	}
 
-	graphData := make([]map[string]interface{}, 0)
-	if start != nil && end != nil {
-		for d := start.Truncate(24 * time.Hour); !d.After(*end); d = d.AddDate(0, 0, 1) {
-			ds := d.Format("2006-01-02")
-			graphData = append(graphData, map[string]interface{}{
-				"date":  ds,
-				"count": dateMap[ds],
-			})
+	// Create separate series for unpaid and pending
+	var allDates []string
+	dateSet := make(map[string]bool)
+	for dateStr := range dateStatusMap {
+		if !dateSet[dateStr] {
+			allDates = append(allDates, dateStr)
+			dateSet[dateStr] = true
 		}
-	} else if len(results) > 0 {
-		startDate := results[0].Date
-		endDate := results[len(results)-1].Date
-		for d := startDate.Truncate(24 * time.Hour); !d.After(endDate); d = d.AddDate(0, 0, 1) {
-			ds := d.Format("2006-01-02")
-			graphData = append(graphData, map[string]interface{}{
-				"date":  ds,
-				"count": dateMap[ds],
-			})
+	}
+
+	// Sort dates
+	sort.Strings(allDates)
+
+	unpaidData := make([]map[string]interface{}, 0)
+	pendingData := make([]map[string]interface{}, 0)
+
+	for _, ds := range allDates {
+		unpaidCount := 0
+		pendingCount := 0
+
+		if dateStatusMap[ds] != nil {
+			unpaidCount = dateStatusMap[ds]["unpaid"]
+			pendingCount = dateStatusMap[ds]["pending"]
 		}
+
+		unpaidData = append(unpaidData, map[string]interface{}{
+			"date":  ds,
+			"count": unpaidCount,
+		})
+
+		pendingData = append(pendingData, map[string]interface{}{
+			"date":  ds,
+			"count": pendingCount,
+		})
+	}
+
+	graphData := map[string]interface{}{
+		"unpaid":  unpaidData,
+		"pending": pendingData,
 	}
 
 	return map[string]interface{}{"unpaid_customers_chart": graphData}, nil
+}
+
+func (r AdminDashboardRepositoryStruct) GetUnpaidCustomersList() ([]map[string]interface{}, error) {
+	fmt.Println("🔧 [DEBUG] GetUnpaidCustomersList: Repository method called")
+	// Get invoices with outstanding balances (where total_paid < amount)
+	var results []map[string]interface{}
+
+	query := r.db.Table("invoices i").
+		Select(`
+			i.id,
+			i.amount,
+			i.status,
+			i.due_date,
+			c.name as customer_name,
+			c.phone as customer_phone,
+			c.id as customer_id,
+			COALESCE(t.total_paid, 0) as total_paid,
+			(i.amount - COALESCE(t.total_paid, 0)) as outstanding_amount
+		`).
+		Joins("LEFT JOIN customer c ON i.customer_id = c.id").
+		Joins(`LEFT JOIN (
+			SELECT invoice_id, COALESCE(SUM(amount), 0) as total_paid 
+			FROM transactions 
+			WHERE invoice_id IS NOT NULL 
+			GROUP BY invoice_id
+		) t ON i.id = t.invoice_id`).
+		Where("COALESCE(t.total_paid, 0) < i.amount").
+		Order("i.due_date ASC, i.id DESC")
+
+	fmt.Println("🔧 [DEBUG] GetUnpaidCustomersList: Executing database query...")
+	if err := query.Scan(&results).Error; err != nil {
+		fmt.Printf("🔧 [DEBUG] GetUnpaidCustomersList: Database query error - %v\n", err)
+		return nil, err
+	}
+
+	fmt.Printf("🔧 [DEBUG] GetUnpaidCustomersList: Database query successful - found %d records\n", len(results))
+	return results, nil
 }

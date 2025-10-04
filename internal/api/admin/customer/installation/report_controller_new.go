@@ -1,6 +1,7 @@
 package customerinstallation
 
 import (
+	"encoding/json"
 	"log"
 	"mime/multipart"
 	"os"
@@ -30,6 +31,16 @@ func (c *ReportInstallationController) CreateReportInstallation(ctx *fiber.Ctx) 
 	if err != nil {
 		return helpers.ResponseUtils(ctx, 400, false, "Invalid multipart form data", err.Error())
 	}
+
+	// Log all form values for debugging
+	log.Printf("=== FORM VALUES DEBUG ===")
+	form, _ := ctx.MultipartForm()
+	if form != nil {
+		for key, values := range form.Value {
+			log.Printf("Form field '%s': %v", key, values)
+		}
+	}
+	log.Printf("=== END FORM VALUES DEBUG ===")
 
 	// Parse form values
 	request.CustomerID = ctx.FormValue("customer_id")
@@ -65,59 +76,130 @@ func (c *ReportInstallationController) CreateReportInstallation(ctx *fiber.Ctx) 
 	request.UserStatus = ctx.FormValue("user_status")
 	request.InstallationNotes = ctx.FormValue("installation_notes")
 
-	// Handle document photo upload
-	var documentPhotoPath string
+	// Parse additional fields
+	request.CustomerCompanyID = ctx.FormValue("customer_company_id")
+	request.CustomerSalesRepresentativeID = ctx.FormValue("customer_sales_representative_id")
+	request.ProductID = ctx.FormValue("product_id")
 
-	// Log all form files for debugging
-	form, formErr := ctx.MultipartForm()
-	if formErr == nil {
-		log.Printf("Multipart form files found: %v", len(form.File))
-		for fieldName, files := range form.File {
-			log.Printf("Form field '%s' has %d files", fieldName, len(files))
-			for i, file := range files {
-				log.Printf("  File %d: %s (size: %d)", i, file.Filename, file.Size)
-			}
+	// Parse technicians from JSON string
+	techniciansStr := ctx.FormValue("technicians")
+	if techniciansStr != "" {
+		var technicians []TechnicianAssignment
+		if err := json.Unmarshal([]byte(techniciansStr), &technicians); err == nil {
+			request.Technicians = technicians
+			log.Printf("Parsed %d technicians from JSON", len(technicians))
+		} else {
+			log.Printf("Failed to parse technicians JSON: %s, error: %v", techniciansStr, err)
 		}
 	}
 
-	if file, err := ctx.FormFile("document_photo"); err == nil {
-		// Log file upload info
-		log.Printf("Document photo upload started - filename: %s, size: %d", file.Filename, file.Size)
+	// Parse provisioning fields
+	request.MacAddress = ctx.FormValue("mac_address")
+	request.PSBDate = ctx.FormValue("psb_date")
+	request.PSBTime = ctx.FormValue("psb_time")
+	request.MaxLimit = ctx.FormValue("max_limit")
 
-		// Validate file type
-		if !isValidImageFile(file) {
-			return helpers.ResponseUtils(ctx, 400, false, "Invalid file type. Only JPG and PNG are allowed", nil)
-		}
+	// Parse boolean fields
+	if autoProvStr := ctx.FormValue("auto_provision"); autoProvStr != "" {
+		request.AutoProvision = autoProvStr == "true"
+	}
+	if dryRunStr := ctx.FormValue("dry_run"); dryRunStr != "" {
+		request.DryRun = dryRunStr == "true"
+	}
 
-		// Generate unique filename
-		ext := filepath.Ext(file.Filename)
-		filename := "document_" + time.Now().Format("20060102_150405") + ext
-
-		// Create upload directory if not exists
-		uploadDir := "uploads/installations/documents"
-		if err := os.MkdirAll(uploadDir, 0755); err != nil {
-			return helpers.ResponseUtils(ctx, 500, false, "Failed to create upload directory", err.Error())
-		}
-
-		// Save file
-		filePath := filepath.Join(uploadDir, filename)
-		if err := ctx.SaveFile(file, filePath); err != nil {
-			return helpers.ResponseUtils(ctx, 500, false, "Failed to save document photo", err.Error())
-		}
-
-		documentPhotoPath = filePath
-
-		// Log successful upload
-		log.Printf("Document photo uploaded successfully - filePath: %s, filename: %s", filePath, filename)
-	} else {
-		// Log if no file was uploaded
-		log.Printf("No document photo uploaded - error: %s", err.Error())
-
-		// Check if document_photo field exists in form values
-		if docPhotoValue := ctx.FormValue("document_photo"); docPhotoValue != "" {
-			log.Printf("document_photo form value (not file): %s", docPhotoValue)
+	// Parse image_ids from JSON string
+	imageIdsStr := ctx.FormValue("image_ids")
+	if imageIdsStr != "" {
+		// Parse JSON string to []string
+		var imageIds []string
+		if err := json.Unmarshal([]byte(imageIdsStr), &imageIds); err == nil {
+			request.ImageIds = imageIds
+			log.Printf("Parsed image_ids: %v", imageIds)
 		} else {
-			log.Printf("No document_photo field found in form values")
+			log.Printf("Failed to parse image_ids JSON: %s, error: %v", imageIdsStr, err)
+		}
+	}
+
+	// Handle document photo upload
+	var documentPhotoPath string
+
+	// Check if document_photo_path is provided (from frontend upload)
+	if docPhotoPath := ctx.FormValue("document_photo_path"); docPhotoPath != "" {
+		documentPhotoPath = docPhotoPath
+		log.Printf("Using document photo path from frontend: %s", docPhotoPath)
+	} else {
+		log.Printf("No document_photo_path found in form data")
+		// Log all form files for debugging
+		form, formErr := ctx.MultipartForm()
+		if formErr == nil {
+			log.Printf("Multipart form files found: %v", len(form.File))
+			for fieldName, files := range form.File {
+				log.Printf("Form field '%s' has %d files", fieldName, len(files))
+				for i, file := range files {
+					log.Printf("  File %d: %s (size: %d, type: %s)", i, file.Filename, file.Size, file.Header.Get("Content-Type"))
+				}
+			}
+		} else {
+			log.Printf("Error getting multipart form: %v", formErr)
+		}
+
+		if file, err := ctx.FormFile("document_photo"); err == nil {
+			// Log file upload info
+			log.Printf("Document photo upload started - filename: %s, size: %d", file.Filename, file.Size)
+
+			// Validate file type
+			if !isValidImageFile(file) {
+				return helpers.ResponseUtils(ctx, 400, false, "Invalid file type. Only JPG and PNG are allowed", nil)
+			}
+
+			// Generate unique filename
+			ext := filepath.Ext(file.Filename)
+			filename := "document_" + time.Now().Format("20060102_150405") + ext
+
+			// Create upload directory if not exists
+			uploadDir := "uploads/installations/documents"
+			log.Printf("Creating upload directory: %s", uploadDir)
+			if err := os.MkdirAll(uploadDir, 0755); err != nil {
+				log.Printf("Failed to create upload directory: %v", err)
+				return helpers.ResponseUtils(ctx, 500, false, "Failed to create upload directory", err.Error())
+			}
+			log.Printf("Upload directory created successfully: %s", uploadDir)
+
+			// Save file
+			filePath := filepath.Join(uploadDir, filename)
+			log.Printf("Attempting to save file to: %s", filePath)
+			if err := ctx.SaveFile(file, filePath); err != nil {
+				log.Printf("Failed to save document photo: %v", err)
+				return helpers.ResponseUtils(ctx, 500, false, "Failed to save document photo", err.Error())
+			}
+
+			documentPhotoPath = filePath
+
+			// Normalize the path to prevent any duplication issues
+			documentPhotoPath = normalizeDocumentPhotoPath(documentPhotoPath)
+
+			// Log successful upload
+			log.Printf("✅ Document photo uploaded successfully - filePath: %s, filename: %s", filePath, filename)
+
+			// Verify file exists
+			if _, err := os.Stat(filePath); err == nil {
+				log.Printf("✅ File verification successful - file exists at: %s", filePath)
+			} else {
+				log.Printf("❌ File verification failed - file does not exist at: %s, error: %v", filePath, err)
+			}
+		} else {
+			// Log if no file was uploaded
+			log.Printf("❌ No document photo uploaded - error: %s", err.Error())
+
+			// Check if document_photo field exists in form values
+			if docPhotoValue := ctx.FormValue("document_photo"); docPhotoValue != "" {
+				log.Printf("document_photo form value (not file): %s", docPhotoValue)
+			} else {
+				log.Printf("No document_photo field found in form values")
+			}
+
+			// Set documentPhotoPath to empty string to indicate no file was uploaded
+			documentPhotoPath = ""
 		}
 	}
 
@@ -125,16 +207,44 @@ func (c *ReportInstallationController) CreateReportInstallation(ctx *fiber.Ctx) 
 	request.DocumentPhoto = documentPhotoPath
 
 	// Log request data for debugging
-	log.Printf("Installation report request data - customer_id: %s, technician_id: %s, document_type: %s, document_photo: %s, installation_type: %s, assets_id: %s, switch_id: %s, port_number: %s, mac_address: %s, ip_static: %s, cable_type: %s, cable_length: %f, user_login: %s, user_status: %s, installation_notes: %s",
-		request.CustomerID, request.TechnicianID, request.DocumentType, request.DocumentPhoto, request.InstallationType, request.AssetsID, request.SwitchID, request.PortNumber, request.MacAddress, request.IPStatic, request.CableType, request.CableLength, request.UserLogin, request.UserStatus, request.InstallationNotes)
+	log.Printf("=== DOCUMENT PHOTO DEBUG ===")
+	log.Printf("Document photo path set to: '%s'", documentPhotoPath)
+	log.Printf("Request DocumentPhoto field: '%s'", request.DocumentPhoto)
+	log.Printf("Document photo path length: %d", len(documentPhotoPath))
+	if documentPhotoPath == "" {
+		log.Printf("⚠️  WARNING: Document photo path is EMPTY - file upload may have failed!")
+	} else {
+		log.Printf("✅ Document photo path is set successfully: %s", documentPhotoPath)
+	}
+	log.Printf("=== END DOCUMENT PHOTO DEBUG ===")
+
+	log.Printf("Installation report request data - customer_id: %s, technician_id: %s, document_type: %s, document_photo: %s, installation_type: %s, assets_id: %s, switch_id: %s, port_number: %s, mac_address: %s, ip_static: %s, cable_type: %s, cable_length: %f, user_login: %s, user_status: %s, installation_notes: %s, customer_company_id: %s, customer_sales_rep_id: %s, product_id: %s",
+		request.CustomerID, request.TechnicianID, request.DocumentType, request.DocumentPhoto, request.InstallationType, request.AssetsID, request.SwitchID, request.PortNumber, request.MacAddress, request.IPStatic, request.CableType, request.CableLength, request.UserLogin, request.UserStatus, request.InstallationNotes, request.CustomerCompanyID, request.CustomerSalesRepresentativeID, request.ProductID)
 
 	// Validate required fields
 	if request.CustomerID == "" {
 		return helpers.ResponseUtils(ctx, 400, false, "Customer ID is required", nil)
 	}
-	if request.TechnicianID == "" {
-		return helpers.ResponseUtils(ctx, 400, false, "Technician ID is required", nil)
+
+	// Validate technicians - either legacy technician_id OR new technicians array
+	if request.TechnicianID == "" && len(request.Technicians) == 0 {
+		return helpers.ResponseUtils(ctx, 400, false, "At least one technician is required", nil)
 	}
+
+	// If using new technicians array, validate at least one senior
+	if len(request.Technicians) > 0 {
+		hasSenior := false
+		for _, tech := range request.Technicians {
+			if tech.Role == "senior" {
+				hasSenior = true
+				break
+			}
+		}
+		if !hasSenior {
+			return helpers.ResponseUtils(ctx, 400, false, "At least one senior technician is required", nil)
+		}
+	}
+
 	if request.AssetsID == "" {
 		return helpers.ResponseUtils(ctx, 400, false, "Assets ID is required", nil)
 	}
@@ -155,19 +265,59 @@ func (c *ReportInstallationController) CreateReportInstallation(ctx *fiber.Ctx) 
 		return helpers.ResponseUtils(ctx, 500, false, "Failed to create installation report", err.Error())
 	}
 
-	return helpers.ResponseUtils(ctx, 201, true, "Installation report created successfully", installation)
+	// Prepare response with installation information including document photo
+	response := map[string]interface{}{
+		"installation":   installation,
+		"document_photo": installation.DocumentPhoto, // Explicitly include document photo in response
+	}
+
+	// Log response for debugging
+	log.Printf("=== RESPONSE DEBUG ===")
+	log.Printf("Response data - Installation ID: %s, Document Photo: %v",
+		installation.ID, installation.DocumentPhoto)
+	if installation.DocumentPhoto != nil {
+		log.Printf("✅ Document Photo in response: '%s'", *installation.DocumentPhoto)
+	} else {
+		log.Printf("❌ Document Photo is NULL in response")
+	}
+	if installation.DocumentType != nil {
+		log.Printf("✅ Document Type in response: '%s'", *installation.DocumentType)
+	} else {
+		log.Printf("❌ Document Type is NULL in response")
+	}
+	log.Printf("=== END RESPONSE DEBUG ===")
+
+	return helpers.ResponseUtils(ctx, 201, true, "Installation report created successfully", response)
 }
 
 // isValidImageFile - Validate if uploaded file is a valid image
 func isValidImageFile(file *multipart.FileHeader) bool {
-	allowedTypes := []string{"image/jpeg", "image/jpg", "image/png"}
+	allowedTypes := []string{"image/jpeg", "image/jpg", "image/png", "image/jpeg", "application/octet-stream"}
 	contentType := file.Header.Get("Content-Type")
+	filename := file.Filename
+	ext := strings.ToLower(filepath.Ext(filename))
 
+	// Log file info for debugging
+	log.Printf("File validation - filename: %s, contentType: %s, ext: %s", filename, contentType, ext)
+
+	// Check by content type
 	for _, allowedType := range allowedTypes {
 		if contentType == allowedType {
+			log.Printf("File validation passed by content type: %s", contentType)
 			return true
 		}
 	}
+
+	// Check by file extension as fallback
+	allowedExts := []string{".jpg", ".jpeg", ".png"}
+	for _, allowedExt := range allowedExts {
+		if ext == allowedExt {
+			log.Printf("File validation passed by extension: %s", ext)
+			return true
+		}
+	}
+
+	log.Printf("File validation failed - contentType: %s, ext: %s", contentType, ext)
 	return false
 }
 
@@ -206,3 +356,4 @@ func isValidMAC(mac string) bool {
 	}
 	return true
 }
+

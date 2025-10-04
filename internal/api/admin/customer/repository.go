@@ -2,10 +2,10 @@ package customer
 
 import (
 	"fmt"
-	"strings"
-	"time"
 	"skripsi-be/internal/models/entities"
 	"skripsi-be/internal/services"
+	"strings"
+	"time"
 
 	"github.com/jinzhu/copier"
 	"gorm.io/gorm"
@@ -15,6 +15,8 @@ type AdminCustomerRepositoryInterface interface {
 	CreateAdminCustomerRepository(customer entities.Customer) (entities.Customer, error)
 	UpdateAdminCustomerRepository(request UpdateAdminCustomerRequest) (entities.Customer, error)
 	DeleteAdminCustomerRepository(request IdAdminCustomerRequest) (entities.Customer, error)
+	DeleteAdminCustomerWithRelatedRepository(request IdAdminCustomerRequest) (entities.Customer, error)
+	GetCustomerRelatedRecordsRepository(request IdAdminCustomerRequest) (map[string]int64, error)
 	FindByIdAdminCustomerRepository(request IdAdminCustomerRequest) (entities.Customer, error)
 	FindByIdDetailAdminCustomerRepository(request IdAdminCustomerRequest) (*CustomerDetailResponse, error)
 	FindAdminCustomerRepository() ([]CustomerListResponse, error)
@@ -134,14 +136,155 @@ func (r AdminCustomerRepositoryStruct) DeleteAdminCustomerRepository(request IdA
 		return customer, tx.Error
 	}
 
-	copier.Copy(&customer, &request)
+	// Check for related records that prevent deletion
+	var invoiceCount int64
+	r.db.Model(&entities.Invoice{}).Where("customer_id = ?", request.Id).Count(&invoiceCount)
 
+	if invoiceCount > 0 {
+		return customer, fmt.Errorf("cannot delete customer: %d invoice(s) are associated with this customer. Please delete or reassign the invoices first", invoiceCount)
+	}
+
+	// Check for customer installations
+	var installationCount int64
+	r.db.Model(&entities.CustomerInstallation{}).Where("customer_id = ?", request.Id).Count(&installationCount)
+
+	if installationCount > 0 {
+		return customer, fmt.Errorf("cannot delete customer: %d installation(s) are associated with this customer. Please delete or reassign the installations first", installationCount)
+	}
+
+	// Check for network devices
+	var networkDeviceCount int64
+	r.db.Model(&entities.NetworkDevice{}).Where("customer_id = ?", request.Id).Count(&networkDeviceCount)
+
+	if networkDeviceCount > 0 {
+		return customer, fmt.Errorf("cannot delete customer: %d network device(s) are associated with this customer. Please delete or reassign the devices first", networkDeviceCount)
+	}
+
+	// Check for customer services
+	var serviceCount int64
+	r.db.Model(&entities.CustomerService{}).Where("customer_id = ?", request.Id).Count(&serviceCount)
+
+	if serviceCount > 0 {
+		return customer, fmt.Errorf("cannot delete customer: %d service(s) are associated with this customer. Please delete or reassign the services first", serviceCount)
+	}
+
+	// If no related records, proceed with deletion
 	tx = r.db.Delete(&customer)
 	if tx.Error != nil {
 		return customer, tx.Error
 	}
 
 	return customer, tx.Error
+}
+
+// DeleteAdminCustomerWithRelatedRepository - Delete customer and all related records
+func (r AdminCustomerRepositoryStruct) DeleteAdminCustomerWithRelatedRepository(request IdAdminCustomerRequest) (entities.Customer, error) {
+	customer := entities.Customer{}
+	tx := r.db.Preload("Area").Find(&customer, "id = ?", request.Id)
+	if tx.Error != nil {
+		return customer, tx.Error
+	}
+
+	// Start transaction for cascading delete
+	dbTx := r.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			dbTx.Rollback()
+		}
+	}()
+
+	// Delete related records in order (respecting foreign key constraints)
+
+	// 1. Delete customer services first (they reference customer_installations)
+	if err := dbTx.Where("customer_id = ?", request.Id).Delete(&entities.CustomerService{}).Error; err != nil {
+		dbTx.Rollback()
+		return customer, fmt.Errorf("failed to delete customer services: %v", err)
+	}
+
+	// 2. Delete network devices
+	if err := dbTx.Where("customer_id = ?", request.Id).Delete(&entities.NetworkDevice{}).Error; err != nil {
+		dbTx.Rollback()
+		return customer, fmt.Errorf("failed to delete network devices: %v", err)
+	}
+
+	// 3. Delete asset transactions (they reference customer_installations)
+	if err := dbTx.Where("customer_installation_id IN (SELECT id FROM customer_installations WHERE customer_id = ?)", request.Id).Delete(&entities.AssetTransaction{}).Error; err != nil {
+		dbTx.Rollback()
+		return customer, fmt.Errorf("failed to delete asset transactions: %v", err)
+	}
+
+	// 4. Delete cables (they reference customer_installations)
+	if err := dbTx.Where("customer_installation_id IN (SELECT id FROM customer_installations WHERE customer_id = ?)", request.Id).Delete(&entities.Cable{}).Error; err != nil {
+		dbTx.Rollback()
+		return customer, fmt.Errorf("failed to delete cables: %v", err)
+	}
+
+	// 5. Update images to remove customer_installation_id reference
+	if err := dbTx.Model(&entities.Image{}).Where("archive_installation_id IN (SELECT id FROM customer_installations WHERE customer_id = ?)", request.Id).Update("archive_installation_id", nil).Error; err != nil {
+		dbTx.Rollback()
+		return customer, fmt.Errorf("failed to update images: %v", err)
+	}
+
+	// 6. Delete customer installations
+	if err := dbTx.Where("customer_id = ?", request.Id).Delete(&entities.CustomerInstallation{}).Error; err != nil {
+		dbTx.Rollback()
+		return customer, fmt.Errorf("failed to delete customer installations: %v", err)
+	}
+
+	// 7. Finally, delete the customer
+	if err := dbTx.Delete(&customer).Error; err != nil {
+		dbTx.Rollback()
+		return customer, fmt.Errorf("failed to delete customer: %v", err)
+	}
+
+	// Commit transaction
+	if err := dbTx.Commit().Error; err != nil {
+		return customer, fmt.Errorf("failed to commit transaction: %v", err)
+	}
+
+	return customer, nil
+}
+
+// GetCustomerRelatedRecordsRepository - Get count of related records for a customer
+func (r AdminCustomerRepositoryStruct) GetCustomerRelatedRecordsRepository(request IdAdminCustomerRequest) (map[string]int64, error) {
+	relatedCounts := make(map[string]int64)
+
+	// Count invoices
+	var invoiceCount int64
+	r.db.Model(&entities.Invoice{}).Where("customer_id = ?", request.Id).Count(&invoiceCount)
+	relatedCounts["invoices"] = invoiceCount
+
+	// Count installations
+	var installationCount int64
+	r.db.Model(&entities.CustomerInstallation{}).Where("customer_id = ?", request.Id).Count(&installationCount)
+	relatedCounts["installations"] = installationCount
+
+	// Count network devices
+	var networkDeviceCount int64
+	r.db.Model(&entities.NetworkDevice{}).Where("customer_id = ?", request.Id).Count(&networkDeviceCount)
+	relatedCounts["network_devices"] = networkDeviceCount
+
+	// Count customer services
+	var serviceCount int64
+	r.db.Model(&entities.CustomerService{}).Where("customer_id = ?", request.Id).Count(&serviceCount)
+	relatedCounts["customer_services"] = serviceCount
+
+	// Count asset transactions
+	var assetTransactionCount int64
+	r.db.Model(&entities.AssetTransaction{}).Where("customer_installation_id IN (SELECT id FROM customer_installations WHERE customer_id = ?)", request.Id).Count(&assetTransactionCount)
+	relatedCounts["asset_transactions"] = assetTransactionCount
+
+	// Count cables
+	var cableCount int64
+	r.db.Model(&entities.Cable{}).Where("customer_installation_id IN (SELECT id FROM customer_installations WHERE customer_id = ?)", request.Id).Count(&cableCount)
+	relatedCounts["cables"] = cableCount
+
+	// Count images
+	var imageCount int64
+	r.db.Model(&entities.Image{}).Where("archive_installation_id IN (SELECT id FROM customer_installations WHERE customer_id = ?)", request.Id).Count(&imageCount)
+	relatedCounts["images"] = imageCount
+
+	return relatedCounts, nil
 }
 
 // CustomerDetailResponse represents comprehensive customer information

@@ -1,6 +1,7 @@
 package networkdevice
 
 import (
+	"database/sql"
 	"skripsi-be/internal/models/entities"
 
 	"github.com/google/uuid"
@@ -43,11 +44,6 @@ func (r AdminNetworkDeviceRepositoryStruct) GetByCustomerIdAdminNetworkDeviceRep
 }
 
 func (r AdminNetworkDeviceRepositoryStruct) CreateAdminNetworkDeviceRepository(request CreateNetworkDeviceRequest) (entities.NetworkDevice, error) {
-	var assetsID *string
-	if request.AssetsID != nil && *request.AssetsID != "" {
-		assetsID = request.AssetsID
-	}
-
 	networkDevice := entities.NetworkDevice{
 		ID:              uuid.New().String(),
 		CustomerID:      request.CustomerID,
@@ -55,8 +51,16 @@ func (r AdminNetworkDeviceRepositoryStruct) CreateAdminNetworkDeviceRepository(r
 		MacAddress:      request.MacAddress,
 		StatusPerangkat: request.StatusPerangkat,
 		LastPingStatus:  request.LastPingStatus,
-		AssetsID:        assetsID,
-		ProductID:       request.ProductID,
+		AssetsID: sql.NullString{
+			String: func() string {
+				if request.AssetsID != nil {
+					return *request.AssetsID
+				}
+				return ""
+			}(),
+			Valid: request.AssetsID != nil && *request.AssetsID != "",
+		},
+		ProductID: request.ProductID,
 	}
 
 	err := r.db.Create(&networkDevice).Error
@@ -80,7 +84,15 @@ func (r AdminNetworkDeviceRepositoryStruct) UpdateAdminNetworkDeviceRepository(r
 	networkDevice.MacAddress = request.MacAddress
 	networkDevice.StatusPerangkat = request.StatusPerangkat
 	networkDevice.LastPingStatus = request.LastPingStatus
-	networkDevice.AssetsID = assetsID
+	networkDevice.AssetsID = sql.NullString{
+		String: func() string {
+			if assetsID != nil {
+				return *assetsID
+			}
+			return ""
+		}(),
+		Valid: assetsID != nil && *assetsID != "",
+	}
 	networkDevice.ProductID = request.ProductID
 
 	err = r.db.Save(&networkDevice).Error

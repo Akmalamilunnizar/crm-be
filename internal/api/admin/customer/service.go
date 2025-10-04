@@ -13,6 +13,8 @@ type AdminCustomerServiceInterface interface {
 	CreateAdminCustomerService(request CreateAdminCustomerRequest) (entities.Customer, error)
 	UpdateAdminCustomerService(request UpdateAdminCustomerRequest) (entities.Customer, error)
 	DeleteAdminCustomerService(request IdAdminCustomerRequest) (entities.Customer, error)
+	DeleteAdminCustomerWithRelatedService(request IdAdminCustomerRequest) (entities.Customer, error)
+	GetCustomerRelatedRecordsService(request IdAdminCustomerRequest) (map[string]int64, error)
 }
 
 type AdminCustomerServiceStruct struct {
@@ -120,4 +122,22 @@ func (s AdminCustomerServiceStruct) DeleteAdminCustomerService(request IdAdminCu
 	}
 
 	return customer, err
+}
+
+func (s AdminCustomerServiceStruct) DeleteAdminCustomerWithRelatedService(request IdAdminCustomerRequest) (entities.Customer, error) {
+	customer, err := s.repository.DeleteAdminCustomerWithRelatedRepository(request)
+	if err != nil {
+		return customer, err
+	}
+
+	return customer, err
+}
+
+func (s AdminCustomerServiceStruct) GetCustomerRelatedRecordsService(request IdAdminCustomerRequest) (map[string]int64, error) {
+	relatedCounts, err := s.repository.GetCustomerRelatedRecordsRepository(request)
+	if err != nil {
+		return relatedCounts, err
+	}
+
+	return relatedCounts, err
 }

@@ -172,3 +172,4 @@ async function deleteReport(installationId: string) {
 ✅ **FIXED**: Customer Installation Report delete functionality now works without errors!
 
 
+

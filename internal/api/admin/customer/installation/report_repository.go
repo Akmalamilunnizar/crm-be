@@ -28,7 +28,6 @@ func NewAdminInstallationReportRepository(db *gorm.DB) AdminInstallationReportRe
 	return AdminInstallationReportRepositoryStruct{db}
 }
 
-
 // FindCompleteInstallationReportRepository - Get complete installation report with all related data
 func (r AdminInstallationReportRepositoryStruct) FindCompleteInstallationReportRepository(installationId string) (entities.CustomerInstallation, error) {
 	var installation entities.CustomerInstallation
@@ -583,7 +582,7 @@ func (r AdminInstallationReportRepositoryStruct) UpdateCompleteInstallationRepor
 		deviceEntity := entities.NetworkDevice{
 			ID:                     "",
 			CustomerID:             request.CustomerId,
-			AssetsID:               &device.AssetsID,
+			AssetsID:               sql.NullString{String: device.AssetsID, Valid: device.AssetsID != ""},
 			SwitchID:               &device.SwitchID,
 			PortNumber:             &device.PortNumber,
 			RemotePort:             &device.RemotePort,

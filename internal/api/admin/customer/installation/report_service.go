@@ -12,6 +12,7 @@ type AdminInstallationReportServiceInterface interface {
 	GetInstallationAssetReportService(installationId string) (InstallationAssetReportResponse, error)
 	GetInstallationTechnicianReportService() ([]InstallationTechnicianReportResponse, error)
 	CreateCompleteInstallationReportService(request CreateCompleteInstallationReportRequest) (entities.CustomerInstallation, error)
+	UpdateCompleteInstallationReportService(installationId string, request UpdateCompleteInstallationReportRequest) (entities.CustomerInstallation, error)
 }
 
 type AdminInstallationReportServiceStruct struct {
@@ -79,6 +80,15 @@ func (s AdminInstallationReportServiceStruct) GetInstallationTechnicianReportSer
 // CreateCompleteInstallationReportService - Create complete installation report with all related data
 func (s AdminInstallationReportServiceStruct) CreateCompleteInstallationReportService(request CreateCompleteInstallationReportRequest) (entities.CustomerInstallation, error) {
 	installation, err := s.repository.CreateCompleteInstallationReportRepository(request)
+	if err != nil {
+		return installation, err
+	}
+	return installation, nil
+}
+
+// UpdateCompleteInstallationReportService - Update complete installation report with all related data
+func (s AdminInstallationReportServiceStruct) UpdateCompleteInstallationReportService(installationId string, request UpdateCompleteInstallationReportRequest) (entities.CustomerInstallation, error) {
+	installation, err := s.repository.UpdateCompleteInstallationReportRepository(installationId, request)
 	if err != nil {
 		return installation, err
 	}

@@ -2,6 +2,39 @@ package customerinstallation
 
 import "time"
 
+// UpdateCompleteInstallationReportRequest - Request untuk mengupdate laporan instalasi lengkap
+type UpdateCompleteInstallationReportRequest struct {
+	// Basic Installation Data
+	CustomerId              string `json:"customer_id" validate:"required"`
+	TechnicianId            string `json:"technician_id" validate:"required"`
+	Status                  string `json:"status"`
+	Notes                   string `json:"notes"`
+	DocumentType            string `json:"document_type" validate:"omitempty,oneof=KTP SIM Paspor"`
+	DocumentPhoto           string `json:"document_photo"`
+	InstallationType        string `json:"installation_type" validate:"omitempty,oneof=new_installation maintenance upgrade downgrade"`
+	OnAirDate               string `json:"on_air_date"`
+	TrialEndDate            string `json:"trial_end_date"`
+	ServiceReadyDate        string `json:"service_ready_date"`
+	InstallationCompletedAt string `json:"installation_completed_at"`
+
+	// Asset Tracking
+	TotalAssetsOut    int                       `json:"total_assets_out"`
+	TotalAssetsIn     int                       `json:"total_assets_in"`
+	AssetTransactions []AssetTransactionRequest `json:"asset_transactions"`
+
+	// Network Devices
+	NetworkDevices []NetworkDeviceRequest `json:"network_devices"`
+
+	// Customer Services
+	CustomerServices []CustomerServiceRequest `json:"customer_services"`
+
+	// Cables
+	Cables []CableRequest `json:"cables"`
+
+	// Images
+	ImageIds []string `json:"image_ids" validate:"required"`
+}
+
 // CreateCompleteInstallationReportRequest - Request untuk membuat laporan instalasi lengkap
 type CreateCompleteInstallationReportRequest struct {
 	// Basic Installation Data

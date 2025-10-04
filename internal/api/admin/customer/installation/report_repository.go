@@ -17,6 +17,7 @@ type AdminInstallationReportRepositoryInterface interface {
 	FindInstallationAssetReportRepository(installationId string) (InstallationAssetReportResponse, error)
 	FindInstallationTechnicianReportRepository() ([]InstallationTechnicianReportResponse, error)
 	CreateCompleteInstallationReportRepository(request CreateCompleteInstallationReportRequest) (entities.CustomerInstallation, error)
+	UpdateCompleteInstallationReportRepository(installationId string, request UpdateCompleteInstallationReportRequest) (entities.CustomerInstallation, error)
 }
 
 type AdminInstallationReportRepositoryStruct struct {
@@ -26,7 +27,6 @@ type AdminInstallationReportRepositoryStruct struct {
 func NewAdminInstallationReportRepository(db *gorm.DB) AdminInstallationReportRepositoryStruct {
 	return AdminInstallationReportRepositoryStruct{db}
 }
-
 
 // FindCompleteInstallationReportRepository - Get complete installation report with all related data
 func (r AdminInstallationReportRepositoryStruct) FindCompleteInstallationReportRepository(installationId string) (entities.CustomerInstallation, error) {
@@ -465,6 +465,167 @@ func (r AdminInstallationReportRepositoryStruct) CreateCompleteInstallationRepor
 		}
 
 		if err := tx.Create(&customerService).Error; err != nil {
+			tx.Rollback()
+			return installation, err
+		}
+	}
+
+	// Create cables
+	for _, cable := range request.Cables {
+		cableEntity := entities.Cable{
+			ID:                     "",
+			Name:                   cable.Name,
+			Type:                   &cable.Type,
+			Length:                 &cable.Length,
+			Status:                 cable.Status,
+			CustomerInstallationID: &installation.ID,
+		}
+
+		if err := tx.Create(&cableEntity).Error; err != nil {
+			tx.Rollback()
+			return installation, err
+		}
+	}
+
+	// Update images with installation ID
+	if len(request.ImageIds) > 0 {
+		if err := tx.Model(&entities.Image{}).
+			Where("id IN ?", request.ImageIds).
+			Update("archive_installation_id", installation.ID).Error; err != nil {
+			tx.Rollback()
+			return installation, err
+		}
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return installation, err
+	}
+
+	return installation, nil
+}
+
+// UpdateCompleteInstallationReportRepository - Update complete installation report with all related data
+func (r AdminInstallationReportRepositoryStruct) UpdateCompleteInstallationReportRepository(installationId string, request UpdateCompleteInstallationReportRequest) (entities.CustomerInstallation, error) {
+	var installation entities.CustomerInstallation
+
+	// Start transaction
+	tx := r.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// Find existing installation
+	if err := tx.Preload("Customer").Preload("Technician").Preload("Images").First(&installation, "id = ?", installationId).Error; err != nil {
+		tx.Rollback()
+		return installation, err
+	}
+
+	// Update basic installation data
+	installation.CustomerID = &request.CustomerId
+	installation.TechnicianID = &request.TechnicianId
+	installation.Status = request.Status
+	installation.Notes = request.Notes
+	if request.DocumentType != "" {
+		installation.DocumentType = &request.DocumentType
+	}
+	if request.DocumentPhoto != "" {
+		installation.DocumentPhoto = &request.DocumentPhoto
+	}
+	installation.InstallationType = request.InstallationType
+
+	// Parse dates
+	if request.OnAirDate != "" {
+		if onAirDate, err := time.Parse("2006-01-02", request.OnAirDate); err == nil {
+			installation.OnAirDate = &onAirDate
+		}
+	}
+	if request.TrialEndDate != "" {
+		if trialEndDate, err := time.Parse("2006-01-02", request.TrialEndDate); err == nil {
+			installation.TrialEndDate = &trialEndDate
+		}
+	}
+	if request.ServiceReadyDate != "" {
+		if serviceReadyDate, err := time.Parse("2006-01-02", request.ServiceReadyDate); err == nil {
+			installation.ServiceReadyDate = &serviceReadyDate
+		}
+	}
+	if request.InstallationCompletedAt != "" {
+		if completedAt, err := time.Parse("2006-01-02T15:04:05", request.InstallationCompletedAt); err == nil {
+			installation.InstallationCompletedAt = &completedAt
+		}
+	}
+
+	// Save installation
+	if err := tx.Save(&installation).Error; err != nil {
+		tx.Rollback()
+		return installation, err
+	}
+
+	// Delete existing related data
+	if err := tx.Where("customer_installation_id = ?", installation.ID).Delete(&entities.NetworkDevice{}).Error; err != nil {
+		tx.Rollback()
+		return installation, err
+	}
+	if err := tx.Where("customer_installation_id = ?", installation.ID).Delete(&entities.CustomerService{}).Error; err != nil {
+		tx.Rollback()
+		return installation, err
+	}
+	if err := tx.Where("customer_installation_id = ?", installation.ID).Delete(&entities.Cable{}).Error; err != nil {
+		tx.Rollback()
+		return installation, err
+	}
+
+	// Create network devices
+	for _, device := range request.NetworkDevices {
+		deviceEntity := entities.NetworkDevice{
+			ID:                     "",
+			CustomerID:             request.CustomerId,
+			AssetsID:               sql.NullString{String: device.AssetsID, Valid: device.AssetsID != ""},
+			SwitchID:               &device.SwitchID,
+			PortNumber:             &device.PortNumber,
+			RemotePort:             &device.RemotePort,
+			EthPort:                &device.EthPort,
+			MacAddress:             &device.MacAddress,
+			IPStatic:               &device.IPStatic,
+			KepemilikanPerangkat:   device.KepemilikanPerangkat,
+			StatusPerangkat:        device.StatusPerangkat,
+			LastPingStatus:         device.LastPingStatus,
+			ProductID:              &device.ProductID,
+			CustomerInstallationID: &installation.ID,
+		}
+
+		if err := tx.Create(&deviceEntity).Error; err != nil {
+			tx.Rollback()
+			return installation, err
+		}
+	}
+
+	// Create customer services
+	for _, service := range request.CustomerServices {
+		var serviceActivationDate *time.Time
+		if service.ServiceActivationDate != "" {
+			if parsedDate, err := time.Parse("2006-01-02", service.ServiceActivationDate); err == nil {
+				serviceActivationDate = &parsedDate
+			}
+		}
+
+		serviceEntity := entities.CustomerService{
+			ID:                     "",
+			DeviceID:               &service.DeviceID,
+			CableID:                &service.CableID,
+			CableLength:            &service.CableLength,
+			EndPortType:            &service.EndPortType,
+			UserLogin:              &service.UserLogin,
+			Password:               &service.Password,
+			UserStatus:             service.UserStatus,
+			InstallationNotes:      &service.InstallationNotes,
+			ServiceActivationDate:  serviceActivationDate,
+			CustomerInstallationID: &installation.ID,
+		}
+
+		if err := tx.Create(&serviceEntity).Error; err != nil {
 			tx.Rollback()
 			return installation, err
 		}

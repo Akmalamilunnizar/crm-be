@@ -2,11 +2,15 @@ package customerinstallation
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"mime/multipart"
 	"os"
 	"path/filepath"
+	"skripsi-be/internal/config/database"
 	"skripsi-be/internal/helpers"
+	"skripsi-be/internal/models/entities"
+	"skripsi-be/internal/services"
 	"strconv"
 	"strings"
 	"time"
@@ -259,16 +263,142 @@ func (c *ReportInstallationController) CreateReportInstallation(ctx *fiber.Ctx) 
 		return helpers.ResponseUtils(ctx, 400, false, "Invalid MAC address format", nil)
 	}
 
-	// Create installation report
+	// Create installation report first
 	installation, err := c.service.CreateReportInstallationService(request)
 	if err != nil {
 		return helpers.ResponseUtils(ctx, 500, false, "Failed to create installation report", err.Error())
 	}
 
-	// Prepare response with installation information including document photo
+	// Handle MikroTik provisioning if enabled
+	var provisioningResult map[string]interface{}
+	if request.AutoProvision && request.MacAddress != "" {
+		log.Printf("=== MIKROTIK PROVISIONING START ===")
+		log.Printf("Auto-provisioning enabled for installation: %s", installation.ID)
+		log.Printf("MAC Address: %s", request.MacAddress)
+		log.Printf("Max Limit: %s", request.MaxLimit)
+		log.Printf("PSB Date: %s", request.PSBDate)
+		log.Printf("PSB Time: %s", request.PSBTime)
+		log.Printf("Dry Run: %v", request.DryRun)
+
+		// Get database connection
+		db := database.GetDB()
+
+		// Get the shared MikroTik service
+		mikrotikService := services.GetSharedMikroTikService()
+		if mikrotikService == nil {
+			log.Printf("❌ MikroTik service not available - provisioning will be skipped")
+			provisioningResult = map[string]interface{}{
+				"status": "failed",
+				"error":  "MikroTik service not connected",
+			}
+
+			// If MikroTik is not available, delete the installation and return error
+			log.Printf("🗑️ Deleting installation due to MikroTik service unavailable: %s", installation.ID)
+			if deleteErr := c.service.DeleteInstallation(installation.ID); deleteErr != nil {
+				log.Printf("❌ Failed to delete installation after MikroTik service unavailable: %v", deleteErr)
+			}
+
+			return helpers.ResponseUtils(ctx, 500, false, "Installation created but MikroTik service unavailable", map[string]interface{}{
+				"installation_id":    installation.ID,
+				"provisioning_error": "MikroTik service not connected",
+			})
+		}
+
+		provisioningService := services.NewMikrotikProvisioningService(db, mikrotikService)
+
+		// Get customer name and area name from database
+		var customerName, areaName string
+		if installation.CustomerID != nil {
+			// Get customer data with area information
+			var customer entities.Customer
+			err := db.Preload("Area").Where("id = ?", *installation.CustomerID).First(&customer).Error
+			if err != nil {
+				log.Printf("❌ Failed to get customer data: %v", err)
+				customerName = "Unknown Customer"
+				areaName = "Unknown Area"
+			} else {
+				customerName = customer.Name
+				if customer.Area != nil {
+					areaName = customer.Area.CodeName
+				} else {
+					areaName = "Unknown Area"
+				}
+			}
+		} else {
+			customerName = "Unknown Customer"
+			areaName = "Unknown Area"
+		}
+
+		// Get the authenticated user ID from the request context
+		// For now, we'll set it to empty string to avoid foreign key constraint issues
+		var createdBy string
+		if userID := ctx.Locals("user_id"); userID != nil {
+			createdBy = fmt.Sprintf("%v", userID)
+		} else {
+			// Set to empty string - the service will handle NULL conversion
+			createdBy = ""
+		}
+
+		// Create provisioning request
+		provReq := services.ProvisioningRequest{
+			InstallationID: installation.ID,
+			CustomerID:     request.CustomerID,
+			CustomerName:   customerName,
+			AreaName:       areaName,
+			MACAddress:     request.MacAddress,
+			StartDate:      request.PSBDate,
+			StartTime:      request.PSBTime,
+			MaxLimit:       request.MaxLimit,
+			Comment:        fmt.Sprintf("%s/%s", customerName, request.MaxLimit),
+			DryRun:         request.DryRun,
+			CreatedBy:      createdBy,
+		}
+
+		// Execute provisioning
+		provResult, provErr := provisioningService.ProvisionInstallation(provReq)
+		if provErr != nil {
+			log.Printf("❌ Provisioning failed: %v", provErr)
+			provisioningResult = map[string]interface{}{
+				"status": "failed",
+				"error":  provErr.Error(),
+			}
+
+			// If provisioning fails, delete the installation and return error
+			log.Printf("🗑️ Deleting installation due to provisioning failure: %s", installation.ID)
+			if deleteErr := c.service.DeleteInstallation(installation.ID); deleteErr != nil {
+				log.Printf("❌ Failed to delete installation after provisioning failure: %v", deleteErr)
+			}
+
+			return helpers.ResponseUtils(ctx, 500, false, "Installation created but provisioning failed", map[string]interface{}{
+				"installation_id":    installation.ID,
+				"provisioning_error": provErr.Error(),
+			})
+		} else {
+			log.Printf("✅ Provisioning completed: %+v", provResult)
+			provisioningResult = map[string]interface{}{
+				"status":            "success",
+				"success":           provResult.Success,
+				"code_name":         provResult.CodeName,
+				"ip_address":        provResult.IPAddress,
+				"commands":          provResult.Commands,
+				"dry_run":           provResult.DryRun,
+				"execution_time_ms": provResult.ExecutionTimeMs,
+			}
+		}
+		log.Printf("=== MIKROTIK PROVISIONING END ===")
+	} else {
+		log.Printf("MikroTik provisioning skipped - Auto-provision: %v, MAC: %s", request.AutoProvision, request.MacAddress)
+		provisioningResult = map[string]interface{}{
+			"status":  "skipped",
+			"message": "Auto-provisioning disabled or MAC address not provided",
+		}
+	}
+
+	// Prepare response with installation information including document photo and provisioning
 	response := map[string]interface{}{
 		"installation":   installation,
 		"document_photo": installation.DocumentPhoto, // Explicitly include document photo in response
+		"provisioning":   provisioningResult,         // Include provisioning result
 	}
 
 	// Log response for debugging
@@ -356,4 +486,3 @@ func isValidMAC(mac string) bool {
 	}
 	return true
 }
-

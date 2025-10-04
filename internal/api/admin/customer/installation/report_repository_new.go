@@ -13,6 +13,7 @@ import (
 type ReportInstallationRepositoryInterface interface {
 	CreateReportInstallationRepository(request CreateReportInstallationRequest) (entities.CustomerInstallation, error)
 	CreateInstallationTechnicians(tx *gorm.DB, installationID string, technicians []TechnicianAssignment) error
+	DeleteInstallation(installationId string) error
 }
 
 type ReportInstallationRepository struct {
@@ -89,7 +90,6 @@ func stringToPtr(s string) *string {
 	}
 	return &s
 }
-
 
 // CreateReportInstallationRepository - Create installation report with all related data
 func (r *ReportInstallationRepository) CreateReportInstallationRepository(request CreateReportInstallationRequest) (entities.CustomerInstallation, error) {
@@ -412,4 +412,10 @@ func (r *ReportInstallationRepository) CreateReportInstallationRepository(reques
 		First(&result).Error
 
 	return result, err
+}
+
+// DeleteInstallation - Delete installation by ID
+func (r *ReportInstallationRepository) DeleteInstallation(installationId string) error {
+	// Delete the installation record
+	return r.db.Where("id = ?", installationId).Delete(&entities.CustomerInstallation{}).Error
 }

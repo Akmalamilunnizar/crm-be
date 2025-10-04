@@ -7,7 +7,7 @@ Write-Host "=====================================" -ForegroundColor Green
 # Test 1: Check if backend server is running
 Write-Host "1. Checking backend server status..." -ForegroundColor Yellow
 try {
-    $response = Invoke-WebRequest -Uri "http://localhost:8080" -TimeoutSec 5
+    $response = Invoke-WebRequest -Uri "http://localhost:3001" -TimeoutSec 5
     if ($response.StatusCode -eq 200) {
         Write-Host "✅ Backend server is running" -ForegroundColor Green
     } else {
@@ -44,7 +44,7 @@ if (Test-Path $uploadsDir) {
 Write-Host "3. Testing static file serving..." -ForegroundColor Yellow
 if ($files.Count -gt 0) {
     $testFile = $files[0].Name
-    $testUrl = "http://localhost:8080/uploads/installations/documents/$testFile"
+    $testUrl = "http://localhost:3001/uploads/installations/documents/$testFile"
 
     try {
         $response = Invoke-WebRequest -Uri $testUrl -TimeoutSec 5
@@ -101,12 +101,14 @@ try {
 # Test 5: Path normalization test
 Write-Host "5. Testing path normalization..." -ForegroundColor Yellow
 
-# Test cases for path normalization
+# Test cases for path normalization (based on actual database entries)
 $testCases = @(
     @{ Input = "uploads/installations/documents/document_20251004_141924.jpg"; Expected = "uploads/installations/documents/document_20251004_141924.jpg"; Description = "Normal path" },
+    @{ Input = "uploads\installations\documents\document_20251004_141924.jpg"; Expected = "uploads/installations/documents/document_20251004_141924.jpg"; Description = "Windows backslashes" },
     @{ Input = "uploads/installations/documents/uploads/installations/documents/document_20251004_141924.jpg"; Expected = "uploads/installations/documents/document_20251004_141924.jpg"; Description = "Triple duplication" },
-    @{ Input = "uploads/installations/documents/uploads/installations/document_20251004_141924.jpg"; Expected = "uploads/installations/documents/document_20251004_141924.jpg"; Description = "Double duplication" },
-    @{ Input = "uploads/installations/documents/uploads/document_20251004_141924.jpg"; Expected = "uploads/installations/documents/document_20251004_141924.jpg"; Description = "Single duplication" }
+    @{ Input = "uploads/installations/documents/uploads/installations/document_20251003_233006.jpg"; Expected = "uploads/installations/documents/document_20251003_233006.jpg"; Description = "Double duplication" },
+    @{ Input = "uploads/documents/ktp_sample.jpg"; Expected = "uploads/installations/documents/ktp_sample.jpg"; Description = "Wrong structure" },
+    @{ Input = "document_20251004_141924.jpg"; Expected = "uploads/installations/documents/document_20251004_141924.jpg"; Description = "Just filename" }
 )
 
 foreach ($testCase in $testCases) {
@@ -114,18 +116,35 @@ foreach ($testCase in $testCases) {
     $input = $testCase.Input
     $expected = $testCase.Expected
 
-    # Apply normalization (simplified version)
+    # Apply normalization (matches the JavaScript logic)
     $normalized = $input
-    for ($i = 0; $i -lt 10; $i++) {
-        if ($normalized.Contains("uploads/installations/documents/uploads/installations/documents/")) {
-            $normalized = $normalized.Replace("uploads/installations/documents/uploads/installations/documents/", "uploads/installations/documents/")
-        } elseif ($normalized.Contains("uploads/installations/documents/uploads/installations/")) {
-            $normalized = $normalized.Replace("uploads/installations/documents/uploads/installations/", "uploads/installations/documents/")
-        } elseif ($normalized.Contains("uploads/installations/documents/uploads/")) {
-            $normalized = $normalized.Replace("uploads/installations/documents/uploads/", "uploads/installations/documents/")
-        } else {
-            break
-        }
+
+    # First, convert Windows backslashes to forward slashes
+    $normalized = $normalized.Replace("\", "/")
+
+    # Handle triple duplication: uploads/installations/documents/uploads/installations/documents/
+    while ($normalized.Contains("uploads/installations/documents/uploads/installations/documents/")) {
+        $normalized = $normalized.Replace("uploads/installations/documents/uploads/installations/documents/", "uploads/installations/documents/")
+    }
+
+    # Handle double duplication: uploads/installations/documents/uploads/installations/
+    while ($normalized.Contains("uploads/installations/documents/uploads/installations/")) {
+        $normalized = $normalized.Replace("uploads/installations/documents/uploads/installations/", "uploads/installations/documents/")
+    }
+
+    # Handle single duplication: uploads/installations/documents/uploads/
+    while ($normalized.Contains("uploads/installations/documents/uploads/") -and !$normalized.Contains("uploads/installations/documents/uploads/installations/")) {
+        $normalized = $normalized.Replace("uploads/installations/documents/uploads/", "uploads/installations/documents/")
+    }
+
+    # Handle incorrect structure: uploads/documents/ -> uploads/installations/documents/
+    if ($normalized.StartsWith("uploads/documents/")) {
+        $normalized = $normalized.Replace("uploads/documents/", "uploads/installations/documents/")
+    }
+
+    # Handle paths that are just filenames
+    if (!$normalized.Contains("/") -and $normalized.EndsWith(".jpg")) {
+        $normalized = "uploads/installations/documents/" + $normalized
     }
 
     if ($normalized -eq $expected) {

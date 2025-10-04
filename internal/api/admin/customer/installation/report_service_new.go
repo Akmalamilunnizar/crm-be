@@ -6,6 +6,7 @@ import (
 
 type ReportInstallationServiceInterface interface {
 	CreateReportInstallationService(request CreateReportInstallationRequest) (entities.CustomerInstallation, error)
+	DeleteInstallation(installationId string) error
 }
 
 type ReportInstallationService struct {
@@ -23,4 +24,9 @@ func (s *ReportInstallationService) CreateReportInstallationService(request Crea
 		return installation, err
 	}
 	return installation, nil
+}
+
+// DeleteInstallation - Delete installation by ID
+func (s *ReportInstallationService) DeleteInstallation(installationId string) error {
+	return s.repository.DeleteInstallation(installationId)
 }

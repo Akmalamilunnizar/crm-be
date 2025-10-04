@@ -28,6 +28,7 @@ func AdminCustomerInstallationRoute(app fiber.Router) {
 	app.Get("/report/asset/:id", reportHandler.GetInstallationAssetReport)
 	app.Get("/report/technician", reportHandler.GetInstallationTechnicianReport)
 	app.Post("/report/complete", reportHandler.CreateCompleteInstallationReport)
+	app.Put("/report/complete/:id", reportHandler.UpdateCompleteInstallationReport)
 
 	// Basic CRUD operations
 	app.Get("", handler.GetAllAdminCustomerInstallationHandler)

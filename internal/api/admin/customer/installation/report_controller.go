@@ -118,3 +118,36 @@ func (c AdminInstallationReportControllerStruct) CreateCompleteInstallationRepor
 
 	return helpers.ResponseUtils(ctx, fiber.StatusCreated, true, "Installation report created successfully", installation)
 }
+
+// UpdateCompleteInstallationReport - Update complete installation report with all related data
+func (c AdminInstallationReportControllerStruct) UpdateCompleteInstallationReport(ctx *fiber.Ctx) error {
+	installationId := ctx.Params("id")
+
+	if installationId == "" {
+		return helpers.ResponseUtils(ctx, fiber.StatusBadRequest, false, "Installation ID is required", nil)
+	}
+
+	var request UpdateCompleteInstallationReportRequest
+
+	if err := ctx.BodyParser(&request); err != nil {
+		return helpers.ResponseUtils(ctx, fiber.StatusBadRequest, false, "Invalid request body", err.Error())
+	}
+
+	// Validate required fields
+	if request.CustomerId == "" {
+		return helpers.ResponseUtils(ctx, fiber.StatusBadRequest, false, "Customer ID is required", nil)
+	}
+	if request.TechnicianId == "" {
+		return helpers.ResponseUtils(ctx, fiber.StatusBadRequest, false, "Technician ID is required", nil)
+	}
+	if len(request.ImageIds) == 0 {
+		return helpers.ResponseUtils(ctx, fiber.StatusBadRequest, false, "At least one image is required", nil)
+	}
+
+	installation, err := c.service.UpdateCompleteInstallationReportService(installationId, request)
+	if err != nil {
+		return helpers.ResponseUtils(ctx, fiber.StatusInternalServerError, false, "Failed to update installation report", err.Error())
+	}
+
+	return helpers.ResponseUtils(ctx, fiber.StatusOK, true, "Installation report updated successfully", installation)
+}

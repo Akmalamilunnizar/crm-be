@@ -90,6 +90,7 @@ func stringToPtr(s string) *string {
 	return &s
 }
 
+
 // CreateReportInstallationRepository - Create installation report with all related data
 func (r *ReportInstallationRepository) CreateReportInstallationRepository(request CreateReportInstallationRequest) (entities.CustomerInstallation, error) {
 	tx := r.db.Begin()
@@ -204,6 +205,12 @@ func (r *ReportInstallationRepository) CreateReportInstallationRepository(reques
 		OnAirDate:               onAirDate,
 	}
 
+	// Normalize document photo path before saving
+	if request.DocumentPhoto != "" {
+		request.DocumentPhoto = normalizeDocumentPhotoPath(request.DocumentPhoto)
+		log.Printf("Normalized document photo path from '%s' to '%s'", request.DocumentPhoto, request.DocumentPhoto)
+	}
+
 	// Log installation data before creating
 	var documentPhotoStr, documentTypeStr string
 	if installation.DocumentPhoto != nil {
@@ -216,8 +223,12 @@ func (r *ReportInstallationRepository) CreateReportInstallationRepository(reques
 	} else {
 		documentTypeStr = "nil"
 	}
+	log.Printf("=== REPOSITORY DEBUG ===")
 	log.Printf("Creating installation record - DocumentPhoto: %s, DocumentType: %s",
 		documentPhotoStr, documentTypeStr)
+	log.Printf("Request DocumentPhoto field: '%s'", request.DocumentPhoto)
+	log.Printf("Request DocumentType field: '%s'", request.DocumentType)
+	log.Printf("=== END REPOSITORY DEBUG ===")
 
 	if err := tx.Create(&installation).Error; err != nil {
 		log.Printf("Failed to create installation record: %v", err)
@@ -226,6 +237,20 @@ func (r *ReportInstallationRepository) CreateReportInstallationRepository(reques
 	}
 
 	log.Printf("Installation record created successfully with ID: %s", installation.ID)
+
+	// Log what was actually saved to database
+	log.Printf("=== DATABASE SAVE DEBUG ===")
+	if installation.DocumentPhoto != nil {
+		log.Printf("✅ Document Photo saved to DB: '%s'", *installation.DocumentPhoto)
+	} else {
+		log.Printf("❌ Document Photo is NULL in DB")
+	}
+	if installation.DocumentType != nil {
+		log.Printf("✅ Document Type saved to DB: '%s'", *installation.DocumentType)
+	} else {
+		log.Printf("❌ Document Type is NULL in DB")
+	}
+	log.Printf("=== END DATABASE SAVE DEBUG ===")
 
 	// Update customer with company_id and sales_representative_id if provided
 	if request.CustomerCompanyID != "" || request.CustomerSalesRepresentativeID != "" {

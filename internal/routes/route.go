@@ -5,11 +5,14 @@ import (
 	"skripsi-be/internal/api/admin/account"
 	"skripsi-be/internal/api/admin/area"
 	"skripsi-be/internal/api/admin/asset"
+	assetitem "skripsi-be/internal/api/admin/asset_item"
+	assettransaction "skripsi-be/internal/api/admin/asset_transaction"
 	"skripsi-be/internal/api/admin/company"
 	"skripsi-be/internal/api/admin/customer"
 	customerinstallation "skripsi-be/internal/api/admin/customer/installation"
 	"skripsi-be/internal/api/admin/dashboard"
 	"skripsi-be/internal/api/admin/geocoding"
+	"skripsi-be/internal/api/admin/inventory"
 	"skripsi-be/internal/api/admin/invoice"
 	"skripsi-be/internal/api/admin/mikrotik"
 	networkdevice "skripsi-be/internal/api/admin/network-device"
@@ -66,11 +69,14 @@ func RouteFiber(app *fiber.App) {
 	customer.AdminCustomerRoute(admin.Group("/customer"))
 	customerinstallation.AdminCustomerInstallationRoute(admin.Group("/customer-installation"))
 	asset.AdminAssetRoute(admin.Group("/asset"))
+	assetitem.AssetItemRoute(admin.Group("/asset-item"))
+	assettransaction.AssetTransactionRoute(admin.Group("/asset-transaction"))
 	transaction.AdminTrasactionRoute(admin.Group("/transaction"))
 	invoice.AdminInvoiceRoute(admin.Group("/invoice"))
 	recurring_invoice.AdminRecurringInvoiceRoute(admin.Group("/recurring-invoice"))
 	mikrotik.MikroTikRoutes(admin.Group("/mikrotik"))
 	geocoding.AdminGeocodingRoute(admin.Group("/geocoding"))
+	inventory.InventoryRoute(admin)
 
 	// Network Monitoring routes
 	networkMonitoringHandler := network_monitoring.NewNetworkMonitoringHandler(

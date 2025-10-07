@@ -11,7 +11,7 @@ import (
 )
 
 type ReportInstallationRepositoryInterface interface {
-	CreateReportInstallationRepository(request CreateReportInstallationRequest) (entities.CustomerInstallation, error)
+	CreateReportInstallationRepository(request CreateReportInstallationRequest, createdByUserID string) (entities.CustomerInstallation, error)
 	CreateInstallationTechnicians(tx *gorm.DB, installationID string, technicians []TechnicianAssignment) error
 	DeleteInstallation(installationId string) error
 }
@@ -92,7 +92,7 @@ func stringToPtr(s string) *string {
 }
 
 // CreateReportInstallationRepository - Create installation report with all related data
-func (r *ReportInstallationRepository) CreateReportInstallationRepository(request CreateReportInstallationRequest) (entities.CustomerInstallation, error) {
+func (r *ReportInstallationRepository) CreateReportInstallationRepository(request CreateReportInstallationRequest, createdByUserID string) (entities.CustomerInstallation, error) {
 	tx := r.db.Begin()
 	defer func() {
 		if r := recover(); r != nil {
@@ -306,6 +306,65 @@ func (r *ReportInstallationRepository) CreateReportInstallationRepository(reques
 			return installation, err
 		}
 		log.Printf("Created network device for installation %s", installation.ID)
+
+		// Create asset transaction to track asset item assignment
+		log.Printf("=== ASSET TRANSACTION DEBUG ===")
+		log.Printf("Request.MacAddress: '%s'", request.MacAddress)
+		log.Printf("Request.AssetItemID: '%s'", request.AssetItemID)
+		log.Printf("Condition check: MacAddress != '' (%t) || AssetItemID != '' (%t) = %t",
+			request.MacAddress != "", request.AssetItemID != "",
+			request.MacAddress != "" || request.AssetItemID != "")
+
+		if request.MacAddress != "" || request.AssetItemID != "" {
+			var assetItem entities.AssetItem
+			var err error
+
+			// Try to find asset item by asset_item_id first, then by MAC address
+			if request.AssetItemID != "" {
+				err = tx.Where("id = ? AND status = 'in_stock'", request.AssetItemID).First(&assetItem).Error
+				if err == nil {
+					log.Printf("Found asset item by ID: %s", request.AssetItemID)
+				}
+			}
+
+			// If not found by ID, try by MAC address
+			if err != nil && request.MacAddress != "" {
+				err = tx.Where("mac_address = ? AND status = 'in_stock'", request.MacAddress).First(&assetItem).Error
+				if err == nil {
+					log.Printf("Found asset item by MAC address: %s", request.MacAddress)
+				}
+			}
+
+			if err == nil {
+				// Create asset transaction record
+				assetTransaction := entities.AssetTransaction{
+					ID:                     "",
+					CustomerInstallationID: installation.ID,
+					AssetItemID:            &assetItem.ID, // Link to specific asset item
+					AssetID:                assetItem.AssetID,
+					TransactionType:        "out", // Asset going out to customer
+					Quantity:               1,
+					Notes:                  stringToPtr(fmt.Sprintf("Asset assigned to installation - MAC: %s, Item ID: %s", assetItem.MacAddress, assetItem.ID)),
+					TransactionDate:        time.Now(),
+					CreatedBy:              createdByUserID, // Use the authenticated user ID
+				}
+
+				if err := tx.Create(&assetTransaction).Error; err != nil {
+					log.Printf("Failed to create asset transaction: %v", err)
+					// Don't rollback - this is not critical enough to fail the entire installation
+				} else {
+					// Update asset item status to 'in_use'
+					err = tx.Model(&assetItem).Update("status", "in_use").Error
+					if err != nil {
+						log.Printf("Failed to update asset item status: %v", err)
+					} else {
+						log.Printf("✅ Created asset transaction and updated asset item %s (MAC: %s) status to 'in_use' for installation %s", assetItem.ID, assetItem.MacAddress, installation.ID)
+					}
+				}
+			} else {
+				log.Printf("❌ Asset item not found - AssetItemID: %s, MacAddress: %s, Error: %v", request.AssetItemID, request.MacAddress, err)
+			}
+		}
 	} else {
 		log.Printf("Skipping network device creation - insufficient network data provided")
 	}

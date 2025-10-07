@@ -5,7 +5,7 @@ import (
 )
 
 type ReportInstallationServiceInterface interface {
-	CreateReportInstallationService(request CreateReportInstallationRequest) (entities.CustomerInstallation, error)
+	CreateReportInstallationService(request CreateReportInstallationRequest, createdByUserID string) (entities.CustomerInstallation, error)
 	DeleteInstallation(installationId string) error
 }
 
@@ -18,8 +18,8 @@ func NewReportInstallationService(repository ReportInstallationRepositoryInterfa
 }
 
 // CreateReportInstallationService - Create installation report with all related data
-func (s *ReportInstallationService) CreateReportInstallationService(request CreateReportInstallationRequest) (entities.CustomerInstallation, error) {
-	installation, err := s.repository.CreateReportInstallationRepository(request)
+func (s *ReportInstallationService) CreateReportInstallationService(request CreateReportInstallationRequest, createdByUserID string) (entities.CustomerInstallation, error) {
+	installation, err := s.repository.CreateReportInstallationRepository(request, createdByUserID)
 	if err != nil {
 		return installation, err
 	}

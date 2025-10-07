@@ -1,7 +1,10 @@
 package mikrotik
 
 import (
+	"fmt"
 	"net/http"
+	"regexp"
+	"strings"
 	"time"
 
 	"skripsi-be/internal/helpers"
@@ -78,7 +81,9 @@ func (h *MikroTikHandler) Disconnect(c *fiber.Ctx) error {
 
 // Get connection status
 func (h *MikroTikHandler) GetStatus(c *fiber.Ctx) error {
-	if h.mikroTikService == nil {
+	// Always check the shared service (set by auto-connect)
+	sharedService := services.GetSharedMikroTikService()
+	if sharedService == nil {
 		return helpers.ResponseUtils(c, http.StatusOK, true, "Status retrieved", map[string]interface{}{
 			"status":  "disconnected",
 			"message": "Not connected to any MikroTik device",
@@ -87,7 +92,7 @@ func (h *MikroTikHandler) GetStatus(c *fiber.Ctx) error {
 		})
 	}
 
-	status := h.mikroTikService.GetConnectionStatus()
+	status := sharedService.GetConnectionStatus()
 	return helpers.ResponseUtils(c, http.StatusOK, true, "Status retrieved", status)
 }
 
@@ -256,4 +261,123 @@ func (h *MikroTikHandler) GetRealTimeLogs(c *fiber.Ctx) error {
 		"timeRange": timeRange,
 		"timestamp": time.Now(),
 	})
+}
+
+// GetDHCPLease fetches DHCP lease information for a given MAC address
+func (h *MikroTikHandler) GetDHCPLease(c *fiber.Ctx) error {
+	var req struct {
+		MacAddress string `json:"mac_address"`
+	}
+
+	if err := c.BodyParser(&req); err != nil {
+		return helpers.ResponseUtils(c, http.StatusBadRequest, false, "Invalid request body", nil)
+	}
+
+	if req.MacAddress == "" {
+		return helpers.ResponseUtils(c, http.StatusBadRequest, false, "MAC address is required", nil)
+	}
+
+	// Always use the shared MikroTik service (which is set by auto-connect)
+	sharedService := services.GetSharedMikroTikService()
+	if sharedService == nil {
+		return helpers.ResponseUtils(c, http.StatusInternalServerError, false, "MikroTik service not initialized. Please connect to MikroTik first.", nil)
+	}
+
+	// Check if MikroTik service is connected
+	if !sharedService.IsConnected() {
+		return helpers.ResponseUtils(c, http.StatusServiceUnavailable, false, "MikroTik service not connected. Please connect to MikroTik first.", nil)
+	}
+
+	// Execute MikroTik command to get DHCP lease
+	cmd := "/ip/dhcp-server/lease/print where mac-address=" + req.MacAddress + " status=bound disabled=no"
+	output, err := sharedService.ExecuteCommand(cmd)
+	if err != nil {
+		return helpers.ResponseUtils(c, http.StatusInternalServerError, false, "Failed to query DHCP lease: "+err.Error(), map[string]interface{}{
+			"mac_address": req.MacAddress,
+			"command":     cmd,
+			"error":       err.Error(),
+		})
+	}
+
+	// Parse the output to extract IP address
+	ipAddress := parseDHCPLeaseOutput(output)
+	if ipAddress == "" {
+		return helpers.ResponseUtils(c, http.StatusNotFound, false, "No active DHCP lease found for MAC address "+req.MacAddress, map[string]interface{}{
+			"mac_address":   req.MacAddress,
+			"command":       cmd,
+			"raw_output":    output,
+			"parsing_debug": "Failed to extract IP address from output",
+		})
+	}
+
+	return helpers.ResponseUtils(c, http.StatusOK, true, "DHCP lease found successfully", map[string]interface{}{
+		"mac_address": req.MacAddress,
+		"ip_address":  ipAddress,
+		"command":     cmd,
+		"raw_output":  output,
+	})
+}
+
+// parseDHCPLeaseOutput parses MikroTik output to extract IP address
+func parseDHCPLeaseOutput(output string) string {
+	// MikroTik output format can be different:
+	// Format 1: "address=10.10.21.125 mac-address=40:EE:15:7D:43:01 client-id=1:40:ee:15:7d:43:1 server=dhcp1 status=bound"
+	// Format 2: Table format with columns like "10.10.21.125 40:EE:15:7D:43:01 dhcp1 bound 7m2s"
+
+	lines := strings.Split(output, "\n")
+
+	// Debug: log the output for troubleshooting
+	fmt.Printf("DEBUG: Parsing DHCP output (%d lines):\n", len(lines))
+	for i, line := range lines {
+		fmt.Printf("  Line %d: '%s'\n", i, line)
+	}
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+
+		// Skip header lines
+		if strings.Contains(line, "Columns:") || strings.Contains(line, "# ADDRESS") || strings.Contains(line, "Flags:") {
+			continue
+		}
+
+		// Try format 1: address=10.10.21.125 mac-address=...
+		re1 := regexp.MustCompile(`address=([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)`)
+		matches1 := re1.FindStringSubmatch(line)
+		if len(matches1) > 1 {
+			return matches1[1]
+		}
+
+		// Try format 2: Table format - IP is usually the 3rd field (after number and flags)
+		// Look for lines that start with a number (skip # entries)
+		if !strings.HasPrefix(line, "#") && !strings.Contains(line, "Flags:") {
+			fields := strings.Fields(line)
+			if len(fields) >= 3 {
+				// Check if first field is a number and second field is flags (like "D")
+				// Then the third field should be the IP address
+				if len(fields[0]) > 0 && len(fields[1]) == 1 && len(fields[2]) > 0 {
+					ipField := fields[2]
+					// Validate it's an IP address
+					ipRegex := regexp.MustCompile(`^([0-9]{1,3}\.){3}[0-9]{1,3}$`)
+					if ipRegex.MatchString(ipField) {
+						fmt.Printf("DEBUG: Found IP address: %s\n", ipField)
+						return ipField
+					}
+				}
+
+				// Fallback: check all fields for IP addresses
+				for _, field := range fields {
+					ipRegex := regexp.MustCompile(`^([0-9]{1,3}\.){3}[0-9]{1,3}$`)
+					if ipRegex.MatchString(field) {
+						fmt.Printf("DEBUG: Found IP address in field: %s\n", field)
+						return field
+					}
+				}
+			}
+		}
+	}
+
+	return ""
 }

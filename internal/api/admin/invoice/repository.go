@@ -45,7 +45,7 @@ func (r AdminInvoiceRepositoryStruct) FindAdminInvoiceRepository() ([]entities.I
 		return invoices, tx.Error
 	}
 
-	// For each invoice, calculate total paid from transactions
+	// For each invoice, calculate total paid from transactions and load pending reason
 	for i := range invoices {
 		var totalPaid int64
 		r.db.Model(&entities.Transaction{}).Where("invoice_id = ?", invoices[i].ID).Select("COALESCE(SUM(amount), 0)").Scan(&totalPaid)
@@ -54,6 +54,16 @@ func (r AdminInvoiceRepositoryStruct) FindAdminInvoiceRepository() ([]entities.I
 		if totalPaid > 0 {
 			invoices[i].Transaction = entities.Transaction{
 				Amount: totalPaid,
+			}
+		}
+
+		// Load pending reason if invoice is pending
+		if invoices[i].Status == entities.InvoiceStatusPending {
+			var pendingReason entities.InvoicePendingReason
+			err := r.db.Where("invoice_id = ?", invoices[i].ID).Order("created_at DESC").First(&pendingReason).Error
+			if err == nil {
+				// Add pending_reason field to the invoice response
+				invoices[i].PendingReason = &pendingReason.Reason
 			}
 		}
 	}
@@ -92,6 +102,16 @@ func (r AdminInvoiceRepositoryStruct) FindByIdAdminInvoiceRepository(request IdA
 	if totalPaid > 0 {
 		invoice.Transaction = entities.Transaction{
 			Amount: totalPaid,
+		}
+	}
+
+	// Load pending reason if invoice is pending
+	if invoice.Status == entities.InvoiceStatusPending {
+		var pendingReason entities.InvoicePendingReason
+		err := r.db.Where("invoice_id = ?", request.Id).Order("created_at DESC").First(&pendingReason).Error
+		if err == nil {
+			// Add pending_reason field to the invoice response
+			invoice.PendingReason = &pendingReason.Reason
 		}
 	}
 

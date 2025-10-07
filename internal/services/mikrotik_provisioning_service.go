@@ -34,6 +34,7 @@ type ProvisioningRequest struct {
 	CustomerName   string
 	AreaName       string // Area name for code generation
 	MACAddress     string
+	IPAddress      string // IP address from the form
 	StartDate      string // YYYY-MM-DD
 	StartTime      string // HH:MM:SS
 	MaxLimit       string // e.g., "10M/10M"
@@ -102,6 +103,8 @@ func (s *MikrotikProvisioningService) ProvisionInstallation(req ProvisioningRequ
 		ProvisioningType:       entities.ProvisioningTypeNew,
 		DryRun:                 req.DryRun,
 		CreatedBy:              createdBy,
+		CreatedAt:              time.Now(),
+		UpdatedAt:              time.Now(),
 	}
 
 	if req.DryRun {
@@ -163,7 +166,7 @@ func (s *MikrotikProvisioningService) ProvisionInstallation(req ProvisioningRequ
 // executeProvisioningSequence executes the RouterOS command sequence
 func (s *MikrotikProvisioningService) executeProvisioningSequence(req ProvisioningRequest, codeName string, result *ProvisioningResult) error {
 	// Step 1: Find DHCP lease and get IP address
-	ipAddress, err := s.findDHCPLeaseIP(req.MACAddress, result)
+	ipAddress, err := s.findDHCPLeaseIP(req.MACAddress, req.IPAddress, result)
 	if err != nil {
 		return fmt.Errorf("failed to find DHCP lease: %w", err)
 	}
@@ -203,18 +206,26 @@ func (s *MikrotikProvisioningService) executeProvisioningSequence(req Provisioni
 }
 
 // findDHCPLeaseIP finds the IP address from DHCP lease for the given MAC
-func (s *MikrotikProvisioningService) findDHCPLeaseIP(macAddress string, result *ProvisioningResult) (string, error) {
+func (s *MikrotikProvisioningService) findDHCPLeaseIP(macAddress string, providedIP string, result *ProvisioningResult) (string, error) {
+	// If IP address is provided from the form, use it directly
+	if providedIP != "" {
+		cmd := fmt.Sprintf("/ip/dhcp-server/lease/print where mac-address=%s status=bound disabled=no", macAddress)
+		result.Commands = append(result.Commands, cmd)
+		result.CommandsOutput = append(result.CommandsOutput, "Using provided IP address: "+providedIP)
+		return providedIP, nil
+	}
+
+	// Fallback: Try to find IP from DHCP lease
 	cmd := fmt.Sprintf("/ip/dhcp-server/lease/print where mac-address=%s status=bound disabled=no", macAddress)
 	result.Commands = append(result.Commands, cmd)
 
 	if s.mikrotikConn == nil {
-		// Dry run or no connection
+		// Dry run or no connection - use default IP
 		result.CommandsOutput = append(result.CommandsOutput, "DRY RUN: Would find IP for MAC "+macAddress)
-		return "192.168.1.100", nil // Mock IP for dry run
+		return "192.168.1.100", nil // Default IP for dry run
 	}
 
 	// Execute actual command to find DHCP lease
-	cmd = fmt.Sprintf("/ip/dhcp-server/lease/print where mac-address=%s status=bound disabled=no", macAddress)
 	output, err := s.mikrotikConn.ExecuteCommand(cmd)
 	if err != nil {
 		return "", err
@@ -222,9 +233,37 @@ func (s *MikrotikProvisioningService) findDHCPLeaseIP(macAddress string, result 
 
 	result.CommandsOutput = append(result.CommandsOutput, output)
 
-	// For now, return a dummy IP - in a real implementation, you'd parse the output
-	// to extract the actual IP address from the command output
+	// Parse the output to extract the actual IP address
+	// MikroTik output format: "address=10.10.21.125 mac-address=40:EE:15:7D:43:01 ..."
+	ipAddress := s.parseDHCPLeaseIP(output)
+	if ipAddress != "" {
+		return ipAddress, nil
+	}
+
+	// Fallback to default IP if parsing fails
 	return "192.168.1.100", nil
+}
+
+// parseDHCPLeaseIP parses MikroTik output to extract IP address
+func (s *MikrotikProvisioningService) parseDHCPLeaseIP(output string) string {
+	// MikroTik output format examples:
+	// "address=10.10.21.125 mac-address=40:EE:15:7D:43:01 client-id=1:40:ee:15:7d:43:1 server=dhcp1 status=bound"
+	// or with multiple lines, we need to find the line with the MAC address
+
+	lines := strings.Split(output, "\n")
+	for _, line := range lines {
+		// Look for address= pattern in each line
+		if strings.Contains(line, "address=") {
+			// Extract IP address using regex
+			re := regexp.MustCompile(`address=([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)`)
+			matches := re.FindStringSubmatch(line)
+			if len(matches) > 1 {
+				return matches[1]
+			}
+		}
+	}
+
+	return ""
 }
 
 // makeLeaseStatic makes the DHCP lease static
@@ -538,10 +577,12 @@ func (s *MikrotikProvisioningService) getInstallationCount(customerID, areaName 
 	var count int64
 
 	// Count installations for this customer in this area
-	// Note: This is a simplified query - you may need to adjust based on your database schema
+	// Join through customer table to get area_id, then join with areas table
 	err := s.db.Table("customer_installations").
-		Joins("JOIN areas ON customer_installations.area_id = areas.id").
-		Where("customer_installations.customer_id = ? AND areas.name = ?", customerID, areaName).
+		Joins("JOIN customers ON customer_installations.customer_id = customers.id").
+		Joins("JOIN areas ON customers.area_id = areas.id").
+		Where("customer_installations.customer_id = ? AND (areas.name_city = ? OR areas.name_subdistrict = ? OR areas.name_village = ?)",
+			customerID, areaName, areaName, areaName).
 		Count(&count).Error
 
 	if err != nil {

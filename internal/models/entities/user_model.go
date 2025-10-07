@@ -39,24 +39,24 @@ func (u *Accounts) BeforeCreate(tx *gorm.DB) error {
 
 // CustomerInstallation model moved to customer_installation_model.go
 
-// Assets model
+// Assets model - Updated to remove deprecated columns (status, status_in_out, quantity)
 type Asset struct {
-	ID           string        `json:"id" gorm:"primaryKey"`
-	Type         string        `json:"type" validate:"required"`
-	Brand        string        `json:"brand" validate:"required"`
-	Model        string        `json:"model" validate:"required"`
-	SerialNumber string        `json:"serial_number" validate:"required"`
-	Date         string        `json:"date" validate:"required"`
-	CompanyID    *string       `json:"company_id" gorm:"type:varchar(191)"`
-	Company      *Company      `json:"company,omitempty" gorm:"foreignKey:CompanyID;references:ID"`
-	Quantity     int64         `json:"quantity" validate:"required"`
-	Status       string        `json:"status" `
-	Price        int64         `json:"price" validate:"required"`
-	Description  string        `json:"description"`
-	StatusInOut  string        `json:"status_in_out" validate:"required"`
-	CreatedAt    time.Time     `json:"createdAt" gorm:"column:createdAt;default:current_timestamp"`
-	UpdatedAt    time.Time     `json:"updatedAt" gorm:"column:updatedAt;"`
-	ReportAssets *ReportAssets `json:"report_assets" gorm:"foreignKey:ID"`
+	ID           string             `json:"id" gorm:"primaryKey"`
+	Type         string             `json:"type" validate:"required"`
+	Brand        string             `json:"brand" validate:"required"`
+	Model        string             `json:"model" validate:"required"`
+	SerialNumber string             `json:"serial_number" validate:"required"`
+	Date         string             `json:"date" validate:"required"`
+	CompanyID    *string            `json:"company_id" gorm:"type:varchar(191)"`
+	Company      *Company           `json:"company,omitempty" gorm:"foreignKey:CompanyID;references:ID"`
+	Price        int64              `json:"price" validate:"required"`
+	Description  string             `json:"description"`
+	Site         string             `json:"site" validate:"required"`
+	CreatedAt    time.Time          `json:"createdAt" gorm:"column:createdAt;default:current_timestamp"`
+	UpdatedAt    time.Time          `json:"updatedAt" gorm:"column:updatedAt;"`
+	ReportAssets *ReportAssets      `json:"report_assets" gorm:"foreignKey:ID"`
+	AssetItems   []AssetItem        `json:"asset_items,omitempty" gorm:"foreignKey:AssetID;references:ID"`
+	Transactions []AssetTransaction `json:"transactions,omitempty" gorm:"foreignKey:AssetID;references:ID"`
 }
 
 func (c *Asset) TableName() string {
@@ -66,6 +66,29 @@ func (c *Asset) TableName() string {
 func (u *Asset) BeforeCreate(tx *gorm.DB) error {
 	if u.ID == "" {
 		u.ID = uuid.New().String()
+	}
+	return nil
+}
+
+// AssetItem model for tracking individual asset items
+type AssetItem struct {
+	ID           string    `json:"id" gorm:"primaryKey"`
+	AssetID      string    `json:"asset_id" gorm:"type:varchar(191);not null"`
+	Asset        *Asset    `json:"asset,omitempty" gorm:"foreignKey:AssetID;references:ID"`
+	MacAddress   string    `json:"mac_address" gorm:"type:varchar(17);uniqueIndex;not null"`
+	SerialNumber *string   `json:"serial_number" gorm:"type:varchar(191)"`
+	Status       string    `json:"status" gorm:"type:enum('in_stock','in_use','maintenance','damaged','retired');default:'in_stock'"`
+	CreatedAt    time.Time `json:"created_at" gorm:"column:created_at;default:current_timestamp"`
+	UpdatedAt    time.Time `json:"updated_at" gorm:"column:updated_at;default:current_timestamp"`
+}
+
+func (ai *AssetItem) TableName() string {
+	return "asset_items"
+}
+
+func (ai *AssetItem) BeforeCreate(tx *gorm.DB) error {
+	if ai.ID == "" {
+		ai.ID = uuid.New().String()
 	}
 	return nil
 }
@@ -346,15 +369,17 @@ func (u *Image) BeforeCreate(tx *gorm.DB) error {
 type AssetTransaction struct {
 	ID                     string                `gorm:"column:id;type:varchar;primaryKey" json:"id"`
 	CustomerInstallationID string                `gorm:"column:customer_installation_id;type:varchar;index:idx_asset_transactions_customer_installation_id" json:"customer_installation_id"`
+	AssetItemID            *string               `gorm:"column:asset_item_id;type:varchar;index:idx_asset_transactions_asset_item_id" json:"asset_item_id,omitempty"`
 	AssetID                string                `gorm:"column:asset_id;type:varchar;index:idx_asset_transactions_asset_id" json:"asset_id"`
 	TransactionType        string                `gorm:"column:transaction_type;type:enum('out','in')" json:"transaction_type"`
 	Quantity               int                   `gorm:"column:quantity;type:int;default:1" json:"quantity"`
-	Notes                  string                `gorm:"column:notes;type:text" json:"notes,omitempty"`
+	Notes                  *string               `gorm:"column:notes;type:text" json:"notes,omitempty"`
 	TransactionDate        time.Time             `gorm:"column:transaction_date;type:datetime(3);default:current_timestamp" json:"transaction_date"`
 	CreatedBy              string                `gorm:"column:created_by;type:varchar;index:idx_asset_transactions_created_by" json:"created_by"`
 	CreatedAt              time.Time             `gorm:"column:createdAt;default:current_timestamp" json:"createdAt"`
 	UpdatedAt              time.Time             `gorm:"column:updatedAt;default:current_timestamp on update current_timestamp" json:"updatedAt"`
 	CustomerInstallation   *CustomerInstallation `gorm:"foreignKey:CustomerInstallationID;references:ID;constraint:OnDelete:CASCADE,OnUpdate:CASCADE" json:"customer_installation,omitempty"`
+	AssetItem              *AssetItem            `gorm:"foreignKey:AssetItemID;references:ID;constraint:OnDelete:CASCADE,OnUpdate:CASCADE" json:"asset_item,omitempty"`
 	Asset                  *Asset                `gorm:"foreignKey:AssetID;references:ID;constraint:OnDelete:CASCADE,OnUpdate:CASCADE" json:"asset,omitempty"`
 	User                   *User                 `gorm:"foreignKey:CreatedBy;references:ID;constraint:OnDelete:CASCADE,OnUpdate:CASCADE" json:"user,omitempty"`
 }
@@ -381,20 +406,21 @@ const (
 )
 
 type Invoice struct {
-	ID           string         `gorm:"column:id;type:varchar;primaryKey" json:"id"`
-	Amount       int64          `gorm:"column:amount;type:int;not null" json:"amount"`
-	CustomerID   string         `gorm:"column:customer_id;type:varchar;not null" json:"customer_id"`
-	Customer     Customer       `gorm:"foreignKey:CustomerID;references:id;constraint:OnUpdate:RESTRICT" json:"customer"`
-	Link         string         `gorm:"column:link;type:varchar;not null" json:"link"`
-	Status       InvoiceStatus  `gorm:"column:status;type:varchar;not null" json:"status"`
-	InvoiceDate  *time.Time     `gorm:"column:invoice_date;type:date" json:"invoice_date"`
-	DueDate      *time.Time     `gorm:"column:due_date;type:date" json:"due_date"`
-	PdfViewed    bool           `gorm:"column:pdf_viewed;type:boolean;default:false" json:"pdf_viewed"`
-	PdfViewedAt  *time.Time     `gorm:"column:pdf_viewed_at;type:timestamp" json:"pdf_viewed_at"`
-	CreatedAt    time.Time      `gorm:"column:createdAt;default:current_timestamp" json:"created_at"`
-	UpdatedAt    time.Time      `gorm:"column:updatedAt;not null" json:"updated_at"`
-	InvoiceItems []InvoiceItems `gorm:"foreignKey:InvoiceID;constraint:OnUpdate:RESTRICT" json:"invoice_items"`
-	Transaction  Transaction    `gorm:"foreignKey:invoice_id;constraint:OnUpdate:RESTRICT" json:"transaction"`
+	ID            string         `gorm:"column:id;type:varchar;primaryKey" json:"id"`
+	Amount        int64          `gorm:"column:amount;type:int;not null" json:"amount"`
+	CustomerID    string         `gorm:"column:customer_id;type:varchar;not null" json:"customer_id"`
+	Customer      Customer       `gorm:"foreignKey:CustomerID;references:id;constraint:OnUpdate:RESTRICT" json:"customer"`
+	Link          string         `gorm:"column:link;type:varchar;not null" json:"link"`
+	Status        InvoiceStatus  `gorm:"column:status;type:varchar;not null" json:"status"`
+	InvoiceDate   *time.Time     `gorm:"column:invoice_date;type:date" json:"invoice_date"`
+	DueDate       *time.Time     `gorm:"column:due_date;type:date" json:"due_date"`
+	PdfViewed     bool           `gorm:"column:pdf_viewed;type:boolean;default:false" json:"pdf_viewed"`
+	PdfViewedAt   *time.Time     `gorm:"column:pdf_viewed_at;type:timestamp" json:"pdf_viewed_at"`
+	CreatedAt     time.Time      `gorm:"column:createdAt;default:current_timestamp" json:"created_at"`
+	UpdatedAt     time.Time      `gorm:"column:updatedAt;not null" json:"updated_at"`
+	InvoiceItems  []InvoiceItems `gorm:"foreignKey:InvoiceID;constraint:OnUpdate:RESTRICT" json:"invoice_items"`
+	Transaction   Transaction    `gorm:"foreignKey:invoice_id;constraint:OnUpdate:RESTRICT" json:"transaction"`
+	PendingReason *string        `gorm:"-" json:"pending_reason,omitempty"` // Virtual field, not stored in DB
 }
 
 // InvoicePendingReason stores customer's reason when invoice is pending

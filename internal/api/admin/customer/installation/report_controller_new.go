@@ -46,6 +46,13 @@ func (c *ReportInstallationController) CreateReportInstallation(ctx *fiber.Ctx) 
 	}
 	log.Printf("=== END FORM VALUES DEBUG ===")
 
+	// Debug asset-related fields specifically
+	log.Printf("=== ASSET FIELDS DEBUG ===")
+	log.Printf("mac_address from form: '%s'", ctx.FormValue("mac_address"))
+	log.Printf("asset_item_id from form: '%s'", ctx.FormValue("asset_item_id"))
+	log.Printf("assets_id from form: '%s'", ctx.FormValue("assets_id"))
+	log.Printf("=== END ASSET FIELDS DEBUG ===")
+
 	// Parse form values
 	request.CustomerID = ctx.FormValue("customer_id")
 	request.TechnicianID = ctx.FormValue("technician_id")
@@ -62,6 +69,7 @@ func (c *ReportInstallationController) CreateReportInstallation(ctx *fiber.Ctx) 
 	request.RemotePort = ctx.FormValue("remote_port")
 	request.EthPort = ctx.FormValue("eth_port")
 	request.MacAddress = ctx.FormValue("mac_address")
+	request.AssetItemID = ctx.FormValue("asset_item_id")
 	request.IPStatic = ctx.FormValue("ip_static")
 	request.StatusPerangkat = ctx.FormValue("status_perangkat")
 	request.KepemilikanPerangkat = ctx.FormValue("kepemilikan_perangkat")
@@ -263,8 +271,21 @@ func (c *ReportInstallationController) CreateReportInstallation(ctx *fiber.Ctx) 
 		return helpers.ResponseUtils(ctx, 400, false, "Invalid MAC address format", nil)
 	}
 
+	// Get the authenticated user ID from the request context
+	var createdBy string
+	if userID := ctx.Locals("user_id"); userID != nil {
+		createdBy = fmt.Sprintf("%v", userID)
+		log.Printf("=== USER ID DEBUG ===")
+		log.Printf("Extracted user ID from context: %s", createdBy)
+	} else {
+		// Fallback to a known admin user ID to avoid foreign key constraint issues
+		createdBy = "b6cbf8b6-6a2e-45f3-a9ab-e30e5941bf5a" // Admin user ID from JWT
+		log.Printf("=== USER ID DEBUG ===")
+		log.Printf("No user ID in context, using fallback admin ID: %s", createdBy)
+	}
+
 	// Create installation report first
-	installation, err := c.service.CreateReportInstallationService(request)
+	installation, err := c.service.CreateReportInstallationService(request, createdBy)
 	if err != nil {
 		return helpers.ResponseUtils(ctx, 500, false, "Failed to create installation report", err.Error())
 	}
@@ -329,16 +350,6 @@ func (c *ReportInstallationController) CreateReportInstallation(ctx *fiber.Ctx) 
 			areaName = "Unknown Area"
 		}
 
-		// Get the authenticated user ID from the request context
-		// For now, we'll set it to empty string to avoid foreign key constraint issues
-		var createdBy string
-		if userID := ctx.Locals("user_id"); userID != nil {
-			createdBy = fmt.Sprintf("%v", userID)
-		} else {
-			// Set to empty string - the service will handle NULL conversion
-			createdBy = ""
-		}
-
 		// Create provisioning request
 		provReq := services.ProvisioningRequest{
 			InstallationID: installation.ID,
@@ -346,6 +357,7 @@ func (c *ReportInstallationController) CreateReportInstallation(ctx *fiber.Ctx) 
 			CustomerName:   customerName,
 			AreaName:       areaName,
 			MACAddress:     request.MacAddress,
+			IPAddress:      request.IPStatic, // Use IP address from the form
 			StartDate:      request.PSBDate,
 			StartTime:      request.PSBTime,
 			MaxLimit:       request.MaxLimit,

@@ -396,7 +396,7 @@ func (r AdminInstallationReportRepositoryStruct) CreateCompleteInstallationRepor
 			AssetID:                assetTx.AssetId,
 			TransactionType:        assetTx.TransactionType,
 			Quantity:               assetTx.Quantity,
-			Notes:                  assetTx.Notes,
+			Notes:                  &assetTx.Notes,
 			TransactionDate:        transactionDate,
 			CreatedBy:              request.TechnicianId, // Assuming technician creates the transaction
 		}

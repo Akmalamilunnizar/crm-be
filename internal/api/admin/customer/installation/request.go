@@ -59,7 +59,8 @@ type CreateReportInstallationRequest struct {
 	PortNumber                    string                 `form:"port_number" json:"port_number"`
 	RemotePort                    string                 `form:"remote_port" json:"remote_port"`
 	EthPort                       string                 `form:"eth_port" json:"eth_port"`
-	MacAddress                    string                 `form:"mac_address" json:"mac_address"` // Device MAC
+	MacAddress                    string                 `form:"mac_address" json:"mac_address"`     // Device MAC
+	AssetItemID                   string                 `form:"asset_item_id" json:"asset_item_id"` // Specific asset item ID
 	IPStatic                      string                 `form:"ip_static" json:"ip_static"`
 	KepemilikanPerangkat          string                 `form:"kepemilikan_perangkat" json:"kepemilikan_perangkat"`
 	StatusPerangkat               string                 `form:"status_perangkat" json:"status_perangkat"`

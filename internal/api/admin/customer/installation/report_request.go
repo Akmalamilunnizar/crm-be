@@ -182,8 +182,6 @@ type InstallationReportCompleteResponse struct {
 	StatusPsb               string     `json:"status_psb"`
 	DocumentType            string     `json:"document_type"`
 	DocumentPhoto           string     `json:"document_photo"`
-	TotalAssetsOut          int        `json:"total_assets_out"`
-	TotalAssetsIn           int        `json:"total_assets_in"`
 	NetworkDeviceId         string     `json:"network_device_id"`
 	SwitchId                string     `json:"switch_id"`
 	PortNumber              string     `json:"port_number"`

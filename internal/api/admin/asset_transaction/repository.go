@@ -123,4 +123,3 @@ func (r AssetTransactionRepositoryStruct) DeleteAssetTransactionRepository(reque
 
 	return transaction, nil
 }
-

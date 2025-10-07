@@ -79,9 +79,16 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 			log.Printf("SVM classification failed: %v", err)
 			// Continue without classification if ML fails
 		} else {
-			// Update ticket type with SVM result
-			t.Type = &classification.Type
-			log.Printf("SVM classified ticket as: %s (confidence: %.2f)", classification.Type, classification.Confidence)
+			// Map ML classifier result to trouble type ID
+			troubleTypeID, err := h.svc.repo.GetOrCreateTroubleTypeID(classification.Type)
+			if err != nil {
+				log.Printf("Failed to get/create trouble type ID for '%s': %v", classification.Type, err)
+				// Continue without classification if mapping fails
+			} else {
+				t.Type = &troubleTypeID
+				log.Printf("SVM classified ticket as: %s (confidence: %.2f) -> mapped to trouble type ID: %s",
+					classification.Type, classification.Confidence, troubleTypeID)
+			}
 		}
 	}
 
@@ -739,7 +746,6 @@ func (h *Handler) MarkTechnicianCompleted(c *fiber.Ctx) error {
 
 	return helpers.ResponseUtils(c, 200, true, "technician work marked as completed", result)
 }
-
 
 // (removed duplicate SetNetworkArchitecture; see technician_handler.go)
 

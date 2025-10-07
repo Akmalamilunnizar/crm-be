@@ -207,8 +207,9 @@ func (r *ReportInstallationRepository) CreateReportInstallationRepository(reques
 
 	// Normalize document photo path before saving
 	if request.DocumentPhoto != "" {
+		originalPath := request.DocumentPhoto
 		request.DocumentPhoto = normalizeDocumentPhotoPath(request.DocumentPhoto)
-		log.Printf("Normalized document photo path from '%s' to '%s'", request.DocumentPhoto, request.DocumentPhoto)
+		log.Printf("Repository: Normalized document photo path from '%s' to '%s'", originalPath, request.DocumentPhoto)
 	}
 
 	// Log installation data before creating

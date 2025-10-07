@@ -52,8 +52,12 @@ func (r *Repo) ListAll() ([]TicketWithAssignee, error) {
 		if item.AssignedTo != nil {
 			assignedTo = *item.AssignedTo
 		}
+		typeStr := "NULL"
+		if item.Type != nil {
+			typeStr = *item.Type
+		}
 		log.Printf("Ticket %d: ID=%d, CustomerID=%s, CustomerName='%s', AssignedTo=%s, AssigneeName='%s', CurrentAssigneeRole='%s', CurrentAssigneeName='%s', Type='%s', TypeName='%s'",
-			i+1, item.ID, item.CustomerID, item.CustomerName, assignedTo, item.AssigneeName, item.CurrentAssignee, item.CurrentAssigneeName, item.Type, item.TypeName)
+			i+1, item.ID, item.CustomerID, item.CustomerName, assignedTo, item.AssigneeName, item.CurrentAssignee, item.CurrentAssigneeName, typeStr, item.TypeName)
 	}
 
 	return items, err
@@ -89,6 +93,44 @@ func (r *Repo) Save(t *entities.TroubleTicket) error   { return r.DB.Save(t).Err
 // trouble_type CRUD
 func (r *Repo) CreateTroubleType(t entities.TroubleTypeRow) error {
 	return r.DB.Table("trouble_type").Create(&t).Error
+}
+
+// GetOrCreateTroubleTypeID gets existing trouble type ID or creates new one
+func (r *Repo) GetOrCreateTroubleTypeID(mlType string) (string, error) {
+	// First, try to find existing trouble type by name
+	var troubleType entities.TroubleTypeRow
+	err := r.DB.Table("trouble_type").Where("name = ?", mlType).First(&troubleType).Error
+
+	if err == nil {
+		// Found existing trouble type
+		log.Printf("Found existing trouble type: %s -> ID: %s", mlType, troubleType.ID)
+		return troubleType.ID, nil
+	}
+
+	if err != gorm.ErrRecordNotFound {
+		// Database error
+		return "", fmt.Errorf("error querying trouble_type table: %v", err)
+	}
+
+	// Trouble type doesn't exist, create it
+	log.Printf("Creating new trouble type: %s", mlType)
+
+	// Generate a new ID (you might want to use UUID here)
+	newID := mlType // Use the ML type as ID for simplicity
+
+	// Create the trouble type
+	newTroubleType := entities.TroubleTypeRow{
+		ID:   newID,
+		Name: &mlType,
+	}
+
+	err = r.CreateTroubleType(newTroubleType)
+	if err != nil {
+		return "", fmt.Errorf("failed to create trouble type '%s': %v", mlType, err)
+	}
+
+	log.Printf("Created new trouble type: %s -> ID: %s", mlType, newID)
+	return newID, nil
 }
 
 // reporting

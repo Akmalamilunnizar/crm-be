@@ -187,11 +187,13 @@ func (c *ReportInstallationController) CreateReportInstallation(ctx *fiber.Ctx) 
 
 			documentPhotoPath = filePath
 
-			// Normalize the path to prevent any duplication issues
-			documentPhotoPath = normalizeDocumentPhotoPath(documentPhotoPath)
-
-			// Log successful upload
+			// Log successful upload before normalization
 			log.Printf("✅ Document photo uploaded successfully - filePath: %s, filename: %s", filePath, filename)
+
+			// Normalize the path to prevent any duplication issues
+			originalPath := documentPhotoPath
+			documentPhotoPath = normalizeDocumentPhotoPath(documentPhotoPath)
+			log.Printf("Path normalization: '%s' -> '%s'", originalPath, documentPhotoPath)
 
 			// Verify file exists
 			if _, err := os.Stat(filePath); err == nil {

@@ -74,7 +74,6 @@ model customer {
   createdAt              DateTime                 @default(now())
   updatedAt              DateTime
   installation_date      DateTime                 @db.Date
-  next_payment_date      DateTime                 @db.Date
   areas                  areas                    @relation(fields: [area_id], references: [id], onDelete: Cascade, map: "customer_ibfk_1")
   company                company                  @relation(fields: [company_id], references: [id], onDelete: Cascade, map: "customer_ibfk_2")
   products               products                 @relation(fields: [product_id], references: [id], onDelete: Cascade, map: "customer_ibfk_3")

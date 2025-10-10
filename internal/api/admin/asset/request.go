@@ -7,7 +7,7 @@ type CreateAdminAssetRequest struct {
 	SerialNumber string  `json:"serial_number" validate:"required"`
 	Date         string  `json:"date" validate:"required"`
 	CompanyID    *string `json:"company_id"`
-	Price        int64   `json:"price" validate:"required"`
+	Price        float64 `json:"price" validate:"required"`
 	Description  string  `json:"description"`
 	Site         string  `json:"site" validate:"required"`
 }

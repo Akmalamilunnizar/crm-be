@@ -1,6 +1,8 @@
 package product
 
 import (
+	"fmt"
+	"log"
 	"skripsi-be/internal/models/entities"
 
 	"gorm.io/gorm"
@@ -21,10 +23,34 @@ func NewAdminProductRepository(db *gorm.DB) AdminProductRepositoryStruct {
 
 func (r AdminProductRepositoryStruct) FindAdminProductRepository() ([]entities.Products, error) {
 	products := []entities.Products{}
+
+	// Debug: Log the database connection info
+	log.Printf("🔍 DEBUG: Fetching products from database...")
+
 	tx := r.db.Find(&products)
 	if tx.Error != nil {
+		log.Printf("❌ ERROR: Failed to fetch products: %v", tx.Error)
 		return nil, tx.Error
 	}
+
+	// Debug: Log the fetched products
+	log.Printf("✅ DEBUG: Fetched %d products", len(products))
+	for i, product := range products {
+		var downloadSpeed, uploadSpeed string
+		if product.DownloadSpeedMbps != nil {
+			downloadSpeed = fmt.Sprintf("%d", *product.DownloadSpeedMbps)
+		} else {
+			downloadSpeed = "nil"
+		}
+		if product.UploadSpeedMbps != nil {
+			uploadSpeed = fmt.Sprintf("%d", *product.UploadSpeedMbps)
+		} else {
+			uploadSpeed = "nil"
+		}
+		log.Printf("📦 Product %d: ID=%s, Name=%s, DownloadSpeed=%s, UploadSpeed=%s",
+			i+1, product.ID, product.Name, downloadSpeed, uploadSpeed)
+	}
+
 	return products, nil
 }
 

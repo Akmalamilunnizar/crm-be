@@ -45,12 +45,10 @@ func (r AdminNetworkDeviceRepositoryStruct) GetByCustomerIdAdminNetworkDeviceRep
 
 func (r AdminNetworkDeviceRepositoryStruct) CreateAdminNetworkDeviceRepository(request CreateNetworkDeviceRequest) (entities.NetworkDevice, error) {
 	networkDevice := entities.NetworkDevice{
-		ID:              uuid.New().String(),
-		CustomerID:      request.CustomerID,
-		IPStatic:        request.IPStatic,
-		MacAddress:      request.MacAddress,
-		StatusPerangkat: request.StatusPerangkat,
-		LastPingStatus:  request.LastPingStatus,
+		ID:         uuid.New().String(),
+		CustomerID: request.CustomerID,
+		IPStatic:   request.IPStatic,
+		MacAddress: request.MacAddress,
 		AssetsID: sql.NullString{
 			String: func() string {
 				if request.AssetsID != nil {
@@ -64,6 +62,12 @@ func (r AdminNetworkDeviceRepositoryStruct) CreateAdminNetworkDeviceRepository(r
 	}
 
 	err := r.db.Create(&networkDevice).Error
+	if err != nil {
+		return networkDevice, err
+	}
+
+	// Preload the product information after creation
+	err = r.db.Preload("Product").Preload("Customer").Where("id = ?", networkDevice.ID).First(&networkDevice).Error
 	return networkDevice, err
 }
 
@@ -82,8 +86,6 @@ func (r AdminNetworkDeviceRepositoryStruct) UpdateAdminNetworkDeviceRepository(r
 	networkDevice.CustomerID = request.CustomerID
 	networkDevice.IPStatic = request.IPStatic
 	networkDevice.MacAddress = request.MacAddress
-	networkDevice.StatusPerangkat = request.StatusPerangkat
-	networkDevice.LastPingStatus = request.LastPingStatus
 	networkDevice.AssetsID = sql.NullString{
 		String: func() string {
 			if assetsID != nil {
@@ -96,6 +98,12 @@ func (r AdminNetworkDeviceRepositoryStruct) UpdateAdminNetworkDeviceRepository(r
 	networkDevice.ProductID = request.ProductID
 
 	err = r.db.Save(&networkDevice).Error
+	if err != nil {
+		return networkDevice, err
+	}
+
+	// Preload the product information after update
+	err = r.db.Preload("Product").Preload("Customer").Where("id = ?", networkDevice.ID).First(&networkDevice).Error
 	return networkDevice, err
 }
 

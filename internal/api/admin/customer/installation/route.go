@@ -1,6 +1,7 @@
 package customerinstallation
 
 import (
+	"skripsi-be/internal/api/admin/recurring_invoice"
 	"skripsi-be/internal/config/database"
 	"skripsi-be/internal/helpers"
 
@@ -15,20 +16,23 @@ func AdminCustomerInstallationRoute(app fiber.Router) {
 
 	// Installation Report routes
 	reportRepository := NewAdminInstallationReportRepository(db)
-	reportService := NewAdminInstallationReportService(reportRepository)
+	recurringInvoiceRepo := recurring_invoice.NewAdminRecurringInvoiceRepository(db)
+	reportService := NewAdminInstallationReportService(reportRepository, recurringInvoiceRepo)
 	reportHandler := NewAdminInstallationReportController(reportService)
 
 	app.Use(helpers.VerifyToken)
 
 	// Installation Report endpoints (must be before /:id route to avoid conflicts)
-	app.Get("/report/complete/:id", reportHandler.GetCompleteInstallationReport)
+	app.Get("/report/complete/:id", reportHandler.GetCompleteInstallationReportWithTechnicianPhotos)
 	app.Get("/report/complete-view/:id", reportHandler.GetCompleteInstallationReportByView)
+	app.Get("/report/technician-team/:id", reportHandler.GetInstallationTechnicianTeam)
 	app.Get("/report-complete", reportHandler.GetAllCompleteInstallationReports)
 	app.Get("/report/summary/customer", reportHandler.GetInstallationSummaryPerCustomer)
 	app.Get("/report/asset/:id", reportHandler.GetInstallationAssetReport)
 	app.Get("/report/technician", reportHandler.GetInstallationTechnicianReport)
 	app.Post("/report/complete", reportHandler.CreateCompleteInstallationReport)
 	app.Put("/report/complete/:id", reportHandler.UpdateCompleteInstallationReport)
+	app.Delete("/report/delete/:id", reportHandler.DeleteInstallationReport)
 
 	// Basic CRUD operations
 	app.Get("", handler.GetAllAdminCustomerInstallationHandler)
@@ -40,14 +44,7 @@ func AdminCustomerInstallationRoute(app fiber.Router) {
 
 	// New Installation Report endpoint with multipart form data
 	newReportRepository := NewReportInstallationRepository(db)
-	
-	// Initialize MikroTik provisioning service (stub for now - will be connected to real MikroTik later)
-	// provisioningService := services.NewMikrotikProvisioningService(db, mikrotikConn)
-	// For now, use nil provisioning service (will skip provisioning)
-	// TODO: Replace with real MikroTik connection when ready
-	// var provisioningService *services.MikrotikProvisioningService = nil
-	
-	newReportService := NewReportInstallationService(newReportRepository)
+	newReportService := NewReportInstallationService(newReportRepository, recurringInvoiceRepo)
 	newReportHandler := NewReportInstallationController(newReportService)
 	app.Post("/report-installations", newReportHandler.CreateReportInstallation)
 }

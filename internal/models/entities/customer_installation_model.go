@@ -14,7 +14,6 @@ type CustomerInstallation struct {
 	TechnicianID            *string    `gorm:"column:technician_id;type:varchar;index:idx_customer_installations_technician_id" json:"technician_id,omitempty"` // Legacy: for backward compatibility
 	Status                  string     `gorm:"column:status;type:varchar;default:'pending'" json:"status,omitempty"`
 	Notes                   string     `gorm:"column:notes;type:text" json:"notes,omitempty"`
-	MACAddress              *string    `gorm:"column:mac_address;type:varchar(17);index:idx_ci_mac_address" json:"mac_address,omitempty"`
 	IPAddress               *string    `gorm:"column:ip_address;type:varchar(15)" json:"ip_address,omitempty"`
 	ProvisioningStatus      *string    `gorm:"column:provisioning_status;type:enum('pending','queued','provisioned','failed','manual');default:'pending';index:idx_ci_provisioning_status" json:"provisioning_status,omitempty"`
 	ProvisioningCompletedAt *time.Time `gorm:"column:provisioning_completed_at;type:timestamp" json:"provisioning_completed_at,omitempty"`
@@ -22,21 +21,22 @@ type CustomerInstallation struct {
 	DocumentType            *string    `gorm:"column:document_type;type:enum('KTP','SIM','Paspor')" json:"document_type,omitempty"`
 	DocumentPhoto           *string    `gorm:"column:document_photo;type:varchar(255)" json:"document_photo,omitempty"`
 	InstallationType        string     `gorm:"column:installation_type;type:enum('new_installation','maintenance','upgrade','downgrade');default:'new_installation'" json:"installation_type,omitempty"`
-	TotalAssetsOut          int        `gorm:"column:total_assets_out;type:int;default:0" json:"total_assets_out,omitempty"`
-	TotalAssetsIn           int        `gorm:"column:total_assets_in;type:int;default:0" json:"total_assets_in,omitempty"`
+
 	InstallationCompletedAt *time.Time `gorm:"column:installation_completed_at;type:datetime(3)" json:"installation_completed_at,omitempty"`
 	TrialEndDate            *time.Time `gorm:"column:trial_end_date;type:date" json:"trial_end_date,omitempty"`
 	ServiceReadyDate        *time.Time `gorm:"column:service_ready_date;type:date" json:"service_ready_date,omitempty"`
 	OnAirDate               *time.Time `gorm:"column:on_air_date;type:date" json:"on_air_date,omitempty"`
-	PSBDate                 *time.Time `gorm:"column:psb_date;type:date" json:"psb_date,omitempty"`
-	PSBTime                 *string    `gorm:"column:psb_time;type:time" json:"psb_time,omitempty"`
-	CreatedAt               time.Time  `gorm:"column:createdAt;default:current_timestamp" json:"createdAt"`
-	UpdatedAt               time.Time  `gorm:"column:updatedAt;default:current_timestamp on update current_timestamp" json:"updatedAt"`
+
+	// Technician Photo Documentation is now handled via Images relationship
+	// Use installation.Images to access technician photos with archive_installation_id
+
+	CreatedAt time.Time `gorm:"column:createdAt;default:current_timestamp" json:"createdAt"`
+	UpdatedAt time.Time `gorm:"column:updatedAt;default:current_timestamp on update current_timestamp" json:"updatedAt"`
 
 	// Relations
 	Customer                     *Customer                      `gorm:"foreignKey:CustomerID;references:id;constraint:OnDelete:SET NULL,OnUpdate:CASCADE" json:"customer,omitempty"`
 	Technician                   *User                          `gorm:"foreignKey:TechnicianID;references:id;constraint:OnDelete:SET NULL,OnUpdate:CASCADE" json:"technician,omitempty"` // Legacy: for backward compatibility
-	Images                       []Image                        `gorm:"foreignKey:ArchiveInstallationId;references:ID" json:"images,omitempty"`
+	Images                       []Image                        `gorm:"foreignKey:ArchiveInstallationId;references:ID" json:"images"`
 	AssetTransactions            []AssetTransaction             `gorm:"foreignKey:CustomerInstallationID;references:ID" json:"asset_transactions,omitempty"`
 	NetworkDevices               []NetworkDevice                `gorm:"foreignKey:CustomerInstallationID;references:ID" json:"network_devices,omitempty"`
 	CustomerServices             []CustomerService              `gorm:"foreignKey:CustomerInstallationID;references:ID" json:"customer_services,omitempty"`

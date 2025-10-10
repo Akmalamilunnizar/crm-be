@@ -118,17 +118,18 @@ func (r AdminRecurringInvoiceRepositoryStruct) CreateRecurringInvoice(request Cr
 	}
 
 	recurringInvoice := entities.RecurringInvoice{
-		CustomerID:      request.CustomerID,
-		Amount:          request.Amount,
-		InvoiceDate:     request.InvoiceDate,
-		DueDate:         request.DueDate,
-		NextInvoiceDate: nextInvoiceDate,
-		Frequency:       entities.RecurringInvoiceFrequency(request.Frequency),
-		Status:          entities.RecurringInvoiceStatusActive,
-		Description:     request.Description,
-		InvoiceItems:    string(itemsJSON),
-		CreatedBy:       &userID,
-		OriginalDay:     originalDay,
+		CustomerID:           request.CustomerID,
+		CustomerInstallation: request.CustomerInstallation,
+		Amount:               request.Amount,
+		InvoiceDate:          request.InvoiceDate,
+		DueDate:              request.DueDate,
+		NextInvoiceDate:      nextInvoiceDate,
+		Frequency:            entities.RecurringInvoiceFrequency(request.Frequency),
+		Status:               entities.RecurringInvoiceStatusActive,
+		Description:          request.Description,
+		InvoiceItems:         string(itemsJSON),
+		CreatedBy:            &userID,
+		OriginalDay:          originalDay,
 	}
 
 	tx := r.db.Create(&recurringInvoice)

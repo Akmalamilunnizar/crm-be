@@ -31,23 +31,24 @@ type RecurringInvoiceItem struct {
 }
 
 type RecurringInvoice struct {
-	ID               string                    `gorm:"column:id;type:varchar;primaryKey" json:"id"`
-	CustomerID       string                    `gorm:"column:customer_id;type:varchar;not null" json:"customer_id"`
-	Customer         Customer                  `gorm:"foreignKey:CustomerID;references:id;constraint:OnUpdate:RESTRICT" json:"customer"`
-	Amount           int64                     `gorm:"column:amount;type:int;not null" json:"amount"`
-	InvoiceDate      time.Time                 `gorm:"column:invoice_date;type:date;not null" json:"invoice_date"`
-	DueDate          time.Time                 `gorm:"column:due_date;type:date;not null" json:"due_date"`
-	NextInvoiceDate  time.Time                 `gorm:"column:next_invoice_date;type:date;not null" json:"next_invoice_date"`
-	OriginalDay      int                       `gorm:"column:original_day;type:int;not null" json:"original_day"` // Preserve the original template day (1-31)
-	Frequency        RecurringInvoiceFrequency `gorm:"column:frequency;type:enum('monthly','quarterly','yearly');default:'monthly'" json:"frequency"`
-	Status           RecurringInvoiceStatus    `gorm:"column:status;type:enum('active','stopped','completed');default:'active'" json:"status"`
-	Description      *string                   `gorm:"column:description;type:text" json:"description"`
-	InvoiceItems     string                    `gorm:"column:invoice_items;type:json;not null" json:"-"` // Store as JSON string
-	InvoiceItemsData []RecurringInvoiceItem    `gorm:"-" json:"invoice_items"`                           // Parsed items for API
-	CreatedAt        time.Time                 `gorm:"column:created_at;default:current_timestamp" json:"created_at"`
-	UpdatedAt        time.Time                 `gorm:"column:updated_at;not null" json:"updated_at"`
-	CreatedBy        *string                   `gorm:"column:created_by;type:varchar" json:"created_by"`
-	CreatedByUser    *User                     `gorm:"foreignKey:CreatedBy;references:id;constraint:OnUpdate:RESTRICT" json:"created_by_user,omitempty"`
+	ID                   string                    `gorm:"column:id;type:varchar;primaryKey" json:"id"`
+	CustomerID           string                    `gorm:"column:customer_id;type:varchar;not null" json:"customer_id"`
+	Customer             Customer                  `gorm:"foreignKey:CustomerID;references:id;constraint:OnUpdate:RESTRICT" json:"customer"`
+	Amount               int64                     `gorm:"column:amount;type:int;not null" json:"amount"`
+	InvoiceDate          time.Time                 `gorm:"column:invoice_date;type:date;not null" json:"invoice_date"`
+	DueDate              time.Time                 `gorm:"column:due_date;type:date;not null" json:"due_date"`
+	NextInvoiceDate      time.Time                 `gorm:"column:next_invoice_date;type:date;not null" json:"next_invoice_date"`
+	OriginalDay          int                       `gorm:"column:original_day;type:int;not null" json:"original_day"` // Preserve the original template day (1-31)
+	CustomerInstallation *string                   `gorm:"column:customer_installation;type:varchar(191)" json:"customer_installation,omitempty"`
+	Frequency            RecurringInvoiceFrequency `gorm:"column:frequency;type:enum('monthly','quarterly','yearly');default:'monthly'" json:"frequency"`
+	Status               RecurringInvoiceStatus    `gorm:"column:status;type:enum('active','stopped','completed');default:'active'" json:"status"`
+	Description          *string                   `gorm:"column:description;type:text" json:"description"`
+	InvoiceItems         string                    `gorm:"column:invoice_items;type:json;not null" json:"-"` // Store as JSON string
+	InvoiceItemsData     []RecurringInvoiceItem    `gorm:"-" json:"invoice_items"`                           // Parsed items for API
+	CreatedAt            time.Time                 `gorm:"column:created_at;default:current_timestamp" json:"created_at"`
+	UpdatedAt            time.Time                 `gorm:"column:updated_at;not null" json:"updated_at"`
+	CreatedBy            *string                   `gorm:"column:created_by;type:varchar" json:"created_by"`
+	CreatedByUser        *User                     `gorm:"foreignKey:CreatedBy;references:id;constraint:OnUpdate:RESTRICT" json:"created_by_user,omitempty"`
 
 	// Related data
 	History []RecurringInvoiceHistory `gorm:"foreignKey:RecurringInvoiceID;constraint:OnUpdate:RESTRICT" json:"history,omitempty"`

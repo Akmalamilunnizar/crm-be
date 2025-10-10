@@ -20,7 +20,6 @@ type CustomerDTO struct {
 	CreatedAt             time.Time `json:"created_at"`
 	UpdatedAt             time.Time `json:"updated_at"`
 	InstallationDate      time.Time `json:"installation_date"`
-	NextPaymentDate       time.Time `json:"next_payment_date"`
 	SalesRepresentativeID *string   `json:"sales_representative_id"`
 }
 

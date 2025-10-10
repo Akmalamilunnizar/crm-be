@@ -49,7 +49,7 @@ type Asset struct {
 	Date         string             `json:"date" validate:"required"`
 	CompanyID    *string            `json:"company_id" gorm:"type:varchar(191)"`
 	Company      *Company           `json:"company,omitempty" gorm:"foreignKey:CompanyID;references:ID"`
-	Price        int64              `json:"price" validate:"required"`
+	Price        float64            `json:"price" validate:"required"`
 	Description  string             `json:"description"`
 	Site         string             `json:"site" validate:"required"`
 	CreatedAt    time.Time          `json:"createdAt" gorm:"column:createdAt;default:current_timestamp"`
@@ -133,11 +133,10 @@ type Customer struct {
 	Phone                 string    `gorm:"column:phone" json:"phone"`
 	Password              string    `gorm:"column:password" json:"password"`
 	ServiceRequestDate    string    `gorm:"column:service_request_date;type:date" json:"service_request_date"`
-	ProposedPackage       string    `gorm:"column:proposed_package" json:"proposed_package"`
+	ProposedPackage       *string   `gorm:"column:proposed_package" json:"proposed_package"`
 	CreatedAt             time.Time `gorm:"column:createdAt;autoCreateTime" json:"created_at"`
 	UpdatedAt             time.Time `gorm:"column:updatedAt;autoUpdateTime" json:"updated_at"`
 	InstallationDate      time.Time `gorm:"column:installation_date;type:date" json:"installation_date"`
-	NextPaymentDate       time.Time `gorm:"column:next_payment_date;type:date" json:"next_payment_date"`
 	SalesRepresentativeID *string   `gorm:"column:sales_representative_id" json:"sales_representative_id"`
 	SalesRepresentative   *User     `gorm:"foreignKey:SalesRepresentativeID" json:"sales_representative"`
 	CompanyID             *string   `gorm:"column:company_id" json:"company_id"`
@@ -154,7 +153,6 @@ func (c *Customer) BeforeCreate(tx *gorm.DB) error {
 	if c.ID == "" {
 		c.ID = uuid.New().String()
 		c.InstallationDate = time.Now()
-		c.NextPaymentDate = time.Now().AddDate(0, 1, 0)
 	}
 	return nil
 }
@@ -201,12 +199,14 @@ type Log struct {
 
 // Products model
 type Products struct {
-	ID          string    `json:"id" gorm:"primaryKey"`
-	Name        string    `json:"name"`
-	Price       int64     `json:"price"` // BigInt mapped to int64
-	Description string    `json:"description"`
-	CreatedAt   time.Time `json:"createdAt" gorm:"default:current_timestamp; column:createdAt"`
-	UpdatedAt   time.Time `json:"updatedAt" gorm:"column:updatedAt"`
+	ID                string    `json:"id" gorm:"primaryKey"`
+	Name              string    `json:"name"`
+	Price             int64     `json:"price"`                                                 // BigInt mapped to int64
+	Description       string    `json:"description"`                                           // Used as comment for MikroTik provisioning
+	DownloadSpeedMbps *int      `json:"download_speed_mbps" gorm:"column:download_speed_mbps"` // Nullable INT field
+	UploadSpeedMbps   *int      `json:"upload_speed_mbps" gorm:"column:upload_speed_mbps"`     // Nullable INT field
+	CreatedAt         time.Time `json:"createdAt" gorm:"default:current_timestamp; column:createdAt"`
+	UpdatedAt         time.Time `json:"updatedAt" gorm:"column:updatedAt"`
 }
 
 func (u *Products) TableName() string {

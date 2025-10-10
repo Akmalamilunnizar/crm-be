@@ -149,7 +149,7 @@ func (r AdminCustomerRepositoryStruct) DeleteAdminCustomerRepository(request IdA
 	r.db.Model(&entities.CustomerInstallation{}).Where("customer_id = ?", request.Id).Count(&installationCount)
 
 	if installationCount > 0 {
-		return customer, fmt.Errorf("cannot delete customer: %d installation(s) are associated with this customer. Please delete or reassign the installations first", installationCount)
+		return customer, fmt.Errorf("cannot delete customer: %d installation report(s) are associated with this customer. Please delete the installation reports first using the 'Delete Installation Report' feature, or use 'Delete with Related Records' to remove everything at once", installationCount)
 	}
 
 	// Check for network devices
@@ -174,7 +174,7 @@ func (r AdminCustomerRepositoryStruct) DeleteAdminCustomerRepository(request IdA
 		return customer, tx.Error
 	}
 
-	return customer, tx.Error
+	return customer, nil
 }
 
 // DeleteAdminCustomerWithRelatedRepository - Delete customer and all related records
@@ -183,6 +183,14 @@ func (r AdminCustomerRepositoryStruct) DeleteAdminCustomerWithRelatedRepository(
 	tx := r.db.Preload("Area").Find(&customer, "id = ?", request.Id)
 	if tx.Error != nil {
 		return customer, tx.Error
+	}
+
+	// Check for customer installations - prevent deletion if any exist
+	var installationCount int64
+	r.db.Model(&entities.CustomerInstallation{}).Where("customer_id = ?", request.Id).Count(&installationCount)
+
+	if installationCount > 0 {
+		return customer, fmt.Errorf("cannot delete customer: %d installation report(s) are associated with this customer. Please delete the installation reports first using the 'Delete Installation Report' feature", installationCount)
 	}
 
 	// Start transaction for cascading delete
@@ -323,21 +331,9 @@ func (r AdminCustomerRepositoryStruct) FindByIdDetailAdminCustomerRepository(req
 	// Get real-time Netwatch status for each network device from MikroTik
 	for i := range networkDevices {
 		if networkDevices[i].IPStatic != nil && *networkDevices[i].IPStatic != "" {
-			// Get real-time status from MikroTik Netwatch
-			status, lastSeen, err := r.getRealTimeNetwatchStatus(*networkDevices[i].IPStatic)
-			if err == nil {
-				// Update the network device's ping status with real-time MikroTik data
-				networkDevices[i].LastPingStatus = status
-				networkDevices[i].LastPingTimestamp = &lastSeen
-			} else {
-				// Fallback to database if MikroTik is not available
-				var netwatchDevice entities.NetwatchDevice
-				tx := r.db.Where("ip_address = ?", *networkDevices[i].IPStatic).First(&netwatchDevice)
-				if tx.Error == nil {
-					networkDevices[i].LastPingStatus = netwatchDevice.Status
-					networkDevices[i].LastPingTimestamp = &netwatchDevice.LastSeen
-				}
-			}
+			// Note: Real-time status is now handled in the frontend via MikroTik API
+			// The deleted LastPingStatus and LastPingTimestamp fields are no longer used
+			// Real-time status fetching is handled by the frontend getDeviceConnectionStatus method
 		}
 	}
 

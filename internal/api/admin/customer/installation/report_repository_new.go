@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"skripsi-be/internal/models/entities"
+	"skripsi-be/internal/services"
 	"time"
 
 	"gorm.io/gorm"
@@ -14,6 +15,8 @@ type ReportInstallationRepositoryInterface interface {
 	CreateReportInstallationRepository(request CreateReportInstallationRequest, createdByUserID string) (entities.CustomerInstallation, error)
 	CreateInstallationTechnicians(tx *gorm.DB, installationID string, technicians []TechnicianAssignment) error
 	DeleteInstallation(installationId string) error
+	UpdateInstallationCodeName(installationId string, codeName string) error
+	GetDB() *gorm.DB
 }
 
 type ReportInstallationRepository struct {
@@ -22,6 +25,11 @@ type ReportInstallationRepository struct {
 
 func NewReportInstallationRepository(db *gorm.DB) ReportInstallationRepositoryInterface {
 	return &ReportInstallationRepository{db: db}
+}
+
+// GetDB returns the database connection
+func (r *ReportInstallationRepository) GetDB() *gorm.DB {
+	return r.db
 }
 
 // CreateInstallationTechnicians creates multiple technician assignments for an installation
@@ -91,6 +99,13 @@ func stringToPtr(s string) *string {
 	return &s
 }
 
+func getStringValue(s *string) string {
+	if s == nil {
+		return "nil"
+	}
+	return *s
+}
+
 // CreateReportInstallationRepository - Create installation report with all related data
 func (r *ReportInstallationRepository) CreateReportInstallationRepository(request CreateReportInstallationRequest, createdByUserID string) (entities.CustomerInstallation, error) {
 	tx := r.db.Begin()
@@ -154,14 +169,8 @@ func (r *ReportInstallationRepository) CreateReportInstallationRepository(reques
 	if request.UserStatus == "" {
 		request.UserStatus = "Active"
 	}
-	if request.StatusPerangkat == "" {
-		request.StatusPerangkat = "active"
-	}
 	if request.KepemilikanPerangkat == "" {
 		request.KepemilikanPerangkat = "owned"
-	}
-	if request.LastPingStatus == "" {
-		request.LastPingStatus = "unknown"
 	}
 
 	// Determine technician_id for backward compatibility
@@ -197,8 +206,6 @@ func (r *ReportInstallationRepository) CreateReportInstallationRepository(reques
 		DocumentType:            stringToPtr(request.DocumentType),
 		DocumentPhoto:           stringToPtr(request.DocumentPhoto),
 		InstallationType:        request.InstallationType,
-		TotalAssetsOut:          0, // Will be calculated based on asset transactions
-		TotalAssetsIn:           0, // Will be calculated based on asset transactions
 		InstallationCompletedAt: installationCompletedAt,
 		TrialEndDate:            trialEndDate,
 		ServiceReadyDate:        serviceReadyDate,
@@ -289,6 +296,7 @@ func (r *ReportInstallationRepository) CreateReportInstallationRepository(reques
 				String: request.AssetsID,
 				Valid:  request.AssetsID != "",
 			},
+			AssetItemID:            stringToPtr(request.AssetItemID), // Set asset_items_id from form
 			CustomerInstallationID: &installation.ID,
 			SwitchID:               stringToPtr(request.SwitchID),
 			PortNumber:             stringToPtr(request.PortNumber),
@@ -297,8 +305,6 @@ func (r *ReportInstallationRepository) CreateReportInstallationRepository(reques
 			MacAddress:             stringToPtr(request.MacAddress),
 			IPStatic:               stringToPtr(request.IPStatic),
 			KepemilikanPerangkat:   request.KepemilikanPerangkat,
-			StatusPerangkat:        request.StatusPerangkat,
-			LastPingStatus:         request.LastPingStatus,
 			ProductID:              productID,
 		}
 
@@ -307,6 +313,8 @@ func (r *ReportInstallationRepository) CreateReportInstallationRepository(reques
 			return installation, err
 		}
 		log.Printf("Created network device for installation %s", installation.ID)
+		log.Printf("Network device AssetItemID: %s (from request.AssetItemID: %s)",
+			getStringValue(networkDevice.AssetItemID), request.AssetItemID)
 
 		// Create asset transaction to track asset item assignment
 		log.Printf("=== ASSET TRANSACTION DEBUG ===")
@@ -425,6 +433,43 @@ func (r *ReportInstallationRepository) CreateReportInstallationRepository(reques
 		log.Printf("Successfully updated images with installation ID")
 	}
 
+	// Create technician photos as Images with archive_installation_id
+	log.Printf("=== REPOSITORY TECHNICIAN PHOTOS DEBUG ===")
+	log.Printf("Request.TechnicianPhotos length: %d", len(request.TechnicianPhotos))
+	for i, photoPath := range request.TechnicianPhotos {
+		log.Printf("  Photo %d: %s", i+1, photoPath)
+	}
+
+	if len(request.TechnicianPhotos) > 0 {
+		log.Printf("Creating %d technician photos for installation: %s", len(request.TechnicianPhotos), installation.ID)
+		for i, photoPath := range request.TechnicianPhotos {
+			log.Printf("Processing technician photo %d: %s", i+1, photoPath)
+
+			now := time.Now()
+			image := entities.Image{
+				ID:                    "",
+				File:                  photoPath,
+				FullPath:              photoPath,
+				ArchiveInstallationId: installation.ID,
+				CreatedAt:             now,
+				UpdatedAt:             &now,
+			}
+
+			log.Printf("Creating Image record for technician photo %d with archive_installation_id: %s", i+1, installation.ID)
+
+			if err := tx.Create(&image).Error; err != nil {
+				log.Printf("❌ Failed to create technician photo %d: %v", i+1, err)
+				tx.Rollback()
+				return installation, err
+			}
+			log.Printf("✅ Created technician photo %d: %s (Image ID: %s)", i+1, photoPath, image.ID)
+		}
+		log.Printf("✅ Successfully created all %d technician photos", len(request.TechnicianPhotos))
+	} else {
+		log.Printf("No technician photos to create")
+	}
+	log.Printf("=== END REPOSITORY TECHNICIAN PHOTOS DEBUG ===")
+
 	// Create technician assignments
 	if len(request.Technicians) > 0 {
 		log.Printf("Creating technician assignments for installation: %s", installation.ID)
@@ -474,8 +519,138 @@ func (r *ReportInstallationRepository) CreateReportInstallationRepository(reques
 	return result, err
 }
 
-// DeleteInstallation - Delete installation by ID
+// DeleteInstallation - Delete installation by ID and update asset status to in_stock
 func (r *ReportInstallationRepository) DeleteInstallation(installationId string) error {
-	// Delete the installation record
-	return r.db.Where("id = ?", installationId).Delete(&entities.CustomerInstallation{}).Error
+	// Start transaction
+	tx := r.db.Begin()
+	if tx.Error != nil {
+		return tx.Error
+	}
+
+	// First, get the installation to find associated MAC addresses
+	var installation entities.CustomerInstallation
+	if err := tx.Preload("NetworkDevices").Where("id = ?", installationId).First(&installation).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// Update MAC address status back to in_stock for each network device
+	for _, networkDevice := range installation.NetworkDevices {
+		if networkDevice.MacAddress != nil && *networkDevice.MacAddress != "" {
+			// Find the asset item by MAC address and update status to in_stock
+			if err := tx.Model(&entities.AssetItem{}).
+				Where("mac_address = ?", *networkDevice.MacAddress).
+				Update("status", "in_stock").Error; err != nil {
+				tx.Rollback()
+				return err
+			}
+			log.Printf("🔄 Updated asset status to 'in_stock' for MAC address: %s", *networkDevice.MacAddress)
+		}
+	}
+
+	// Perform Mikrotik cleanup before deleting database records
+	if err := r.performMikrotikCleanup(installation); err != nil {
+		log.Printf("⚠️ Warning: Mikrotik cleanup failed for installation %s: %v", installationId, err)
+		// Continue with deletion even if Mikrotik cleanup fails
+	}
+
+	// Delete related records first (to avoid foreign key constraints)
+
+	// Delete installation provisioning logs (Mikrotik provisioning)
+	if err := tx.Where("customer_installation_id = ?", installationId).
+		Delete(&entities.InstallationProvisioningLog{}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+	log.Printf("🗑️ Deleted Mikrotik provisioning logs for installation %s", installationId)
+
+	// Delete recurring invoices related to this installation
+	if err := tx.Model(&entities.RecurringInvoice{}).
+		Where("customer_installation = ?", installationId).
+		Delete(&entities.RecurringInvoice{}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+	log.Printf("🗑️ Deleted recurring invoices for installation %s", installationId)
+
+	// Delete installation technicians
+	if err := tx.Where("customer_installation_id = ?", installationId).
+		Delete(&entities.InstallationReportTechnician{}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// Delete customer services
+	if err := tx.Where("customer_installation_id = ?", installationId).
+		Delete(&entities.CustomerService{}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// Delete network devices
+	if err := tx.Where("customer_installation_id = ?", installationId).
+		Delete(&entities.NetworkDevice{}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// Delete asset transactions
+	if err := tx.Where("customer_installation_id = ?", installationId).
+		Delete(&entities.AssetTransaction{}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// Delete cables
+	if err := tx.Where("customer_installation_id = ?", installationId).
+		Delete(&entities.Cable{}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// Delete installation images (Images are linked via ArchiveInstallationId)
+	if err := tx.Model(&entities.Image{}).
+		Where("archive_installation_id = ?", installationId).
+		Update("archive_installation_id", nil).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// Finally, delete the installation itself
+	if err := tx.Where("id = ?", installationId).
+		Delete(&entities.CustomerInstallation{}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// Commit transaction
+	if err := tx.Commit().Error; err != nil {
+		return err
+	}
+
+	log.Printf("✅ Successfully deleted installation %s, cleaned up Mikrotik configurations, deleted provisioning logs, deleted recurring invoices, and updated asset statuses to 'in_stock'", installationId)
+	return nil
+}
+
+// UpdateInstallationCodeName - Update code_name for an installation
+func (r *ReportInstallationRepository) UpdateInstallationCodeName(installationId string, codeName string) error {
+	return r.db.Model(&entities.CustomerInstallation{}).
+		Where("id = ?", installationId).
+		Update("code_name", codeName).Error
+}
+
+// performMikrotikCleanup performs Mikrotik RouterOS cleanup for an installation
+func (r *ReportInstallationRepository) performMikrotikCleanup(installation entities.CustomerInstallation) error {
+	// Get shared Mikrotik service
+	mikrotikService := services.GetSharedMikroTikService()
+	if mikrotikService == nil {
+		log.Printf("⚠️ No shared Mikrotik service available, skipping cleanup")
+		return nil
+	}
+
+	// Create provisioning service for cleanup
+	provisioningService := services.NewMikrotikProvisioningService(r.db, mikrotikService)
+
+	// Perform cleanup (not dry run)
+	return provisioningService.CleanupInstallation(installation, false)
 }

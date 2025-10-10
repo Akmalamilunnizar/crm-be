@@ -10,13 +10,14 @@ type RecurringInvoiceItem struct {
 }
 
 type CreateRecurringInvoiceRequest struct {
-	CustomerID   string                 `json:"customer_id" validate:"required"`
-	Amount       int64                  `json:"amount" validate:"required,min=1"`
-	InvoiceDate  time.Time              `json:"invoice_date" validate:"required"`
-	DueDate      time.Time              `json:"due_date" validate:"required"`
-	Frequency    string                 `json:"frequency" validate:"required,oneof=monthly quarterly yearly"`
-	Description  *string                `json:"description"`
-	InvoiceItems []RecurringInvoiceItem `json:"invoice_items" validate:"required,min=1"`
+	CustomerID           string                 `json:"customer_id" validate:"required"`
+	CustomerInstallation *string                `json:"customer_installation,omitempty"`
+	Amount               int64                  `json:"amount" validate:"required,min=1"`
+	InvoiceDate          time.Time              `json:"invoice_date" validate:"required"`
+	DueDate              time.Time              `json:"due_date" validate:"required"`
+	Frequency            string                 `json:"frequency" validate:"required,oneof=monthly quarterly yearly"`
+	Description          *string                `json:"description"`
+	InvoiceItems         []RecurringInvoiceItem `json:"invoice_items" validate:"required,min=1"`
 }
 
 type IdRecurringInvoiceRequest struct {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -25,6 +26,58 @@ func NewMikrotikProvisioningService(db *gorm.DB, mikrotikConn *MikroTikService) 
 		db:           db,
 		mikrotikConn: mikrotikConn,
 	}
+}
+
+// getProductBandwidthInfo gets bandwidth information from customer's network device product
+func (s *MikrotikProvisioningService) getProductBandwidthInfo(customerID, macAddress string) (maxLimit, comment string, err error) {
+	var networkDevice entities.NetworkDevice
+	var product entities.Products
+
+	log.Printf("🔍 DEBUG: Looking for network device with customer_id=%s, mac_address=%s", customerID, macAddress)
+
+	// Find the network device by customer ID and MAC address
+	err = s.db.Preload("Product").Where("customer_id = ? AND mac_address = ?", customerID, macAddress).First(&networkDevice).Error
+	if err != nil {
+		log.Printf("❌ Network device not found for customer %s, MAC %s: %v", customerID, macAddress, err)
+		// Return default values if not found
+		return "10M/10M", "Default Package", nil
+	}
+
+	log.Printf("✅ Found network device: ID=%s, ProductID=%v", networkDevice.ID, networkDevice.ProductID)
+
+	// Check if the network device has a product
+	if networkDevice.Product == nil {
+		log.Printf("❌ No product found for network device %s (ProductID: %v)", networkDevice.ID, networkDevice.ProductID)
+		return "10M/10M", "No Product Package", nil
+	}
+
+	log.Printf("✅ Found product: ID=%s, Name=%s", networkDevice.Product.ID, networkDevice.Product.Name)
+
+	product = *networkDevice.Product
+
+	// Handle nullable bandwidth fields - use defaults if not set
+	downloadMbps := 10 // Default 10 Mbps
+	uploadMbps := 10   // Default 10 Mbps
+
+	if product.DownloadSpeedMbps != nil {
+		downloadMbps = *product.DownloadSpeedMbps
+	}
+	if product.UploadSpeedMbps != nil {
+		uploadMbps = *product.UploadSpeedMbps
+	}
+
+	// Format as MikroTik expects (e.g., "100M/100M")
+	maxLimit = fmt.Sprintf("%dM/%dM", downloadMbps, uploadMbps)
+
+	// Use product description as comment, otherwise create one from product name
+	if product.Description != "" {
+		comment = product.Description
+	} else {
+		comment = fmt.Sprintf("%s - %dMbps/%dMbps", product.Name, downloadMbps, uploadMbps)
+	}
+
+	log.Printf("Product bandwidth info: %s, comment: %s", maxLimit, comment)
+	return maxLimit, comment, nil
 }
 
 // ProvisioningRequest contains all data needed for provisioning
@@ -62,6 +115,11 @@ type ProvisioningResult struct {
 
 // ProvisionInstallation provisions a customer installation on MikroTik RouterOS
 func (s *MikrotikProvisioningService) ProvisionInstallation(req ProvisioningRequest) (*ProvisioningResult, error) {
+	return s.ProvisionInstallationWithCount(req, 0) // 0 means calculate count automatically
+}
+
+// ProvisionInstallationWithCount provisions with a pre-calculated installation count
+func (s *MikrotikProvisioningService) ProvisionInstallationWithCount(req ProvisioningRequest, preCalculatedCount int) (*ProvisioningResult, error) {
 	startTime := time.Now()
 
 	// Validate request
@@ -69,8 +127,17 @@ func (s *MikrotikProvisioningService) ProvisionInstallation(req ProvisioningRequ
 		return nil, fmt.Errorf("validation failed: %w", err)
 	}
 
-	// Generate unique CODE-NAME
-	codeName := s.generateCodeName(req)
+	// Generate unique CODE-NAME with pre-calculated count if provided
+	var codeName string
+	if preCalculatedCount > 0 {
+		// Use pre-calculated count for R-number
+		codeName = s.generateCodeNameWithCount(req, preCalculatedCount)
+		log.Printf("🏷️ Generated code name with pre-calculated count R%d: %s", preCalculatedCount, codeName)
+	} else {
+		// Use automatic count calculation (legacy behavior)
+		codeName = s.generateCodeName(req)
+		log.Printf("🏷️ Generated code name with automatic count: %s", codeName)
+	}
 
 	// Initialize result
 	result := &ProvisioningResult{
@@ -177,27 +244,35 @@ func (s *MikrotikProvisioningService) executeProvisioningSequence(req Provisioni
 		return fmt.Errorf("failed to make lease static: %w", err)
 	}
 
-	// Step 3: Check and create/update queue
-	if err := s.createOrUpdateQueue(codeName, ipAddress, req.MaxLimit, req.Comment, result, req.DryRun); err != nil {
+	// Step 3: Get product bandwidth information
+	maxLimit, comment, err := s.getProductBandwidthInfo(req.CustomerID, req.MACAddress)
+	if err != nil {
+		log.Printf("Warning: Failed to get product bandwidth info, using request values: %v", err)
+		maxLimit = req.MaxLimit
+		comment = req.Comment
+	}
+
+	// Step 4: Check and create/update queue
+	if err := s.createOrUpdateQueue(codeName, ipAddress, maxLimit, comment, result, req.DryRun); err != nil {
 		return fmt.Errorf("failed to create/update queue: %w", err)
 	}
 
-	// Step 4: Check and create/update hotspot IP binding
+	// Step 5: Check and create/update hotspot IP binding
 	if err := s.createOrUpdateHotspotBinding(codeName, req.MACAddress, ipAddress, result, req.DryRun); err != nil {
 		return fmt.Errorf("failed to create/update hotspot binding: %w", err)
 	}
 
-	// Step 5: Check and create/update netwatch
+	// Step 6: Check and create/update netwatch
 	if err := s.createOrUpdateNetwatch(codeName, req.MACAddress, ipAddress, result, req.DryRun); err != nil {
 		return fmt.Errorf("failed to create/update netwatch: %w", err)
 	}
 
-	// Step 6: Check and create/update scheduler
+	// Step 7: Check and create/update scheduler
 	if err := s.createOrUpdateScheduler(codeName, req.MACAddress, req.StartDate, req.StartTime, result, req.DryRun); err != nil {
 		return fmt.Errorf("failed to create/update scheduler: %w", err)
 	}
 
-	// Step 7: Check and create/update script
+	// Step 8: Check and create/update script
 	if err := s.createOrUpdateScript(codeName, req.MACAddress, result, req.DryRun); err != nil {
 		return fmt.Errorf("failed to create/update script: %w", err)
 	}
@@ -286,6 +361,92 @@ func (s *MikrotikProvisioningService) makeLeaseStatic(ipAddress string, result *
 	return nil
 }
 
+// CleanupInstallation removes all Mikrotik configurations related to an installation
+func (s *MikrotikProvisioningService) CleanupInstallation(installation entities.CustomerInstallation, dryRun bool) error {
+	if s.mikrotikConn == nil || !s.mikrotikConn.IsConnected() {
+		log.Printf("⚠️ Mikrotik not connected, skipping cleanup for installation %s", installation.ID)
+		return nil
+	}
+
+	log.Printf("🧹 Starting Mikrotik cleanup for installation %s (Code: %s)", installation.ID, *installation.CodeName)
+
+	// Get all network devices for this installation
+	var networkDevices []entities.NetworkDevice
+	if err := s.db.Where("customer_installation_id = ?", installation.ID).Find(&networkDevices).Error; err != nil {
+		log.Printf("❌ Failed to get network devices for cleanup: %v", err)
+		return err
+	}
+
+	// Clean up configurations for each network device
+	for _, device := range networkDevices {
+		if device.MacAddress != nil && *device.MacAddress != "" {
+			if err := s.cleanupDeviceConfigurations(*device.MacAddress, installation.CodeName, dryRun); err != nil {
+				log.Printf("❌ Failed to cleanup device %s: %v", *device.MacAddress, err)
+				// Continue with other devices even if one fails
+			}
+		}
+	}
+
+	log.Printf("✅ Mikrotik cleanup completed for installation %s", installation.ID)
+	return nil
+}
+
+// cleanupDeviceConfigurations removes all Mikrotik configurations for a specific device
+func (s *MikrotikProvisioningService) cleanupDeviceConfigurations(macAddress string, codeName *string, dryRun bool) error {
+	if macAddress == "" {
+		return nil
+	}
+
+	codeNameStr := ""
+	if codeName != nil {
+		codeNameStr = *codeName
+	}
+
+	// List of commands to remove all configurations
+	cleanupCommands := []string{
+		// Remove queue simple rules
+		fmt.Sprintf("/queue/simple/remove [find name=\"%s\"]", codeNameStr),
+
+		// Remove hotspot IP bindings
+		fmt.Sprintf("/ip/hotspot/ip-binding/remove [find mac-address=%s]", macAddress),
+
+		// Remove netwatch entries
+		fmt.Sprintf("/tool/netwatch/remove [find comment=\"%s\"]", codeNameStr),
+
+		// Remove schedulers
+		fmt.Sprintf("/system/scheduler/remove [find name=\"%s\"]", codeNameStr),
+
+		// Remove scripts
+		fmt.Sprintf("/system/script/remove [find name=\"open_%s\"]", codeNameStr),
+
+		// Remove DHCP leases
+		fmt.Sprintf("/ip/dhcp-server/lease/remove [find mac-address=%s]", macAddress),
+	}
+
+	log.Printf("🗑️ Executing %d cleanup commands for MAC %s, Code %s", len(cleanupCommands), macAddress, codeNameStr)
+
+	// Execute each cleanup command
+	for _, cmd := range cleanupCommands {
+		if dryRun {
+			log.Printf("DRY RUN: Would execute: %s", cmd)
+			continue
+		}
+
+		output, err := s.mikrotikConn.ExecuteCommand(cmd)
+		if err != nil {
+			log.Printf("⚠️ Warning: Failed to execute cleanup command '%s': %v", cmd, err)
+			// Continue with other commands even if one fails
+		} else {
+			log.Printf("✅ Cleanup command executed: %s", cmd)
+			if output != "" {
+				log.Printf("   Output: %s", strings.TrimSpace(output))
+			}
+		}
+	}
+
+	return nil
+}
+
 // createOrUpdateQueue creates or updates queue simple rule
 func (s *MikrotikProvisioningService) createOrUpdateQueue(codeName, ipAddress, maxLimit, comment string, result *ProvisioningResult, dryRun bool) error {
 	// Try to create new queue - MikroTik will handle duplicates
@@ -345,7 +506,7 @@ func (s *MikrotikProvisioningService) createOrUpdateHotspotBinding(codeName, mac
 
 	if existingBinding {
 		// Update existing binding
-		cmd := fmt.Sprintf("/ip/hotspot/ip-binding/set [find mac-address=%s] address=%s to-addr=%s comment=\"%s\"",
+		cmd := fmt.Sprintf("/ip/hotspot/ip-binding/set [find mac-address=%s] address=%s to-addr=%s type=byp comment=\"%s\"",
 			macAddress, ipAddress, ipAddress, codeName)
 		result.Commands = append(result.Commands, cmd)
 
@@ -365,7 +526,7 @@ func (s *MikrotikProvisioningService) createOrUpdateHotspotBinding(codeName, mac
 	// Create new binding - use MikroTik's duplicate handling
 	// First try to remove existing binding with same MAC, then add new one
 	removeCmd := fmt.Sprintf("/ip/hotspot/ip-binding/remove [find mac-address=%s]", macAddress)
-	addCmd := fmt.Sprintf("/ip/hotspot/ip-binding/add mac-address=%s address=%s to-addr=%s comment=\"%s\"",
+	addCmd := fmt.Sprintf("/ip/hotspot/ip-binding/add mac-address=%s address=%s to-addr=%s type=byp comment=\"%s\"",
 		macAddress, ipAddress, ipAddress, codeName)
 
 	result.Commands = append(result.Commands, removeCmd)
@@ -445,8 +606,8 @@ func (s *MikrotikProvisioningService) createOrUpdateNetwatch(codeName, macAddres
 
 // createOrUpdateScheduler creates or updates scheduler entry
 func (s *MikrotikProvisioningService) createOrUpdateScheduler(codeName, macAddress, startDate, startTime string, result *ProvisioningResult, dryRun bool) error {
-	// Simplify the onEvent string to avoid syntax errors
-	onEvent := fmt.Sprintf("ip/hotspot/ip-binding/set type=reg [find mac-address=%s]", macAddress)
+	// Simplify the onEvent string to avoid syntax errors - use bypassed for installation reports
+	onEvent := fmt.Sprintf("ip/hotspot/ip-binding/set type=byp [find mac-address=%s]", macAddress)
 
 	// Check if scheduler exists (simplified - always create new for now)
 	// In a real implementation, you'd check if the scheduler exists first
@@ -553,13 +714,19 @@ func (s *MikrotikProvisioningService) createOrUpdateScript(codeName, macAddress 
 }
 
 // generateCodeName creates a unique CODE-NAME for RouterOS resources
-// Format: [area->name] - [customer->name] - R[number]
+// Format: [area_code]_EA[number]_[sales_rep_code]_[customer_name]_R[number]
 func (s *MikrotikProvisioningService) generateCodeName(req ProvisioningRequest) string {
-	// Get the installation count for this customer in this area
+	// Get the installation count for this customer (increments for each new installation)
 	installationCount := s.getInstallationCount(req.CustomerID, req.AreaName)
 
-	// Sanitize area name (remove special chars, keep only alphanumeric and spaces)
-	areaReg := regexp.MustCompile("[^a-zA-Z0-9 ]+")
+	// Get sales representative information
+	salesRepCode, _ := s.getSalesRepresentativeInfo(req.CustomerID)
+
+	// Generate EA code (EA0001, EA0002, etc.)
+	eaCode := s.generateEACode()
+
+	// Sanitize area name (remove special chars, keep only alphanumeric)
+	areaReg := regexp.MustCompile("[^a-zA-Z0-9]+")
 	sanitizedArea := areaReg.ReplaceAllString(req.AreaName, "")
 	sanitizedArea = strings.TrimSpace(sanitizedArea)
 
@@ -568,27 +735,97 @@ func (s *MikrotikProvisioningService) generateCodeName(req ProvisioningRequest) 
 	sanitizedCustomer := customerReg.ReplaceAllString(req.CustomerName, "")
 	sanitizedCustomer = strings.TrimSpace(sanitizedCustomer)
 
-	// Format: [area] - [customer] - R[number]
-	return fmt.Sprintf("%s - %s - R%d", sanitizedArea, sanitizedCustomer, installationCount)
+	// Sanitize sales rep code (remove special chars, keep only alphanumeric)
+	salesRepReg := regexp.MustCompile("[^a-zA-Z0-9]+")
+	sanitizedSalesRep := salesRepReg.ReplaceAllString(salesRepCode, "")
+	sanitizedSalesRep = strings.TrimSpace(sanitizedSalesRep)
+
+	// Format: [area_code]_EA[number]_[sales_rep_code]_[customer_name]_R[number]
+	return fmt.Sprintf("%s_%s_%s_%s_R%d", sanitizedArea, eaCode, sanitizedSalesRep, sanitizedCustomer, installationCount)
 }
 
-// getInstallationCount returns the number of installations for a customer in a specific area
+// generateCodeNameWithCount creates a unique CODE-NAME with a pre-calculated installation count
+// Format: [area_code]_EA[number]_[sales_rep_code]_[customer_name]_R[number]
+func (s *MikrotikProvisioningService) generateCodeNameWithCount(req ProvisioningRequest, installationCount int) string {
+	// Get sales representative information
+	salesRepCode, _ := s.getSalesRepresentativeInfo(req.CustomerID)
+
+	// Generate EA code (EA0001, EA0002, etc.)
+	eaCode := s.generateEACode()
+
+	// Sanitize area name (remove special chars, keep only alphanumeric)
+	areaReg := regexp.MustCompile("[^a-zA-Z0-9]+")
+	sanitizedArea := areaReg.ReplaceAllString(req.AreaName, "")
+	sanitizedArea = strings.TrimSpace(sanitizedArea)
+
+	// Sanitize customer name (remove special chars, keep only alphanumeric and spaces)
+	customerReg := regexp.MustCompile("[^a-zA-Z0-9 ]+")
+	sanitizedCustomer := customerReg.ReplaceAllString(req.CustomerName, "")
+	sanitizedCustomer = strings.TrimSpace(sanitizedCustomer)
+
+	// Sanitize sales rep code (remove special chars, keep only alphanumeric)
+	salesRepReg := regexp.MustCompile("[^a-zA-Z0-9]+")
+	sanitizedSalesRep := salesRepReg.ReplaceAllString(salesRepCode, "")
+	sanitizedSalesRep = strings.TrimSpace(sanitizedSalesRep)
+
+	// Format: [area_code]_EA[number]_[sales_rep_code]_[customer_name]_R[number]
+	return fmt.Sprintf("%s_%s_%s_%s_R%d", sanitizedArea, eaCode, sanitizedSalesRep, sanitizedCustomer, installationCount)
+}
+
+// getInstallationCount returns the number of installations for a customer
 func (s *MikrotikProvisioningService) getInstallationCount(customerID, areaName string) int {
 	var count int64
 
-	// Count installations for this customer in this area
-	// Join through customer table to get area_id, then join with areas table
+	// Count ALL installations for this customer (regardless of area)
+	// This ensures R1, R2, R3... increment correctly for each new installation
 	err := s.db.Table("customer_installations").
-		Joins("JOIN customers ON customer_installations.customer_id = customers.id").
-		Joins("JOIN areas ON customers.area_id = areas.id").
-		Where("customer_installations.customer_id = ? AND (areas.name_city = ? OR areas.name_subdistrict = ? OR areas.name_village = ?)",
-			customerID, areaName, areaName, areaName).
+		Where("customer_installations.customer_id = ?", customerID).
 		Count(&count).Error
 
 	if err != nil {
 		log.Printf("Error counting installations: %v", err)
 		// Return 1 as default if there's an error
 		return 1
+	}
+
+	log.Printf("🔍 Installation count for customer %s: found %d existing installations", customerID, count)
+	log.Printf("🔍 Will return R%d for new installation", count+1)
+
+	// Debug: Let's also query the actual records to see what's there
+	var installations []struct {
+		ID               string  `gorm:"column:id"`
+		CodeName         *string `gorm:"column:code_name"`
+		CreatedAt        string  `gorm:"column:created_at"`
+		Status           string  `gorm:"column:status"`
+		InstallationType string  `gorm:"column:installation_type"`
+	}
+
+	err = s.db.Table("customer_installations").
+		Select("id, code_name, created_at, status, installation_type").
+		Where("customer_installations.customer_id = ?", customerID).
+		Find(&installations).Error
+
+	if err != nil {
+		log.Printf("Error querying installations: %v", err)
+	} else {
+		log.Printf("🔍 Found %d installation records for customer %s:", len(installations), customerID)
+		for i, inst := range installations {
+			codeName := "NULL"
+			if inst.CodeName != nil {
+				codeName = *inst.CodeName
+			}
+			log.Printf("🔍   [%d] ID: %s, CodeName: %s, Status: %s, Type: %s, CreatedAt: %s",
+				i+1, inst.ID, codeName, inst.Status, inst.InstallationType, inst.CreatedAt)
+		}
+
+		// Additional debug: Check if there are any soft-deleted or hidden records
+		var softDeletedCount int64
+		s.db.Table("customer_installations").
+			Where("customer_installations.customer_id = ? AND deleted_at IS NOT NULL", customerID).
+			Count(&softDeletedCount)
+		if softDeletedCount > 0 {
+			log.Printf("⚠️  WARNING: Found %d soft-deleted records for this customer!", softDeletedCount)
+		}
 	}
 
 	// Return count + 1 for the new installation
@@ -678,13 +915,22 @@ func (s *MikrotikProvisioningService) RetryProvisioning(logID string) (*Provisio
 		return nil, fmt.Errorf("installation not found: %w", err)
 	}
 
+	// Use installation completed date as start date for billing cycle
+	startDate := time.Now().Format("2006-01-02") // Default to today
+	startTime := "00:00:00"                      // Default to midnight
+
+	if installation.InstallationCompletedAt != nil {
+		startDate = installation.InstallationCompletedAt.Format("2006-01-02")
+		startTime = installation.InstallationCompletedAt.Format("15:04:05")
+	}
+
 	req := ProvisioningRequest{
 		InstallationID: installation.ID,
 		CustomerID:     *installation.CustomerID,
 		CustomerName:   installation.Customer.Name,
 		MACAddress:     *log.MACAddress,
-		StartDate:      installation.PSBDate.Format("2006-01-02"),
-		StartTime:      *installation.PSBTime,
+		StartDate:      startDate,
+		StartTime:      startTime,
 		MaxLimit:       "10M/10M", // TODO: Get from product/package
 		Comment:        "Retry provisioning",
 		DryRun:         false,
@@ -692,4 +938,69 @@ func (s *MikrotikProvisioningService) RetryProvisioning(logID string) (*Provisio
 	}
 
 	return s.ProvisionInstallation(req)
+}
+
+// getSalesRepresentativeInfo gets sales representative code for a customer
+func (s *MikrotikProvisioningService) getSalesRepresentativeInfo(customerID string) (string, string) {
+	var customer struct {
+		SalesRepresentativeID *string `gorm:"column:sales_representative_id"`
+		SalesRepCode          *string `gorm:"column:sales_rep_code"`
+	}
+
+	// Query customer with sales representative information
+	err := s.db.Table("customer").
+		Select("customer.sales_representative_id, users.code as sales_rep_code").
+		Joins("LEFT JOIN users ON customer.sales_representative_id = users.id").
+		Where("customer.id = ?", customerID).
+		First(&customer).Error
+
+	if err != nil {
+		log.Printf("Error fetching sales representative info for customer %s: %v", customerID, err)
+		return "UNKNOWN", ""
+	}
+
+	// Return sales rep code
+	code := "UNKNOWN"
+
+	if customer.SalesRepCode != nil && *customer.SalesRepCode != "" {
+		code = *customer.SalesRepCode
+	}
+
+	return code, code
+}
+
+// generateEACode generates the next EA code (EA0001, EA0002, etc.)
+func (s *MikrotikProvisioningService) generateEACode() string {
+	// Get the highest EA number from existing installation codes
+	var maxEANumber int
+
+	// Query all existing code_names that contain EA followed by 4 digits
+	var codes []string
+	err := s.db.Table("customer_installations").
+		Select("code_name").
+		Where("code_name REGEXP '_EA[0-9]{4}_' AND code_name IS NOT NULL").
+		Pluck("code_name", &codes).Error
+
+	if err != nil {
+		log.Printf("Error fetching existing EA codes: %v", err)
+		return "EA0001" // Default to first EA code
+	}
+
+	// Extract EA numbers from existing codes
+	for _, code := range codes {
+		// Find EA pattern in the code
+		eaPattern := regexp.MustCompile(`_EA(\d{4})_`)
+		matches := eaPattern.FindStringSubmatch(code)
+		if len(matches) > 1 {
+			if number, err := strconv.Atoi(matches[1]); err == nil {
+				if number > maxEANumber {
+					maxEANumber = number
+				}
+			}
+		}
+	}
+
+	// Generate next EA code
+	nextEANumber := maxEANumber + 1
+	return fmt.Sprintf("EA%04d", nextEANumber)
 }

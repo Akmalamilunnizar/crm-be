@@ -71,9 +71,7 @@ func (c *ReportInstallationController) CreateReportInstallation(ctx *fiber.Ctx) 
 	request.MacAddress = ctx.FormValue("mac_address")
 	request.AssetItemID = ctx.FormValue("asset_item_id")
 	request.IPStatic = ctx.FormValue("ip_static")
-	request.StatusPerangkat = ctx.FormValue("status_perangkat")
 	request.KepemilikanPerangkat = ctx.FormValue("kepemilikan_perangkat")
-	request.LastPingStatus = ctx.FormValue("last_ping_status")
 	request.AssetsID = ctx.FormValue("assets_id")
 	request.CableType = ctx.FormValue("cable_type")
 	// Parse cable_length from string to float64
@@ -107,8 +105,6 @@ func (c *ReportInstallationController) CreateReportInstallation(ctx *fiber.Ctx) 
 
 	// Parse provisioning fields
 	request.MacAddress = ctx.FormValue("mac_address")
-	request.PSBDate = ctx.FormValue("psb_date")
-	request.PSBTime = ctx.FormValue("psb_time")
 	request.MaxLimit = ctx.FormValue("max_limit")
 
 	// Parse boolean fields
@@ -130,6 +126,12 @@ func (c *ReportInstallationController) CreateReportInstallation(ctx *fiber.Ctx) 
 		} else {
 			log.Printf("Failed to parse image_ids JSON: %s, error: %v", imageIdsStr, err)
 		}
+	}
+
+	// Parse technician photos notes
+	request.TechnicianPhotosNotes = ctx.FormValue("technician_photos_notes")
+	if request.TechnicianPhotosNotes != "" {
+		log.Printf("Parsed technician_photos_notes: %s", request.TechnicianPhotosNotes)
 	}
 
 	// Handle document photo upload
@@ -232,8 +234,107 @@ func (c *ReportInstallationController) CreateReportInstallation(ctx *fiber.Ctx) 
 	}
 	log.Printf("=== END DOCUMENT PHOTO DEBUG ===")
 
-	log.Printf("Installation report request data - customer_id: %s, technician_id: %s, document_type: %s, document_photo: %s, installation_type: %s, assets_id: %s, switch_id: %s, port_number: %s, mac_address: %s, ip_static: %s, cable_type: %s, cable_length: %f, user_login: %s, user_status: %s, installation_notes: %s, customer_company_id: %s, customer_sales_rep_id: %s, product_id: %s",
-		request.CustomerID, request.TechnicianID, request.DocumentType, request.DocumentPhoto, request.InstallationType, request.AssetsID, request.SwitchID, request.PortNumber, request.MacAddress, request.IPStatic, request.CableType, request.CableLength, request.UserLogin, request.UserStatus, request.InstallationNotes, request.CustomerCompanyID, request.CustomerSalesRepresentativeID, request.ProductID)
+	// Handle technician photo files
+	var technicianPhotoPaths []string
+	technicianPhotosCountStr := ctx.FormValue("technician_photos_count")
+
+	log.Printf("=== TECHNICIAN PHOTOS DEBUG START ===")
+	log.Printf("technician_photos_count from form: '%s'", technicianPhotosCountStr)
+
+	// Debug all form values related to technician photos
+	form, formErr := ctx.MultipartForm()
+	if formErr == nil {
+		log.Printf("All form values:")
+		for key, values := range form.Value {
+			if strings.Contains(key, "technician") {
+				log.Printf("  %s: %v", key, values)
+			}
+		}
+		log.Printf("All form files:")
+		for fieldName, files := range form.File {
+			if strings.Contains(fieldName, "technician") {
+				log.Printf("  %s: %d files", fieldName, len(files))
+				for i, file := range files {
+					log.Printf("    File %d: %s (size: %d, type: %s)", i, file.Filename, file.Size, file.Header.Get("Content-Type"))
+				}
+			}
+		}
+	} else {
+		log.Printf("Error getting multipart form: %v", formErr)
+	}
+
+	if technicianPhotosCountStr != "" {
+		if count, err := strconv.Atoi(technicianPhotosCountStr); err == nil && count > 0 {
+			log.Printf("=== PROCESSING TECHNICIAN PHOTOS ===")
+			log.Printf("Processing %d technician photos", count)
+
+			// Create upload directory for technician photos
+			uploadDir := "uploads/installations/technician_photos"
+			if err := os.MkdirAll(uploadDir, 0755); err != nil {
+				log.Printf("Failed to create technician photos upload directory: %v", err)
+				return helpers.ResponseUtils(ctx, 500, false, "Failed to create upload directory", err.Error())
+			}
+
+			for i := 0; i < count; i++ {
+				fieldName := fmt.Sprintf("technician_photo_%d", i)
+				log.Printf("Looking for field: %s", fieldName)
+
+				if file, err := ctx.FormFile(fieldName); err == nil {
+					log.Printf("✅ Found technician photo %d: %s (size: %d, type: %s)", i+1, file.Filename, file.Size, file.Header.Get("Content-Type"))
+
+					// Validate file type
+					if !isValidImageFile(file) {
+						log.Printf("❌ Invalid file type for technician photo %d: %s (type: %s)", i+1, file.Filename, file.Header.Get("Content-Type"))
+						continue
+					}
+					log.Printf("✅ File type validation passed for technician photo %d", i+1)
+
+					// Generate unique filename
+					ext := filepath.Ext(file.Filename)
+					filename := fmt.Sprintf("technician_photo_%d_%s%s", i+1, time.Now().Format("20060102_150405"), ext)
+					log.Printf("Generated filename: %s", filename)
+
+					// Save file
+					filePath := filepath.Join(uploadDir, filename)
+					log.Printf("Attempting to save to: %s", filePath)
+
+					if err := ctx.SaveFile(file, filePath); err != nil {
+						log.Printf("❌ Failed to save technician photo %d: %v", i+1, err)
+						continue
+					}
+
+					// Verify file was saved
+					if _, err := os.Stat(filePath); err == nil {
+						technicianPhotoPaths = append(technicianPhotoPaths, filePath)
+						log.Printf("✅ Successfully saved technician photo %d: %s", i+1, filePath)
+					} else {
+						log.Printf("❌ File verification failed for technician photo %d: %v", i+1, err)
+					}
+				} else {
+					log.Printf("❌ Failed to get technician photo %d from field '%s': %v", i+1, fieldName, err)
+				}
+			}
+
+			log.Printf("Successfully processed %d technician photos", len(technicianPhotoPaths))
+			log.Printf("=== END TECHNICIAN PHOTOS DEBUG ===")
+		} else {
+			log.Printf("❌ Failed to parse technician_photos_count: %v", err)
+		}
+	} else {
+		log.Printf("No technician_photos_count found in form data")
+	}
+
+	// Set technician photos in request
+	request.TechnicianPhotos = technicianPhotoPaths
+	log.Printf("=== FINAL TECHNICIAN PHOTOS RESULT ===")
+	log.Printf("Total technician photos processed: %d", len(technicianPhotoPaths))
+	for i, path := range technicianPhotoPaths {
+		log.Printf("  Photo %d: %s", i+1, path)
+	}
+	log.Printf("=== END FINAL TECHNICIAN PHOTOS RESULT ===")
+
+	log.Printf("Installation report request data - customer_id: %s, technician_id: %s, document_type: %s, document_photo: %s, installation_type: %s, assets_id: %s, switch_id: %s, port_number: %s, mac_address: %s, ip_static: %s, cable_type: %s, cable_length: %f, user_login: %s, user_status: %s, installation_notes: %s, customer_company_id: %s, customer_sales_rep_id: %s, product_id: %s, technician_photos_count: %d",
+		request.CustomerID, request.TechnicianID, request.DocumentType, request.DocumentPhoto, request.InstallationType, request.AssetsID, request.SwitchID, request.PortNumber, request.MacAddress, request.IPStatic, request.CableType, request.CableLength, request.UserLogin, request.UserStatus, request.InstallationNotes, request.CustomerCompanyID, request.CustomerSalesRepresentativeID, request.ProductID, len(technicianPhotoPaths))
 
 	// Validate required fields
 	if request.CustomerID == "" {
@@ -286,6 +387,26 @@ func (c *ReportInstallationController) CreateReportInstallation(ctx *fiber.Ctx) 
 		log.Printf("No user ID in context, using fallback admin ID: %s", createdBy)
 	}
 
+	// Get installation count BEFORE creating the installation record
+	// This ensures correct R-numbering (R1, R2, R3, etc.)
+	var installationCount int
+	if request.AutoProvision && request.MacAddress != "" {
+		// We need to get the count before creating the installation
+		// so that the R-number is calculated correctly
+		var count int64
+		err := c.service.GetDB().Table("customer_installations").
+			Where("customer_installations.customer_id = ?", request.CustomerID).
+			Count(&count).Error
+		if err != nil {
+			log.Printf("Error counting installations: %v", err)
+			installationCount = 1 // Default fallback
+		} else {
+			installationCount = int(count) + 1
+			log.Printf("🔍 Pre-installation count for customer %s: found %d existing, will use R%d",
+				request.CustomerID, count, installationCount)
+		}
+	}
+
 	// Create installation report first
 	installation, err := c.service.CreateReportInstallationService(request, createdBy)
 	if err != nil {
@@ -299,8 +420,6 @@ func (c *ReportInstallationController) CreateReportInstallation(ctx *fiber.Ctx) 
 		log.Printf("Auto-provisioning enabled for installation: %s", installation.ID)
 		log.Printf("MAC Address: %s", request.MacAddress)
 		log.Printf("Max Limit: %s", request.MaxLimit)
-		log.Printf("PSB Date: %s", request.PSBDate)
-		log.Printf("PSB Time: %s", request.PSBTime)
 		log.Printf("Dry Run: %v", request.DryRun)
 
 		// Get database connection
@@ -352,6 +471,52 @@ func (c *ReportInstallationController) CreateReportInstallation(ctx *fiber.Ctx) 
 			areaName = "Unknown Area"
 		}
 
+		// Parse installation_completed_at to extract date and time
+		startDate := ""
+		startTime := "00:00:00"
+
+		// Try to parse installation_completed_at first
+		if request.InstallationCompletedAt != "" {
+			log.Printf("🔍 Parsing InstallationCompletedAt: %s", request.InstallationCompletedAt)
+			if parsedTime, err := time.Parse("2006-01-02T15:04", request.InstallationCompletedAt); err == nil {
+				startDate = parsedTime.Format("2006-01-02")
+				startTime = parsedTime.Format("15:04:05")
+				log.Printf("✅ Parsed InstallationCompletedAt: date=%s, time=%s", startDate, startTime)
+			} else {
+				log.Printf("❌ Failed to parse InstallationCompletedAt: %v", err)
+				// Try alternative formats
+				formats := []string{"2006-01-02T15:04:05", "2006-01-02 15:04:05", "2006-01-02"}
+				for _, format := range formats {
+					if parsedTime, err := time.Parse(format, request.InstallationCompletedAt); err == nil {
+						startDate = parsedTime.Format("2006-01-02")
+						startTime = parsedTime.Format("15:04:05")
+						log.Printf("✅ Parsed with format %s: date=%s, time=%s", format, startDate, startTime)
+						break
+					}
+				}
+			}
+		}
+
+		// Fallback to on_air_date if installation_completed_at parsing failed or is empty
+		if startDate == "" && request.OnAirDate != "" {
+			log.Printf("🔍 Using OnAirDate as fallback: %s", request.OnAirDate)
+			if parsedTime, err := time.Parse("2006-01-02", request.OnAirDate); err == nil {
+				startDate = parsedTime.Format("2006-01-02")
+				startTime = "00:00:00"
+				log.Printf("✅ Parsed OnAirDate: date=%s, time=%s", startDate, startTime)
+			}
+		}
+
+		// Final fallback to current date if both are empty
+		if startDate == "" {
+			now := time.Now()
+			startDate = now.Format("2006-01-02")
+			startTime = now.Format("15:04:05")
+			log.Printf("⚠️ Using current date as final fallback: date=%s, time=%s", startDate, startTime)
+		}
+
+		log.Printf("📅 Final start_date: %s, start_time: %s", startDate, startTime)
+
 		// Create provisioning request
 		provReq := services.ProvisioningRequest{
 			InstallationID: installation.ID,
@@ -360,16 +525,16 @@ func (c *ReportInstallationController) CreateReportInstallation(ctx *fiber.Ctx) 
 			AreaName:       areaName,
 			MACAddress:     request.MacAddress,
 			IPAddress:      request.IPStatic, // Use IP address from the form
-			StartDate:      request.PSBDate,
-			StartTime:      request.PSBTime,
+			StartDate:      startDate,
+			StartTime:      startTime,
 			MaxLimit:       request.MaxLimit,
 			Comment:        fmt.Sprintf("%s/%s", customerName, request.MaxLimit),
 			DryRun:         request.DryRun,
 			CreatedBy:      createdBy,
 		}
 
-		// Execute provisioning
-		provResult, provErr := provisioningService.ProvisionInstallation(provReq)
+		// Execute provisioning with pre-calculated installation count
+		provResult, provErr := provisioningService.ProvisionInstallationWithCount(provReq, installationCount)
 		if provErr != nil {
 			log.Printf("❌ Provisioning failed: %v", provErr)
 			provisioningResult = map[string]interface{}{
@@ -389,6 +554,19 @@ func (c *ReportInstallationController) CreateReportInstallation(ctx *fiber.Ctx) 
 			})
 		} else {
 			log.Printf("✅ Provisioning completed: %+v", provResult)
+
+			// Update installation record with code_name from provisioning
+			if provResult.CodeName != "" {
+				updateErr := c.service.UpdateInstallationCodeName(installation.ID, provResult.CodeName)
+				if updateErr != nil {
+					log.Printf("⚠️ Failed to update installation code_name: %v", updateErr)
+				} else {
+					log.Printf("✅ Updated installation code_name: %s", provResult.CodeName)
+					// Update the installation object for response
+					installation.CodeName = &provResult.CodeName
+				}
+			}
+
 			provisioningResult = map[string]interface{}{
 				"status":            "success",
 				"success":           provResult.Success,

@@ -15,8 +15,6 @@ type CreateAdminCustomerInstallationRequest struct {
 	Status        string                 `json:"status"`
 	Notes         string                 `json:"notes"`
 	MACAddress    string                 `json:"mac_address"`
-	PSBDate       string                 `json:"psb_date"`  // YYYY-MM-DD
-	PSBTime       string                 `json:"psb_time"`  // HH:MM:SS
 	MaxLimit      string                 `json:"max_limit"` // e.g., "10M/10M"
 	DocumentType  string                 `json:"document_type" validate:"omitempty,oneof=KTP SIM Paspor"`
 	DocumentPhoto string                 `json:"document_photo"`
@@ -43,8 +41,6 @@ type CreateReportInstallationRequest struct {
 	AssetsID                      string                 `form:"assets_id" json:"assets_id"`
 	Status                        string                 `form:"status" json:"status"`
 	Notes                         string                 `form:"notes" json:"notes"`
-	PSBDate                       string                 `form:"psb_date" json:"psb_date"`
-	PSBTime                       string                 `form:"psb_time" json:"psb_time"`
 	MaxLimit                      string                 `form:"max_limit" json:"max_limit"`
 	AutoProvision                 bool                   `form:"auto_provision" json:"auto_provision"`
 	DryRun                        bool                   `form:"dry_run" json:"dry_run"`
@@ -63,8 +59,6 @@ type CreateReportInstallationRequest struct {
 	AssetItemID                   string                 `form:"asset_item_id" json:"asset_item_id"` // Specific asset item ID
 	IPStatic                      string                 `form:"ip_static" json:"ip_static"`
 	KepemilikanPerangkat          string                 `form:"kepemilikan_perangkat" json:"kepemilikan_perangkat"`
-	StatusPerangkat               string                 `form:"status_perangkat" json:"status_perangkat"`
-	LastPingStatus                string                 `form:"last_ping_status" json:"last_ping_status"`
 	ProductID                     string                 `form:"product_id" json:"product_id"`
 	CableType                     string                 `form:"cable_type" json:"cable_type"`
 	CableLength                   float64                `form:"cable_length" json:"cable_length"` // Changed to float64 to match entity
@@ -76,4 +70,8 @@ type CreateReportInstallationRequest struct {
 	CustomerCompanyID             string                 `form:"customer_company_id" json:"customer_company_id"`
 	CustomerSalesRepresentativeID string                 `form:"customer_sales_representative_id" json:"customer_sales_representative_id"`
 	ImageIds                      []string               `json:"image_ids"`
+
+	// Technician Photo Documentation
+	TechnicianPhotos      []string `form:"technician_photos" json:"technician_photos"`
+	TechnicianPhotosNotes string   `form:"technician_photos_notes" json:"technician_photos_notes"`
 }

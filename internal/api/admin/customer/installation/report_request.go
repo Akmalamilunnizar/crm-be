@@ -1,6 +1,9 @@
 package customerinstallation
 
-import "time"
+import (
+	"skripsi-be/internal/models/entities"
+	"time"
+)
 
 // UpdateCompleteInstallationReportRequest - Request untuk mengupdate laporan instalasi lengkap
 type UpdateCompleteInstallationReportRequest struct {
@@ -17,22 +20,21 @@ type UpdateCompleteInstallationReportRequest struct {
 	ServiceReadyDate        string `json:"service_ready_date"`
 	InstallationCompletedAt string `json:"installation_completed_at"`
 
-	// Asset Tracking
-	TotalAssetsOut    int                       `json:"total_assets_out"`
-	TotalAssetsIn     int                       `json:"total_assets_in"`
-	AssetTransactions []AssetTransactionRequest `json:"asset_transactions"`
-
-	// Network Devices
+	// Network Devices (multiple devices support)
 	NetworkDevices []NetworkDeviceRequest `json:"network_devices"`
 
-	// Customer Services
+	// Customer Services (multiple services support)
 	CustomerServices []CustomerServiceRequest `json:"customer_services"`
 
-	// Cables
+	// Cables (multiple cables support)
 	Cables []CableRequest `json:"cables"`
 
 	// Images
-	ImageIds []string `json:"image_ids" validate:"required"`
+	ImageIds []string `json:"image_ids"`
+
+	// Technician Photo Documentation
+	TechnicianPhotos      []string `json:"technician_photos"`
+	TechnicianPhotosNotes string   `json:"technician_photos_notes"`
 }
 
 // CreateCompleteInstallationReportRequest - Request untuk membuat laporan instalasi lengkap
@@ -51,8 +53,6 @@ type CreateCompleteInstallationReportRequest struct {
 	InstallationCompletedAt string `json:"installation_completed_at"`
 
 	// Asset Tracking
-	TotalAssetsOut    int                       `json:"total_assets_out"`
-	TotalAssetsIn     int                       `json:"total_assets_in"`
 	AssetTransactions []AssetTransactionRequest `json:"asset_transactions"`
 
 	// Network Devices
@@ -80,6 +80,7 @@ type AssetTransactionRequest struct {
 // NetworkDeviceRequest - Request untuk network device
 type NetworkDeviceRequest struct {
 	AssetsID             string `json:"assets_id" validate:"required"`
+	AssetItemID          string `json:"asset_item_id"` // Specific asset item ID for MAC address tracking
 	SwitchID             string `json:"switch_id"`
 	PortNumber           string `json:"port_number"`
 	RemotePort           string `json:"remote_port"`
@@ -87,15 +88,16 @@ type NetworkDeviceRequest struct {
 	MacAddress           string `json:"mac_address"`
 	IPStatic             string `json:"ip_static"`
 	KepemilikanPerangkat string `json:"kepemilikan_perangkat" validate:"omitempty,oneof=owned leased customer"`
-	StatusPerangkat      string `json:"status_perangkat" validate:"omitempty,oneof=active inactive maintenance faulty"`
-	LastPingStatus       string `json:"last_ping_status" validate:"omitempty,oneof=up down unknown"`
 	ProductID            string `json:"product_id"`
+	RouterBrand          string `json:"router_brand"`
+	RouterType           string `json:"router_type"`
 }
 
 // CustomerServiceRequest - Request untuk customer service
 type CustomerServiceRequest struct {
 	DeviceID              string  `json:"device_id"`
 	CableID               string  `json:"cable_id"`
+	CableType             string  `json:"cable_type"`
 	CableLength           float64 `json:"cable_length"`
 	EndPortType           string  `json:"end_port_type"`
 	UserLogin             string  `json:"user_login"`
@@ -139,9 +141,7 @@ type InstallationAssetReportResponse struct {
 	InstallationStatus      string     `json:"installation_status"`
 	OnAirDate               *time.Time `json:"on_air_date"`
 	InstallationCompletedAt *time.Time `json:"installation_completed_at"`
-	TotalAssetsOut          int64      `json:"total_assets_out"`
 	TotalQuantityOut        int64      `json:"total_quantity_out"`
-	TotalAssetsIn           int64      `json:"total_assets_in"`
 	TotalQuantityIn         int64      `json:"total_quantity_in"`
 	AssetsOutDetails        string     `json:"assets_out_details"`
 	AssetsInDetails         string     `json:"assets_in_details"`
@@ -189,10 +189,7 @@ type InstallationReportCompleteResponse struct {
 	EthPort                 string     `json:"eth_port"`
 	MacAddress              string     `json:"mac_address"`
 	IPStatic                string     `json:"ip_static"`
-	StatusPerangkat         string     `json:"status_perangkat"`
 	KepemilikanPerangkat    string     `json:"kepemilikan_perangkat"`
-	LastPingStatus          string     `json:"last_ping_status"`
-	LastPingTimestamp       *time.Time `json:"last_ping_timestamp"`
 	RouterBrand             string     `json:"router_brand"`
 	RouterType              string     `json:"router_type"`
 	RouterModel             string     `json:"router_model"`
@@ -210,4 +207,84 @@ type InstallationReportCompleteResponse struct {
 	EndPortType             string     `json:"end_port_type"`
 	InstallationCreatedAt   time.Time  `json:"installation_created_at"`
 	InstallationUpdatedAt   time.Time  `json:"installation_updated_at"`
+
+	// Technician Photo Documentation (now handled via Images relationship)
+	// Use the Images relationship to access technician photos with archive_installation_id
+
+	// Product information
+	ProductId                string  `json:"product_id"`
+	ProductName              string  `json:"product_name"`
+	ProductDescription       string  `json:"product_description"`
+	ProductPrice             float64 `json:"product_price"`
+	ProductDownloadSpeedMbps *int    `json:"product_download_speed_mbps"`
+	ProductUploadSpeedMbps   *int    `json:"product_upload_speed_mbps"`
+}
+
+// Installation Technician Team Response
+type InstallationTechnicianTeamResponse struct {
+	ID                     string    `json:"id"`
+	CustomerInstallationID string    `json:"customer_installation_id"`
+	TechnicianID           string    `json:"technician_id"`
+	TechnicianName         string    `json:"technician_name"`
+	TechnicianPhone        string    `json:"technician_phone"`
+	TechnicianEmail        string    `json:"technician_email"`
+	Role                   string    `json:"role"`
+	IsPrimary              bool      `json:"is_primary"`
+	Notes                  string    `json:"notes"`
+	CreatedAt              time.Time `json:"created_at"`
+	UpdatedAt              time.Time `json:"updated_at"`
+}
+
+// CompleteInstallationReportWithTechnicianPhotosResponse - Response with computed technician photos
+type CompleteInstallationReportWithTechnicianPhotosResponse struct {
+	entities.CustomerInstallation
+
+	// Computed technician photo fields (now handled via Images relationship)
+	// These fields are computed from the Images relationship in the repository
+
+	// Computed fields for frontend compatibility (from relationships)
+	InstallationId           string    `json:"installation_id"`
+	CustomerName             string    `json:"customer_name"`
+	CustomerAddress          string    `json:"customer_address"`
+	CustomerPhone            string    `json:"customer_phone"`
+	TglPermintaanPsb         string    `json:"tgl_permintaan_psb"`
+	TechnicianName           string    `json:"technician_name"`
+	TechnicianPhone          string    `json:"technician_phone"`
+	InstallationStatus       string    `json:"installation_status"`
+	InstallationNotes        string    `json:"installation_notes"`
+	DurasiPsb                *int      `json:"durasi_psb"`
+	StatusPsb                string    `json:"status_psb"`
+	NetworkDeviceId          string    `json:"network_device_id"`
+	SwitchId                 string    `json:"switch_id"`
+	PortNumber               string    `json:"port_number"`
+	RemotePort               string    `json:"remote_port"`
+	EthPort                  string    `json:"eth_port"`
+	MacAddress               string    `json:"mac_address"`
+	IPStatic                 string    `json:"ip_static"`
+	KepemilikanPerangkat     string    `json:"kepemilikan_perangkat"`
+	RouterBrand              string    `json:"router_brand"`
+	RouterType               string    `json:"router_type"`
+	RouterModel              string    `json:"router_model"`
+	RouterSerial             string    `json:"router_serial"`
+	CustomerServiceId        string    `json:"customer_service_id"`
+	UserLogin                string    `json:"user_login"`
+	Password                 string    `json:"password"`
+	UserStatus               string    `json:"user_status"`
+	ServiceNotes             string    `json:"service_notes"`
+	InstallationTeamName     string    `json:"installation_team_name"`
+	InstallationTeamPhone    string    `json:"installation_team_phone"`
+	CableId                  string    `json:"cable_id"`
+	CableName                string    `json:"cable_name"`
+	CableType                string    `json:"cable_type"`
+	CableLength              float64   `json:"cable_length"`
+	CableStatus              string    `json:"cable_status"`
+	EndPortType              string    `json:"end_port_type"`
+	InstallationCreatedAt    time.Time `json:"installation_created_at"`
+	InstallationUpdatedAt    time.Time `json:"installation_updated_at"`
+	ProductId                string    `json:"product_id"`
+	ProductName              string    `json:"product_name"`
+	ProductDescription       string    `json:"product_description"`
+	ProductPrice             float64   `json:"product_price"`
+	ProductDownloadSpeedMbps *int      `json:"product_download_speed_mbps"`
+	ProductUploadSpeedMbps   *int      `json:"product_upload_speed_mbps"`
 }

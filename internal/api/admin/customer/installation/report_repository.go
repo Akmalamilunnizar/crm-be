@@ -3,7 +3,9 @@ package customerinstallation
 import (
 	"database/sql"
 	"fmt"
+	"log"
 	"skripsi-be/internal/models/entities"
+	"skripsi-be/internal/services"
 	"time"
 
 	"gorm.io/gorm"
@@ -11,13 +13,17 @@ import (
 
 type AdminInstallationReportRepositoryInterface interface {
 	FindCompleteInstallationReportRepository(installationId string) (entities.CustomerInstallation, error)
+	FindCompleteInstallationReportWithTechnicianPhotosRepository(installationId string) (CompleteInstallationReportWithTechnicianPhotosResponse, error)
 	FindCompleteInstallationReportByViewRepository(installationId string) (InstallationReportCompleteResponse, error)
 	FindAllCompleteInstallationReportsRepository() ([]InstallationReportCompleteResponse, error)
 	FindInstallationSummaryPerCustomerRepository() ([]InstallationSummaryResponse, error)
 	FindInstallationAssetReportRepository(installationId string) (InstallationAssetReportResponse, error)
 	FindInstallationTechnicianReportRepository() ([]InstallationTechnicianReportResponse, error)
+	FindInstallationTechnicianTeamRepository(installationId string) ([]InstallationTechnicianTeamResponse, error)
 	CreateCompleteInstallationReportRepository(request CreateCompleteInstallationReportRequest) (entities.CustomerInstallation, error)
 	UpdateCompleteInstallationReportRepository(installationId string, request UpdateCompleteInstallationReportRequest) (entities.CustomerInstallation, error)
+	UpdateInstallationCodeName(installationId string, codeName string) error
+	DeleteInstallationReportRepository(installationId string) error
 }
 
 type AdminInstallationReportRepositoryStruct struct {
@@ -30,6 +36,8 @@ func NewAdminInstallationReportRepository(db *gorm.DB) AdminInstallationReportRe
 
 // FindCompleteInstallationReportRepository - Get complete installation report with all related data
 func (r AdminInstallationReportRepositoryStruct) FindCompleteInstallationReportRepository(installationId string) (entities.CustomerInstallation, error) {
+	log.Printf("DEBUG: Finding installation report with ID: %s", installationId)
+
 	var installation entities.CustomerInstallation
 
 	err := r.db.Preload("Customer").
@@ -41,10 +49,239 @@ func (r AdminInstallationReportRepositoryStruct) FindCompleteInstallationReportR
 		Preload("NetworkDevices.Product").
 		Preload("CustomerServices").
 		Preload("Cables").
+		Preload("InstallationTechnicians").
+		Preload("InstallationTechnicians.Technician").
 		Where("id = ?", installationId).
 		First(&installation).Error
 
+	if err != nil {
+		log.Printf("ERROR: Failed to find installation report: %v", err)
+		return installation, err
+	}
+
+	// Log technician photos data from Images relationship
+	log.Printf("DEBUG: Found installation report - ID: %s", installation.ID)
+	log.Printf("DEBUG: Images relationship count: %d", len(installation.Images))
+
+	// Log each image in the relationship
+	for i, img := range installation.Images {
+		log.Printf("DEBUG: Image %d - ID: %s, File: %s, FullPath: %s, ArchiveInstallationId: %s", i+1, img.ID, img.File, img.FullPath, img.ArchiveInstallationId)
+	}
+
 	return installation, err
+}
+
+// FindCompleteInstallationReportWithTechnicianPhotosRepository - Get complete installation report with computed technician photos
+func (r AdminInstallationReportRepositoryStruct) FindCompleteInstallationReportWithTechnicianPhotosRepository(installationId string) (CompleteInstallationReportWithTechnicianPhotosResponse, error) {
+	log.Printf("DEBUG: Finding installation report with technician photos for ID: %s", installationId)
+
+	var installation entities.CustomerInstallation
+
+	err := r.db.Preload("Customer").
+		Preload("Technician").
+		Preload("Images").
+		Preload("AssetTransactions").
+		Preload("NetworkDevices").
+		Preload("NetworkDevices.Assets").
+		Preload("NetworkDevices.Product").
+		Preload("CustomerServices").
+		Preload("Cables").
+		Preload("InstallationTechnicians").
+		Preload("InstallationTechnicians.Technician").
+		Where("id = ?", installationId).
+		First(&installation).Error
+
+	if err != nil {
+		log.Printf("ERROR: Failed to find installation report: %v", err)
+		return CompleteInstallationReportWithTechnicianPhotosResponse{}, err
+	}
+
+	// Also fetch from the database view to get PSB computed fields
+	var viewData InstallationReportCompleteResponse
+	err = r.db.Table("installation_report_complete").
+		Where("installation_id = ?", installationId).
+		First(&viewData).Error
+
+	if err != nil {
+		log.Printf("WARNING: Failed to fetch from installation_report_complete view: %v", err)
+		// Continue without view data - we'll calculate PSB fields manually
+	}
+
+	// Create response with computed technician photos
+	response := CompleteInstallationReportWithTechnicianPhotosResponse{
+		CustomerInstallation: installation,
+	}
+
+	// Populate computed fields from relationships for frontend compatibility
+	if installation.Customer != nil {
+		response.CustomerName = installation.Customer.Name
+		response.CustomerAddress = installation.Customer.Address
+		response.CustomerPhone = installation.Customer.Phone
+		response.TglPermintaanPsb = installation.Customer.ServiceRequestDate
+	}
+
+	// Use PSB fields from view data if available, otherwise calculate manually
+	if viewData.TglPermintaanPsb != nil {
+		response.TglPermintaanPsb = viewData.TglPermintaanPsb.Format("2006-01-02")
+	}
+	if viewData.DurasiPsb != nil {
+		response.DurasiPsb = viewData.DurasiPsb
+	}
+	if viewData.StatusPsb != "" {
+		response.StatusPsb = viewData.StatusPsb
+	}
+
+	if installation.Technician != nil {
+		response.TechnicianName = installation.Technician.Name
+		response.TechnicianPhone = installation.Technician.Phone
+	}
+
+	// Populate network device information from the first network device
+	if len(installation.NetworkDevices) > 0 {
+		networkDevice := installation.NetworkDevices[0]
+		response.NetworkDeviceId = networkDevice.ID
+		if networkDevice.SwitchID != nil {
+			response.SwitchId = *networkDevice.SwitchID
+		}
+		if networkDevice.PortNumber != nil {
+			response.PortNumber = *networkDevice.PortNumber
+		}
+		if networkDevice.RemotePort != nil {
+			response.RemotePort = *networkDevice.RemotePort
+		}
+		if networkDevice.EthPort != nil {
+			response.EthPort = *networkDevice.EthPort
+		}
+		if networkDevice.MacAddress != nil {
+			response.MacAddress = *networkDevice.MacAddress
+		}
+		if networkDevice.IPStatic != nil {
+			response.IPStatic = *networkDevice.IPStatic
+		}
+		response.KepemilikanPerangkat = networkDevice.KepemilikanPerangkat
+
+		// Get router information from assets relationship
+		if networkDevice.Assets != nil {
+			response.RouterBrand = networkDevice.Assets.Brand
+			response.RouterType = networkDevice.Assets.Type
+			response.RouterModel = networkDevice.Assets.Model
+			response.RouterSerial = networkDevice.Assets.SerialNumber
+		}
+
+		// Get product information from network device
+		if networkDevice.Product != nil {
+			response.ProductId = networkDevice.Product.ID
+			response.ProductName = networkDevice.Product.Name
+			response.ProductDescription = networkDevice.Product.Description
+			response.ProductPrice = float64(networkDevice.Product.Price)
+			response.ProductDownloadSpeedMbps = networkDevice.Product.DownloadSpeedMbps
+			response.ProductUploadSpeedMbps = networkDevice.Product.UploadSpeedMbps
+		}
+	}
+
+	// Populate customer service information from the first customer service
+	if len(installation.CustomerServices) > 0 {
+		customerService := installation.CustomerServices[0]
+		response.CustomerServiceId = customerService.ID
+		if customerService.UserLogin != nil {
+			response.UserLogin = *customerService.UserLogin
+		}
+		if customerService.Password != nil {
+			response.Password = *customerService.Password
+		}
+		response.UserStatus = customerService.UserStatus
+		if customerService.InstallationNotes != nil {
+			response.ServiceNotes = *customerService.InstallationNotes
+		}
+		if customerService.EndPortType != nil {
+			response.EndPortType = *customerService.EndPortType
+		}
+	}
+
+	// Populate cable information from the first cable
+	if len(installation.Cables) > 0 {
+		cable := installation.Cables[0]
+		response.CableId = cable.ID
+		response.CableName = cable.Name
+		if cable.Type != nil {
+			response.CableType = *cable.Type
+		}
+		if cable.Length != nil {
+			response.CableLength = *cable.Length
+		}
+		response.CableStatus = cable.Status
+	}
+
+	// Populate installation team information
+	if len(installation.InstallationTechnicians) > 0 {
+		primaryTechnician := installation.InstallationTechnicians[0]
+		for _, tech := range installation.InstallationTechnicians {
+			if tech.IsPrimary {
+				primaryTechnician = tech
+				break
+			}
+		}
+		if primaryTechnician.Technician != nil {
+			response.InstallationTeamName = primaryTechnician.Technician.Name
+			response.InstallationTeamPhone = primaryTechnician.Technician.Phone
+		}
+	}
+
+	// Set additional computed fields
+	response.InstallationId = installation.ID
+	response.InstallationStatus = installation.Status
+	response.InstallationNotes = installation.Notes
+	response.InstallationCreatedAt = installation.CreatedAt
+	response.InstallationUpdatedAt = installation.UpdatedAt
+
+	// Calculate PSB duration and status manually only if view data is not available
+	if viewData.DurasiPsb == nil && installation.Customer != nil && installation.Customer.ServiceRequestDate != "" && installation.InstallationCompletedAt != nil {
+		// Parse service request date
+		serviceRequestDate, err := time.Parse("2006-01-02", installation.Customer.ServiceRequestDate)
+		if err == nil {
+			// Calculate duration in days
+			duration := int(installation.InstallationCompletedAt.Sub(serviceRequestDate).Hours() / 24)
+			response.DurasiPsb = &duration
+
+			// Determine PSB status based on SLA (≤3 days = Tepat Waktu)
+			if duration <= 3 {
+				response.StatusPsb = "Tepat Waktu"
+			} else {
+				response.StatusPsb = "Terlambat"
+			}
+		}
+	}
+
+	// Debug: Log all populated fields
+	log.Printf("=== DETAIL CUSTOMER INSTALLATION DEBUG ===")
+	log.Printf("Installation ID: %s", response.InstallationId)
+	log.Printf("Customer Info - Name: %s, Address: %s, Phone: %s", response.CustomerName, response.CustomerAddress, response.CustomerPhone)
+	log.Printf("Technician Info - Name: %s, Phone: %s", response.TechnicianName, response.TechnicianPhone)
+	log.Printf("Installation Status: %s, Notes: %s", response.InstallationStatus, response.InstallationNotes)
+	log.Printf("PSB Info - Request Date: %s, Duration: %v, Status: %s", response.TglPermintaanPsb, response.DurasiPsb, response.StatusPsb)
+	if viewData.DurasiPsb != nil {
+		log.Printf("PSB data source: Database view (installation_report_complete)")
+	} else {
+		log.Printf("PSB data source: Manual calculation")
+	}
+	log.Printf("Network Device Info - ID: %s, Switch: %s, Port: %s, MAC: %s, IP: %s, Ownership: %s",
+		response.NetworkDeviceId, response.SwitchId, response.PortNumber, response.MacAddress, response.IPStatic, response.KepemilikanPerangkat)
+	log.Printf("Router Info - Brand: %s, Type: %s, Model: %s, Serial: %s",
+		response.RouterBrand, response.RouterType, response.RouterModel, response.RouterSerial)
+	log.Printf("Product Info - ID: %s, Name: %s, Description: %s, Price: %.2f",
+		response.ProductId, response.ProductName, response.ProductDescription, response.ProductPrice)
+	log.Printf("Customer Service Info - ID: %s, User: %s, Status: %s",
+		response.CustomerServiceId, response.UserLogin, response.UserStatus)
+	log.Printf("Cable Info - ID: %s, Name: %s, Type: %s, Length: %.2f",
+		response.CableId, response.CableName, response.CableType, response.CableLength)
+	log.Printf("Installation Team - Name: %s, Phone: %s", response.InstallationTeamName, response.InstallationTeamPhone)
+	log.Printf("Images Count: %d", len(installation.Images))
+	for i, img := range installation.Images {
+		log.Printf("  Image %d: ID=%s, File=%s, ArchiveInstallationId=%s", i+1, img.ID, img.File, img.ArchiveInstallationId)
+	}
+	log.Printf("=== END DETAIL CUSTOMER INSTALLATION DEBUG ===")
+
+	return response, nil
 }
 
 // FindCompleteInstallationReportByViewRepository - Get complete installation report using database view
@@ -80,14 +317,17 @@ func (r AdminInstallationReportRepositoryStruct) FindCompleteInstallationReportB
 			eth_port,
 			mac_address,
 			ip_static,
-			status_perangkat,
 			kepemilikan_perangkat,
-			last_ping_status,
-			last_ping_timestamp,
 			router_brand,
 			router_type,
 			router_model,
 			router_serial,
+			product_id,
+			product_name,
+			product_description,
+			product_price,
+			product_download_speed_mbps,
+			product_upload_speed_mbps,
 			customer_service_id,
 			user_login,
 			password,
@@ -107,7 +347,12 @@ func (r AdminInstallationReportRepositoryStruct) FindCompleteInstallationReportB
 	`
 
 	err := r.db.Raw(query, installationId).Scan(&report).Error
-	return report, err
+	if err != nil {
+		log.Printf("Error querying installation report by view: %v", err)
+		return report, fmt.Errorf("failed to retrieve installation report: %w", err)
+	}
+
+	return report, nil
 }
 
 // FindAllCompleteInstallationReportsRepository - Get all complete installation reports using database view
@@ -144,14 +389,17 @@ func (r AdminInstallationReportRepositoryStruct) FindAllCompleteInstallationRepo
 			eth_port,
 			mac_address,
 			ip_static,
-			status_perangkat,
 			kepemilikan_perangkat,
-			last_ping_status,
-			last_ping_timestamp,
 			router_brand,
 			router_type,
 			router_model,
 			router_serial,
+			product_id,
+			product_name,
+			product_description,
+			product_price,
+			product_download_speed_mbps,
+			product_upload_speed_mbps,
 			customer_service_id,
 			user_login,
 			password,
@@ -215,6 +463,33 @@ func (r AdminInstallationReportRepositoryStruct) FindInstallationSummaryPerCusto
 	return summaries, err
 }
 
+// FindInstallationTechnicianTeamRepository - Get technician team for specific installation
+func (r AdminInstallationReportRepositoryStruct) FindInstallationTechnicianTeamRepository(installationId string) ([]InstallationTechnicianTeamResponse, error) {
+	var technicians []InstallationTechnicianTeamResponse
+
+	query := `
+		SELECT 
+			irt.id,
+			irt.customer_installation_id,
+			irt.technician_id,
+			u.name as technician_name,
+			u.phone as technician_phone,
+			u.email as technician_email,
+			irt.role,
+			irt.is_primary,
+			irt.notes,
+			irt.createdAt as created_at,
+			irt.updatedAt as updated_at
+		FROM installation_report_technicians irt
+		LEFT JOIN users u ON irt.technician_id = u.id
+		WHERE irt.customer_installation_id = ?
+		ORDER BY irt.is_primary DESC, irt.createdAt ASC
+	`
+
+	err := r.db.Raw(query, installationId).Scan(&technicians).Error
+	return technicians, err
+}
+
 // FindInstallationAssetReportRepository - Get asset report for specific installation
 func (r AdminInstallationReportRepositoryStruct) FindInstallationAssetReportRepository(installationId string) (InstallationAssetReportResponse, error) {
 	var report InstallationAssetReportResponse
@@ -227,9 +502,7 @@ func (r AdminInstallationReportRepositoryStruct) FindInstallationAssetReportRepo
 			ci.status as installation_status,
 			ci.on_air_date,
 			ci.installation_completed_at,
-			COUNT(CASE WHEN at.transaction_type = 'out' THEN 1 END) as total_assets_out,
 			COALESCE(SUM(CASE WHEN at.transaction_type = 'out' THEN at.quantity ELSE 0 END), 0) as total_quantity_out,
-			COUNT(CASE WHEN at.transaction_type = 'in' THEN 1 END) as total_assets_in,
 			COALESCE(SUM(CASE WHEN at.transaction_type = 'in' THEN at.quantity ELSE 0 END), 0) as total_quantity_in,
 			GROUP_CONCAT(DISTINCT CASE WHEN at.transaction_type = 'out' THEN CONCAT(a.brand, ' ', a.model, ' (', at.quantity, ' pcs)') END SEPARATOR ', ') as assets_out_details,
 			GROUP_CONCAT(DISTINCT CASE WHEN at.transaction_type = 'in' THEN CONCAT(a.brand, ' ', a.model, ' (', at.quantity, ' pcs)') END SEPARATOR ', ') as assets_in_details
@@ -338,8 +611,6 @@ func (r AdminInstallationReportRepositoryStruct) CreateCompleteInstallationRepor
 		DocumentType:            &request.DocumentType,
 		DocumentPhoto:           &request.DocumentPhoto,
 		InstallationType:        request.InstallationType,
-		TotalAssetsOut:          request.TotalAssetsOut,
-		TotalAssetsIn:           request.TotalAssetsIn,
 		InstallationCompletedAt: installationCompletedAt,
 		TrialEndDate:            trialEndDate,
 		ServiceReadyDate:        serviceReadyDate,
@@ -405,6 +676,9 @@ func (r AdminInstallationReportRepositoryStruct) CreateCompleteInstallationRepor
 
 	// Create network devices
 	for _, device := range request.NetworkDevices {
+		// Debug: Log the product ID being set
+		log.Printf("🔍 DEBUG: Setting ProductID for network device: %s", device.ProductID)
+
 		networkDevice := entities.NetworkDevice{
 			ID:         "",
 			CustomerID: request.CustomerId,
@@ -417,6 +691,7 @@ func (r AdminInstallationReportRepositoryStruct) CreateCompleteInstallationRepor
 				}(),
 				Valid: device.AssetsID != "",
 			},
+			AssetItemID:            &device.AssetItemID,
 			CustomerInstallationID: &installation.ID,
 			SwitchID:               &device.SwitchID,
 			PortNumber:             &device.PortNumber,
@@ -425,14 +700,56 @@ func (r AdminInstallationReportRepositoryStruct) CreateCompleteInstallationRepor
 			MacAddress:             &device.MacAddress,
 			IPStatic:               &device.IPStatic,
 			KepemilikanPerangkat:   device.KepemilikanPerangkat,
-			StatusPerangkat:        device.StatusPerangkat,
-			LastPingStatus:         device.LastPingStatus,
 			ProductID:              &device.ProductID,
 		}
 
 		if err := tx.Create(&networkDevice).Error; err != nil {
 			tx.Rollback()
 			return installation, err
+		}
+
+		// Handle asset item tracking - update status from 'in_stock' to 'in_use'
+		if device.AssetItemID != "" {
+			log.Printf("🔧 DEBUG: Updating asset item %s status from 'in_stock' to 'in_use'", device.AssetItemID)
+
+			// Check if asset item exists and is in stock
+			var assetItem entities.AssetItem
+			if err := tx.Where("id = ? AND status = 'in_stock'", device.AssetItemID).First(&assetItem).Error; err != nil {
+				log.Printf("❌ ERROR: Asset item %s not found or not in stock: %v", device.AssetItemID, err)
+				tx.Rollback()
+				return installation, fmt.Errorf("asset item %s not found or not available (status must be 'in_stock')", device.AssetItemID)
+			}
+
+			// Update asset item status to 'in_use'
+			if err := tx.Model(&entities.AssetItem{}).
+				Where("id = ?", device.AssetItemID).
+				Update("status", "in_use").Error; err != nil {
+				log.Printf("❌ ERROR: Failed to update asset item %s status: %v", device.AssetItemID, err)
+				tx.Rollback()
+				return installation, fmt.Errorf("failed to update asset item status: %v", err)
+			}
+
+			log.Printf("✅ SUCCESS: Asset item %s status updated to 'in_use'", device.AssetItemID)
+
+			// Create asset transaction record for tracking
+			assetTransaction := entities.AssetTransaction{
+				ID:                     "",
+				CustomerInstallationID: installation.ID,
+				AssetItemID:            &device.AssetItemID,
+				AssetID:                assetItem.AssetID,
+				TransactionType:        "out", // Asset going out for installation
+				Quantity:               1,
+				Notes:                  func() *string { s := fmt.Sprintf("Asset assigned to installation %s", installation.ID); return &s }(),
+				TransactionDate:        time.Now(),
+				CreatedBy:              request.TechnicianId,
+			}
+
+			if err := tx.Create(&assetTransaction).Error; err != nil {
+				log.Printf("⚠️  WARNING: Failed to create asset transaction record: %v", err)
+				// Don't rollback - transaction record is not critical
+			} else {
+				log.Printf("✅ SUCCESS: Asset transaction record created for item %s", device.AssetItemID)
+			}
 		}
 	}
 
@@ -531,6 +848,73 @@ func (r AdminInstallationReportRepositoryStruct) UpdateCompleteInstallationRepor
 	}
 	installation.InstallationType = request.InstallationType
 
+	// Handle technician photos using images table instead of JSON storage
+	log.Printf("DEBUG: Processing technician photos - Count: %d", len(request.TechnicianPhotos))
+	log.Printf("DEBUG: Technician photos data: %+v", request.TechnicianPhotos)
+	log.Printf("DEBUG: Technician photos notes: %s", request.TechnicianPhotosNotes)
+
+	if len(request.TechnicianPhotos) > 0 {
+		// Validate photo count
+		if len(request.TechnicianPhotos) > 10 {
+			tx.Rollback()
+			return installation, fmt.Errorf("technician photos count exceeds maximum limit of 10, got %d", len(request.TechnicianPhotos))
+		}
+
+		// Delete existing technician photos (images with this installation_id)
+		if err := tx.Where("archive_installation_id = ?", installation.ID).Delete(&entities.Image{}).Error; err != nil {
+			log.Printf("ERROR: Failed to delete existing technician photos: %v", err)
+			tx.Rollback()
+			return installation, fmt.Errorf("failed to delete existing technician photos: %v", err)
+		}
+
+		// Create new Image records for each technician photo
+		for i, photoPath := range request.TechnicianPhotos {
+			if photoPath == "" {
+				log.Printf("WARNING: Empty photo path at index %d", i)
+				continue
+			}
+
+			log.Printf("DEBUG: Creating image record %d for photo: %s", i+1, photoPath)
+
+			// Extract filename from path
+			filename := photoPath
+			if lastSlash := len(photoPath); lastSlash > 0 {
+				for i := len(photoPath) - 1; i >= 0; i-- {
+					if photoPath[i] == '/' {
+						filename = photoPath[i+1:]
+						break
+					}
+				}
+			}
+
+			image := entities.Image{
+				ID:                    fmt.Sprintf("img_%s_%d", installation.ID[:8], i+1),
+				File:                  filename,
+				FullPath:              photoPath,
+				ArchiveInstallationId: installation.ID,
+			}
+
+			if err := tx.Create(&image).Error; err != nil {
+				log.Printf("ERROR: Failed to create image record for photo %d: %v", i+1, err)
+				tx.Rollback()
+				return installation, fmt.Errorf("failed to create image record for photo %d: %v", i+1, err)
+			}
+
+			log.Printf("DEBUG: Successfully created image record %d with ID: %s", i+1, image.ID)
+		}
+
+		log.Printf("DEBUG: Technician photos processed successfully - %d photos stored in images table", len(request.TechnicianPhotos))
+	} else {
+		log.Printf("DEBUG: No technician photos provided, deleting existing photos")
+		// Delete any existing technician photos
+		if err := tx.Where("archive_installation_id = ?", installation.ID).Delete(&entities.Image{}).Error; err != nil {
+			log.Printf("WARNING: Failed to delete existing technician photos: %v", err)
+		}
+	}
+
+	// Note: Technician photos are now stored in images table with archive_installation_id
+	// No need to store metadata in customer_installations table
+
 	// Parse dates
 	if request.OnAirDate != "" {
 		if onAirDate, err := time.Parse("2006-01-02", request.OnAirDate); err == nil {
@@ -554,10 +938,15 @@ func (r AdminInstallationReportRepositoryStruct) UpdateCompleteInstallationRepor
 	}
 
 	// Save installation
+	log.Printf("DEBUG: Saving installation with ID: %s", installation.ID)
+
 	if err := tx.Save(&installation).Error; err != nil {
+		log.Printf("ERROR: Failed to save installation: %v", err)
 		tx.Rollback()
 		return installation, err
 	}
+
+	log.Printf("DEBUG: Installation saved successfully")
 
 	// Delete existing related data
 	if err := tx.Where("customer_installation_id = ?", installation.ID).Delete(&entities.NetworkDevice{}).Error; err != nil {
@@ -586,8 +975,6 @@ func (r AdminInstallationReportRepositoryStruct) UpdateCompleteInstallationRepor
 			MacAddress:             &device.MacAddress,
 			IPStatic:               &device.IPStatic,
 			KepemilikanPerangkat:   device.KepemilikanPerangkat,
-			StatusPerangkat:        device.StatusPerangkat,
-			LastPingStatus:         device.LastPingStatus,
 			ProductID:              &device.ProductID,
 			CustomerInstallationID: &installation.ID,
 		}
@@ -595,6 +982,17 @@ func (r AdminInstallationReportRepositoryStruct) UpdateCompleteInstallationRepor
 		if err := tx.Create(&deviceEntity).Error; err != nil {
 			tx.Rollback()
 			return installation, err
+		}
+
+		// Handle asset item tracking if asset_item_id is provided
+		if device.AssetItemID != "" {
+			// Update asset item status to 'in_use'
+			if err := tx.Model(&entities.AssetItem{}).
+				Where("id = ?", device.AssetItemID).
+				Update("status", "in_use").Error; err != nil {
+				log.Printf("Failed to update asset item status: %v", err)
+				// Don't rollback - this is not critical enough to fail the entire update
+			}
 		}
 	}
 
@@ -609,6 +1007,7 @@ func (r AdminInstallationReportRepositoryStruct) UpdateCompleteInstallationRepor
 
 		serviceEntity := entities.CustomerService{
 			ID:                     "",
+			CustomerID:             request.CustomerId,
 			DeviceID:               &service.DeviceID,
 			CableID:                &service.CableID,
 			CableLength:            &service.CableLength,
@@ -659,4 +1058,136 @@ func (r AdminInstallationReportRepositoryStruct) UpdateCompleteInstallationRepor
 	}
 
 	return installation, nil
+}
+
+// DeleteInstallationReportRepository - Delete installation report and update MAC address status to in_stock
+func (r AdminInstallationReportRepositoryStruct) DeleteInstallationReportRepository(installationId string) error {
+	// Start transaction
+	tx := r.db.Begin()
+	if tx.Error != nil {
+		return tx.Error
+	}
+
+	// First, get the installation to find associated MAC addresses
+	var installation entities.CustomerInstallation
+	if err := tx.Preload("NetworkDevices").Where("id = ?", installationId).First(&installation).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// Update MAC address status back to in_stock for each network device
+	for _, networkDevice := range installation.NetworkDevices {
+		if networkDevice.MacAddress != nil && *networkDevice.MacAddress != "" {
+			// Find the asset item by MAC address and update status to in_stock
+			if err := tx.Model(&entities.AssetItem{}).
+				Where("mac_address = ?", *networkDevice.MacAddress).
+				Update("status", "in_stock").Error; err != nil {
+				tx.Rollback()
+				return err
+			}
+		}
+	}
+
+	// Perform Mikrotik cleanup before deleting database records
+	if err := r.performMikrotikCleanup(installation); err != nil {
+		log.Printf("⚠️ Warning: Mikrotik cleanup failed for installation %s: %v", installationId, err)
+		// Continue with deletion even if Mikrotik cleanup fails
+	}
+
+	// Delete related records first (to avoid foreign key constraints)
+
+	// Delete installation provisioning logs (Mikrotik provisioning)
+	if err := tx.Where("customer_installation_id = ?", installationId).
+		Delete(&entities.InstallationProvisioningLog{}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// Delete recurring invoices related to this installation
+	if err := tx.Model(&entities.RecurringInvoice{}).
+		Where("customer_installation = ?", installationId).
+		Delete(&entities.RecurringInvoice{}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// Delete installation technicians
+	if err := tx.Where("customer_installation_id = ?", installationId).
+		Delete(&entities.InstallationReportTechnician{}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// Delete customer services
+	if err := tx.Where("customer_installation_id = ?", installationId).
+		Delete(&entities.CustomerService{}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// Delete network devices
+	if err := tx.Where("customer_installation_id = ?", installationId).
+		Delete(&entities.NetworkDevice{}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// Delete asset transactions
+	if err := tx.Where("customer_installation_id = ?", installationId).
+		Delete(&entities.AssetTransaction{}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// Delete cables
+	if err := tx.Where("customer_installation_id = ?", installationId).
+		Delete(&entities.Cable{}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// Delete installation images (Images are linked via ArchiveInstallationId)
+	if err := tx.Model(&entities.Image{}).
+		Where("archive_installation_id = ?", installationId).
+		Update("archive_installation_id", nil).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// Finally, delete the installation itself
+	if err := tx.Where("id = ?", installationId).
+		Delete(&entities.CustomerInstallation{}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// Commit transaction
+	if err := tx.Commit().Error; err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// UpdateInstallationCodeName - Update code_name for an installation
+func (r AdminInstallationReportRepositoryStruct) UpdateInstallationCodeName(installationId string, codeName string) error {
+	return r.db.Model(&entities.CustomerInstallation{}).
+		Where("id = ?", installationId).
+		Update("code_name", codeName).Error
+}
+
+// performMikrotikCleanup performs Mikrotik RouterOS cleanup for an installation
+func (r AdminInstallationReportRepositoryStruct) performMikrotikCleanup(installation entities.CustomerInstallation) error {
+	// Get shared Mikrotik service
+	mikrotikService := services.GetSharedMikroTikService()
+	if mikrotikService == nil {
+		log.Printf("⚠️ No shared Mikrotik service available, skipping cleanup")
+		return nil
+	}
+
+	// Create provisioning service for cleanup
+	provisioningService := services.NewMikrotikProvisioningService(r.db, mikrotikService)
+
+	// Perform cleanup (not dry run)
+	return provisioningService.CleanupInstallation(installation, false)
 }

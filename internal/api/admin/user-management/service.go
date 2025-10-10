@@ -10,6 +10,7 @@ type AdminUserManagementServiceInterface interface {
 	CreateAdminUserManagementService(request CreateAdminUserManagementRequest) (dto.UserDTO, error)
 	UpdateAdminUserManagementService(request UpdateAdminUserManagementRequest) (dto.UserDTO, error)
 	DeleteAdminUserManagementService(request IdAdminUserManagementRequest) (dto.UserDTO, error)
+	GetUserRolePermissionsService(userID string) (map[string]int, error)
 }
 
 type AdminUserManagementServiceStruct struct {
@@ -59,4 +60,12 @@ func (s *AdminUserManagementServiceStruct) DeleteAdminUserManagementService(requ
 		return user, err
 	}
 	return user, err
+}
+
+func (s *AdminUserManagementServiceStruct) GetUserRolePermissionsService(userID string) (map[string]int, error) {
+	permissions, err := s.repository.GetUserRolePermissionsRepository(userID)
+	if err != nil {
+		return nil, err
+	}
+	return permissions, nil
 }

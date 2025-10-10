@@ -17,6 +17,7 @@ type AdminUserManagementRepositoryInterface interface {
 	CreateAdminUserManagementRepository(request CreateAdminUserManagementRequest) (dto.UserDTO, error)
 	UpdateAdminUserManagementRepository(request UpdateAdminUserManagementRequest) (dto.UserDTO, error)
 	DeleteAdminUserManagementRepository(request IdAdminUserManagementRequest) (dto.UserDTO, error)
+	GetUserRolePermissionsRepository(userID string) (map[string]int, error)
 }
 
 type AdminUserManagementRepositoryStruct struct {
@@ -146,4 +147,44 @@ func (r *AdminUserManagementRepositoryStruct) DeleteAdminUserManagementRepositor
 		return userDto, tx.Error
 	}
 	return userDto, nil
+}
+
+func (r *AdminUserManagementRepositoryStruct) GetUserRolePermissionsRepository(userID string) (map[string]int, error) {
+	// Get user's role first
+	user := entities.User{}
+	tx := r.db.Preload("Role").First(&user, "id = ?", userID)
+	if tx.Error != nil {
+		return nil, tx.Error
+	}
+
+	// Get role permissions
+	var rolePermissions []entities.RolePermission
+	tx = r.db.Where("role_id = ?", user.RoleId).Find(&rolePermissions)
+	if tx.Error != nil {
+		return nil, tx.Error
+	}
+
+	// Get features to map feature_id to feature name
+	var features []entities.Feature
+	tx = r.db.Find(&features)
+	if tx.Error != nil {
+		return nil, tx.Error
+	}
+
+	// Create feature name to ID mapping
+	featureIDToName := make(map[string]string)
+	for _, feature := range features {
+		featureIDToName[feature.ID] = feature.Name
+	}
+
+	// Create permissions map with feature names as keys
+	permissions := make(map[string]int)
+	for _, permission := range rolePermissions {
+		featureName := featureIDToName[permission.FeatureID]
+		if featureName != "" {
+			permissions[featureName] = permission.CanAccess
+		}
+	}
+
+	return permissions, nil
 }

@@ -104,3 +104,15 @@ func (h *AdminUserManagementHandlerStruct) DeleteAdminUserManagementHandler(c *f
 
 	return helpers.ResponseUtils(c, fiber.StatusOK, true, "Success Get User", user)
 }
+
+func (h *AdminUserManagementHandlerStruct) GetUserRolePermissionsHandler(c *fiber.Ctx) error {
+	// Get user ID from JWT token
+	userID := c.Locals("user_id").(string)
+	
+	permissions, err := h.service.GetUserRolePermissionsService(userID)
+	if err != nil {
+		return helpers.ResponseUtils(c, fiber.StatusBadRequest, false, err.Error(), nil)
+	}
+
+	return helpers.ResponseUtils(c, fiber.StatusOK, true, "Success Get User Permissions", permissions)
+}

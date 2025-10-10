@@ -15,6 +15,7 @@ func AdminUserManagementRoute(app fiber.Router) {
 	handler := NewAdminUserManagementHandler(service)
 
 	app.Use(helpers.VerifyToken)
+	app.Get("/role-permissions", handler.GetUserRolePermissionsHandler)
 	app.Get("/", handler.GetAllAdminUserManagementHandler)
 	app.Get("/:id", handler.GetByIDAdminUserManagementHandler)
 	app.Post("/", handler.CreateAdminUserManagementHandler)

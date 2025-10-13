@@ -37,7 +37,7 @@ func (r *AdminRoleRepositoryStruct) FindAdminRoleRepository() ([]entities.Role, 
 func (r *AdminRoleRepositoryStruct) FindByIdAdminRoleRepository(request IdAdminRoleRequest) (entities.Role, error) {
 	role := entities.Role{}
 
-	tx := r.db.First(&role, "id = ?", request.Id)
+	tx := r.db.Preload("RolePermissions").First(&role, "id = ?", request.Id)
 	if tx.Error != nil {
 		return role, tx.Error
 	}
@@ -48,11 +48,33 @@ func (r *AdminRoleRepositoryStruct) FindByIdAdminRoleRepository(request IdAdminR
 func (r *AdminRoleRepositoryStruct) CreateAdminRoleRepository(request CreateAdminRoleRequest) (entities.Role, error) {
 	role := entities.Role{}
 	copier.Copy(&role, &request)
-	tx := r.db.Create(&role)
+	
+	// Start transaction
+	tx := r.db.Begin()
 	if tx.Error != nil {
 		return role, tx.Error
 	}
-
+	
+	// Create role
+	if err := tx.Create(&role).Error; err != nil {
+		tx.Rollback()
+		return role, err
+	}
+	
+	// Create role permissions
+	for _, permission := range request.RolePermissions {
+		permission.RoleID = role.ID
+		if err := tx.Create(&permission).Error; err != nil {
+			tx.Rollback()
+			return role, err
+		}
+	}
+	
+	// Commit transaction
+	if err := tx.Commit().Error; err != nil {
+		return role, err
+	}
+	
 	return role, nil
 }
 
@@ -66,13 +88,39 @@ func (r *AdminRoleRepositoryStruct) UpdateAdminRoleRepository(request UpdateAdmi
 
 	role.Name = request.Name
 
-	tx = r.db.Save(&role)
-	if tx.Error != nil {
-		return role, tx.Error
+	// Start transaction for update
+	dbTx := r.db.Begin()
+	if dbTx.Error != nil {
+		return role, dbTx.Error
+	}
+
+	// Update role
+	if err := dbTx.Save(&role).Error; err != nil {
+		dbTx.Rollback()
+		return role, err
+	}
+
+	// Delete existing role permissions
+	if err := dbTx.Where("role_id = ?", role.ID).Delete(&entities.RolePermission{}).Error; err != nil {
+		dbTx.Rollback()
+		return role, err
+	}
+
+	// Create new role permissions
+	for _, permission := range request.RolePermissions {
+		permission.RoleID = role.ID
+		if err := dbTx.Create(&permission).Error; err != nil {
+			dbTx.Rollback()
+			return role, err
+		}
+	}
+
+	// Commit transaction
+	if err := dbTx.Commit().Error; err != nil {
+		return role, err
 	}
 
 	return role, nil
-
 }
 
 func (r *AdminRoleRepositoryStruct) DeleteAdminRoleRepository(request IdAdminRoleRequest) (entities.Role, error) {

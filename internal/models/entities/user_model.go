@@ -329,10 +329,11 @@ func (u *User) BeforeCreate(tx *gorm.DB) error {
 }
 
 type Role struct {
-	ID        string    `json:"id" gorm:"primaryKey"`
-	Name      string    `json:"name" gorm:"default:null"`
-	CreatedAt time.Time `json:"createdAt" gorm:"default:current_timestamp; column:createdAt"`
-	UpdatedAt time.Time `json:"updatedAt" gorm:"column:updatedAt"`
+	ID              string            `json:"id" gorm:"primaryKey"`
+	Name            string            `json:"name" gorm:"default:null"`
+	RolePermissions []RolePermission  `json:"role_permissions" gorm:"foreignKey:RoleID"`
+	CreatedAt       time.Time         `json:"createdAt" gorm:"default:current_timestamp; column:createdAt"`
+	UpdatedAt       time.Time         `json:"updatedAt" gorm:"column:updatedAt"`
 }
 
 func (u *Role) TableName() string {
@@ -460,6 +461,46 @@ type InvoiceItems struct {
 
 func (InvoiceItems) TableName() string {
 	return "invoice_items"
+}
+
+// Feature model
+type Feature struct {
+	ID        string    `json:"id" gorm:"primaryKey"`
+	Name      string    `json:"name" gorm:"column:name"`
+	CreatedAt time.Time `json:"createdAt" gorm:"column:createdAt;default:current_timestamp"`
+	UpdatedAt time.Time `json:"updatedAt" gorm:"column:updatedAt"`
+}
+
+func (f *Feature) TableName() string {
+	return "features"
+}
+
+func (f *Feature) BeforeCreate(tx *gorm.DB) error {
+	if f.ID == "" {
+		f.ID = uuid.New().String()
+	}
+	return nil
+}
+
+// RolePermission model
+type RolePermission struct {
+	ID        string    `json:"id" gorm:"primaryKey"`
+	RoleID    string    `json:"role_id" gorm:"column:role_id"`
+	FeatureID string    `json:"feature_id" gorm:"column:feature_id"`
+	CanAccess int       `json:"can_access" gorm:"column:can_access"`
+	CreatedAt time.Time `json:"createdAt" gorm:"column:createdAt;default:current_timestamp"`
+	UpdatedAt time.Time `json:"updatedAt" gorm:"column:updatedAt"`
+}
+
+func (rp *RolePermission) TableName() string {
+	return "role_permissions"
+}
+
+func (rp *RolePermission) BeforeCreate(tx *gorm.DB) error {
+	if rp.ID == "" {
+		rp.ID = uuid.New().String()
+	}
+	return nil
 }
 
 // Removed BeforeCreate hook to prevent UUID conflicts

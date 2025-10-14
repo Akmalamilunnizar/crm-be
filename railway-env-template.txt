@@ -1,0 +1,26 @@
+# Railway Environment Variables Template
+# Copy these to Railway dashboard → Variables tab
+
+# Database Configuration
+DB_HOST=localhost
+DB_USER=cpses_meqts05zck
+DB_PASSWORD=your_database_password
+DB_NAME=menarane_lilly
+DB_PORT=3306
+
+# MikroTik Configuration
+MIKROTIK_HOST=10.10.9.203
+MIKROTIK_PORT=22
+MIKROTIK_USERNAME=rnd
+MIKROTIK_PASSWORD=rnd@123
+
+# Server Configuration
+PORT=3001
+NODE_ENV=production
+
+# WhatsApp Configuration (Optional - only if you use WhatsApp features)
+WHATSAPP_API_URL=https://graph.facebook.com/v18.0
+WHATSAPP_API_TOKEN=your_whatsapp_token
+WHATSAPP_PHONE_ID=your_phone_id
+WHATSAPP_WEBHOOK_VERIFY_TOKEN=your_webhook_token
+WHATSAPP_APP_SECRET=your_app_secret

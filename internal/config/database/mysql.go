@@ -21,9 +21,9 @@ func DatabaseMysql() *gorm.DB {
 	// Try Railway MySQL variables first, fallback to individual variables
 	mysqlURL := os.Getenv("MYSQL_URL")
 	log.Println("MYSQL_URL:", mysqlURL)
-	
+
 	var dsn string
-	
+
 	if mysqlURL != "" && !strings.Contains(mysqlURL, "switchyard.proxy.rlwy.net") {
 		// Use Railway MySQL URL only if it's not the external proxy
 		dsn = mysqlURL

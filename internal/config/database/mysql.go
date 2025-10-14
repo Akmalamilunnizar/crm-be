@@ -19,6 +19,8 @@ func DatabaseMysql() *gorm.DB {
 
 	// Try Railway MySQL variables first, fallback to individual variables
 	mysqlURL := os.Getenv("MYSQL_URL")
+	log.Println("MYSQL_URL:", mysqlURL)
+	
 	var dsn string
 	
 	if mysqlURL != "" {
@@ -34,17 +36,17 @@ func DatabaseMysql() *gorm.DB {
 		if dbHost == "" {
 			dbHost = "localhost"
 		}
-		
+
 		dbUser := os.Getenv("MYSQL_USER")
 		if dbUser == "" {
 			dbUser = os.Getenv("DB_USER")
 		}
-		
+
 		dbPassword := os.Getenv("MYSQL_PASSWORD")
 		if dbPassword == "" {
 			dbPassword = os.Getenv("DB_PASSWORD")
 		}
-		
+
 		dbName := os.Getenv("MYSQL_DATABASE")
 		if dbName == "" {
 			dbName = os.Getenv("DB_NAME")
@@ -52,7 +54,7 @@ func DatabaseMysql() *gorm.DB {
 		if dbName == "" {
 			dbName = "iqgncnzy_skripsi" // Default to your imported schema
 		}
-		
+
 		dbPort := os.Getenv("MYSQL_PORT")
 		if dbPort == "" {
 			dbPort = os.Getenv("DB_PORT")
@@ -63,6 +65,7 @@ func DatabaseMysql() *gorm.DB {
 
 		// Create DSN from individual variables
 		dsn = dbUser + ":" + dbPassword + "@tcp(" + dbHost + ":" + dbPort + ")/" + dbName + "?charset=utf8mb4&parseTime=True&loc=Local"
+		log.Println("Using individual variables - Host:", dbHost, "Port:", dbPort, "Database:", dbName)
 		log.Println("Connecting to database:", dbHost+":"+dbPort)
 	}
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})

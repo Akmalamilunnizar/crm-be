@@ -3,6 +3,7 @@ package database
 import (
 	"log"
 	"os"
+	"strings"
 
 	"github.com/joho/godotenv"
 	"gorm.io/driver/mysql"
@@ -23,8 +24,8 @@ func DatabaseMysql() *gorm.DB {
 	
 	var dsn string
 	
-	if mysqlURL != "" {
-		// Use Railway MySQL URL
+	if mysqlURL != "" && !strings.Contains(mysqlURL, "switchyard.proxy.rlwy.net") {
+		// Use Railway MySQL URL only if it's not the external proxy
 		dsn = mysqlURL
 		log.Println("Using Railway MySQL URL")
 	} else {

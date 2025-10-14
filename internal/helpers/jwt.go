@@ -27,11 +27,11 @@ func CreateToken(username string, role string) (string, error) {
 
 	// Create a new JWT token with claims
 	claims := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"sub": username,                         // Subject (user identifier)
-		"iss": "lillyapps",                      // Issuer
-		"aud": role,                             // Audience (user role)
+		"sub": username,                             // Subject (user identifier)
+		"iss": "lillyapps",                          // Issuer
+		"aud": role,                                 // Audience (user role)
 		"exp": time.Now().Add(2 * time.Hour).Unix(), // Expiration time
-		"iat": time.Now().Unix(),                // Issued at
+		"iat": time.Now().Unix(),                    // Issued at
 	})
 
 	tokenString, err := claims.SignedString(secretKey)

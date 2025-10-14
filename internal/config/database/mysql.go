@@ -49,6 +49,9 @@ func DatabaseMysql() *gorm.DB {
 		if dbName == "" {
 			dbName = os.Getenv("DB_NAME")
 		}
+		if dbName == "" {
+			dbName = "iqgncnzy_skripsi" // Default to your imported schema
+		}
 		
 		dbPort := os.Getenv("MYSQL_PORT")
 		if dbPort == "" {

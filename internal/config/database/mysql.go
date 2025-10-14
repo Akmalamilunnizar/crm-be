@@ -13,9 +13,10 @@ import (
 var dbmysql *gorm.DB
 
 func DatabaseMysql() *gorm.DB {
+	// Try to load .env file, but don't fail if it doesn't exist (for production)
 	err := godotenv.Load()
 	if err != nil {
-		log.Fatal("Error loading .env file")
+		log.Println("No .env file found, using environment variables")
 	}
 
 	// Try Railway MySQL variables first, fallback to individual variables

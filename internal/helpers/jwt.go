@@ -17,9 +17,10 @@ import (
 
 // Function to create JWT tokens with claims
 func CreateToken(username string, role string) (string, error) {
+	// Try to load .env file, but don't fail if it doesn't exist (for production)
 	err := godotenv.Load()
 	if err != nil {
-		log.Fatal("Error loading .env file")
+		log.Println("No .env file found, using environment variables")
 	}
 	// Add a new global variable for the secret key
 	secretKey := []byte(os.Getenv("JWT_SECRET_KEY"))
@@ -44,9 +45,10 @@ func CreateToken(username string, role string) (string, error) {
 
 // Function to verify JWT tokens
 func VerifyToken(c *fiber.Ctx) error {
+	// Try to load .env file, but don't fail if it doesn't exist (for production)
 	err := godotenv.Load()
 	if err != nil {
-		log.Fatal("Error loading .env file")
+		log.Println("No .env file found, using environment variables")
 	}
 	// Add a new global variable for the secret key
 	secretKey := []byte(os.Getenv("JWT_SECRET_KEY"))

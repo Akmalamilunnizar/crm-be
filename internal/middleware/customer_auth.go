@@ -17,9 +17,10 @@ import (
 
 // CustomerAuthMiddleware validates JWT tokens for customer access
 func CustomerAuthMiddleware(c *fiber.Ctx) error {
+	// Try to load .env file, but don't fail if it doesn't exist (for production)
 	err := godotenv.Load()
 	if err != nil {
-		log.Fatal("Error loading .env file")
+		log.Println("No .env file found, using environment variables")
 	}
 
 	secretKey := []byte(os.Getenv("JWT_SECRET_KEY"))
@@ -89,9 +90,10 @@ func CustomerAuthMiddleware(c *fiber.Ctx) error {
 
 // AdminAuthMiddleware validates JWT tokens for admin/staff access
 func AdminAuthMiddleware(c *fiber.Ctx) error {
+	// Try to load .env file, but don't fail if it doesn't exist (for production)
 	err := godotenv.Load()
 	if err != nil {
-		log.Fatal("Error loading .env file")
+		log.Println("No .env file found, using environment variables")
 	}
 
 	secretKey := []byte(os.Getenv("JWT_SECRET_KEY"))

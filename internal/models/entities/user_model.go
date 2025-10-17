@@ -122,25 +122,25 @@ func (c *Company) BeforeCreate(tx *gorm.DB) error {
 
 // Customer model
 type Customer struct {
-	ID                    string    `json:"id" gorm:"primaryKey"`
-	Address               string    `gorm:"column:address" json:"address"`
-	AreaID                string    `gorm:"column:area_id" json:"area_id"`
-	Area                  *Areas    `gorm:"foreignKey:AreaID" json:"area"`
-	Latitude              float64   `gorm:"column:latitude" json:"latitude"`
-	Longitude             float64   `gorm:"column:longitude" json:"longitude"`
-	Name                  string    `gorm:"column:name" json:"name"`
-	Alias                 string    `gorm:"column:alias" json:"alias"`
-	Phone                 string    `gorm:"column:phone" json:"phone"`
-	Password              string    `gorm:"column:password" json:"password"`
-	ServiceRequestDate    string    `gorm:"column:service_request_date;type:date" json:"service_request_date"`
-	ProposedPackage       *string   `gorm:"column:proposed_package" json:"proposed_package"`
-	CreatedAt             time.Time `gorm:"column:createdAt;autoCreateTime" json:"created_at"`
-	UpdatedAt             time.Time `gorm:"column:updatedAt;autoUpdateTime" json:"updated_at"`
-	InstallationDate      time.Time `gorm:"column:installation_date;type:date" json:"installation_date"`
-	SalesRepresentativeID *string   `gorm:"column:sales_representative_id" json:"sales_representative_id"`
-	SalesRepresentative   *User     `gorm:"foreignKey:SalesRepresentativeID" json:"sales_representative"`
-	CompanyID             *string   `gorm:"column:company_id" json:"company_id"`
-	Company               *Company  `gorm:"foreignKey:CompanyID" json:"company"`
+	ID                    string     `json:"id" gorm:"primaryKey"`
+	Address               string     `gorm:"column:address" json:"address"`
+	AreaID                string     `gorm:"column:area_id" json:"area_id"`
+	Area                  *Areas     `gorm:"foreignKey:AreaID" json:"area"`
+	Latitude              float64    `gorm:"column:latitude" json:"latitude"`
+	Longitude             float64    `gorm:"column:longitude" json:"longitude"`
+	Name                  string     `gorm:"column:name" json:"name"`
+	Alias                 string     `gorm:"column:alias" json:"alias"`
+	Phone                 string     `gorm:"column:phone" json:"phone"`
+	Password              string     `gorm:"column:password" json:"password"`
+	ServiceRequestDate    string     `gorm:"column:service_request_date;type:date" json:"service_request_date"`
+	CreatedAt             time.Time  `gorm:"column:createdAt;autoCreateTime" json:"created_at"`
+	UpdatedAt             time.Time  `gorm:"column:updatedAt;autoUpdateTime" json:"updated_at"`
+	DeletedAt             *time.Time `gorm:"column:deleted_at" json:"deleted_at,omitempty"`
+	InstallationDate      time.Time  `gorm:"column:installation_date;type:date" json:"installation_date"`
+	SalesRepresentativeID *string    `gorm:"column:sales_representative_id" json:"sales_representative_id"`
+	SalesRepresentative   *User      `gorm:"foreignKey:SalesRepresentativeID" json:"sales_representative"`
+	CompanyID             *string    `gorm:"column:company_id" json:"company_id"`
+	Company               *Company   `gorm:"foreignKey:CompanyID" json:"company"`
 
 	// One-to-Many relationship with CustomerInstallation
 	InstallationReports []CustomerInstallation `gorm:"foreignKey:CustomerID;references:ID" json:"installation_reports,omitempty"`
@@ -329,11 +329,11 @@ func (u *User) BeforeCreate(tx *gorm.DB) error {
 }
 
 type Role struct {
-	ID              string            `json:"id" gorm:"primaryKey"`
-	Name            string            `json:"name" gorm:"default:null"`
-	RolePermissions []RolePermission  `json:"role_permissions" gorm:"foreignKey:RoleID"`
-	CreatedAt       time.Time         `json:"createdAt" gorm:"default:current_timestamp; column:createdAt"`
-	UpdatedAt       time.Time         `json:"updatedAt" gorm:"column:updatedAt"`
+	ID              string           `json:"id" gorm:"primaryKey"`
+	Name            string           `json:"name" gorm:"default:null"`
+	RolePermissions []RolePermission `json:"role_permissions" gorm:"foreignKey:RoleID"`
+	CreatedAt       time.Time        `json:"createdAt" gorm:"default:current_timestamp; column:createdAt"`
+	UpdatedAt       time.Time        `json:"updatedAt" gorm:"column:updatedAt"`
 }
 
 func (u *Role) TableName() string {

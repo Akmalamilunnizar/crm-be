@@ -25,27 +25,25 @@ const (
 )
 
 type TroubleTicket struct {
-	ID              uint64  `gorm:"primaryKey;autoIncrement" json:"id"`
-	CustomerID      string  `gorm:"type:varchar(191)" json:"customer_id"`
-	Type            *string `gorm:"type:varchar(191)" json:"type,omitempty"`
-	Title           string  `gorm:"type:longtext" json:"title"`
-	Description     *string `gorm:"type:text" json:"description,omitempty"`
-	Status          string  `gorm:"type:varchar(191);default:'unfinished'" json:"status"`
-	AssignedTo      *string `gorm:"type:varchar(191)" json:"assigned_to,omitempty"`
-	CurrentAssignee string  `gorm:"column:current_assignee_role;type:varchar(191)" json:"current_assignee_role"`
-	CustomerNote    *string `gorm:"type:text" json:"customer_note,omitempty"`
-	NOCNote         *string `gorm:"type:text" json:"noc_note,omitempty"`
-	TechnicianNote  *string `gorm:"type:text" json:"technician_note,omitempty"`
+	ID               uint64                `gorm:"primaryKey;autoIncrement" json:"id"`
+	CustomerID       string                `gorm:"type:varchar(191)" json:"customer_id"`
+	Type             *string               `gorm:"type:varchar(191)" json:"type,omitempty"`
+	Title            string                `gorm:"type:longtext" json:"title"`
+	Description      *string               `gorm:"type:text" json:"description,omitempty"`
+	Status           string                `gorm:"type:varchar(191);default:'unfinished'" json:"status"`
+	ClassificationID string                `gorm:"column:classification_id;type:varchar(20);default:'gangguan'" json:"classification_id"` // Reference to ticket_classification
+	Classification   *TicketClassification `gorm:"foreignKey:ClassificationID;references:ID" json:"classification,omitempty"`
+	AssignedTo       *string               `gorm:"type:varchar(191)" json:"assigned_to,omitempty"`
+	CurrentAssignee  string                `gorm:"column:current_assignee_role;type:varchar(191)" json:"current_assignee_role"`
+	CustomerNote     *string               `gorm:"type:text" json:"customer_note,omitempty"`
+	NOCNote          *string               `gorm:"type:text" json:"noc_note,omitempty"`
+	TechnicianNote   *string               `gorm:"type:text" json:"technician_note,omitempty"`
 
 	// Image fields
 	ImgCS     *string `gorm:"type:varchar(60)" json:"img_cs,omitempty"`
 	ImgNOC    *string `gorm:"type:varchar(60)" json:"img_noc,omitempty"`
 	ImgTechBF *string `gorm:"type:varchar(60)" json:"img_tech_bf,omitempty"`
 	ImgTechAF *string `gorm:"type:varchar(60)" json:"img_tech_af,omitempty"`
-
-	// CS verification fields
-	VerifiedByCS *bool      `gorm:"type:tinyint(1);default:0" json:"verified_by_cs,omitempty"`
-	VerifiedAt   *time.Time `gorm:"type:datetime" json:"verified_at,omitempty"`
 
 	// Technician completion tracking
 	TechnicianCompleted *bool `gorm:"type:tinyint(1);default:0" json:"technician_completed,omitempty"`
@@ -69,29 +67,69 @@ type TroubleTicket struct {
 
 func (TroubleTicket) TableName() string { return "trouble_tickets" }
 
-// GetClassification returns the ticket classification based on verified_by_cs
-// 1 = Information (Info), 0 = Trouble (Gangguan)
-func (t *TroubleTicket) GetClassification() string {
-	if t.VerifiedByCS != nil && *t.VerifiedByCS {
-		return "info"
+// GetClassificationID returns the ticket classification ID
+// Returns: gangguan, psb, lainnya, or dismantle
+func (t *TroubleTicket) GetClassificationID() string {
+	if t.ClassificationID != "" {
+		return t.ClassificationID
 	}
-	return "gangguan"
+	// Default to gangguan if not set
+	return ClassificationGangguan
 }
 
-// SetClassification sets the ticket classification
-// "info" = 1, "gangguan" = 0
-func (t *TroubleTicket) SetClassification(classification string) {
-	switch classification {
-	case "info":
-		verified := true
-		t.VerifiedByCS = &verified
-	case "gangguan":
-		verified := false
-		t.VerifiedByCS = &verified
-	default:
-		verified := false
-		t.VerifiedByCS = &verified
+// SetClassificationID sets the ticket classification ID
+// Valid values: gangguan, psb, lainnya, dismantle
+func (t *TroubleTicket) SetClassificationID(classificationID string) {
+	// Validate classification
+	validClassifications := map[string]bool{
+		ClassificationGangguan:  true,
+		ClassificationPSB:       true,
+		ClassificationLainnya:   true,
+		ClassificationDismantle: true,
 	}
+
+	if validClassifications[classificationID] {
+		t.ClassificationID = classificationID
+	} else {
+		// Default to gangguan if invalid
+		t.ClassificationID = ClassificationGangguan
+	}
+}
+
+// SetClassification is a legacy method for backward compatibility
+// Maps old classification values to new classification system
+func (t *TroubleTicket) SetClassification(classification string) {
+	// Map legacy values to new classification system
+	switch classification {
+	case "info", "information":
+		// Legacy "info" classification maps to "lainnya" in new system
+		t.SetClassificationID(ClassificationLainnya)
+	case "gangguan", "trouble":
+		t.SetClassificationID(ClassificationGangguan)
+	case "psb":
+		t.SetClassificationID(ClassificationPSB)
+	case "dismantle":
+		t.SetClassificationID(ClassificationDismantle)
+	case "lainnya":
+		t.SetClassificationID(ClassificationLainnya)
+	default:
+		// Default to gangguan for unknown values
+		t.SetClassificationID(ClassificationGangguan)
+	}
+}
+
+// ShouldShowNOCAction returns whether NOC action button should be visible for this ticket
+func (t *TroubleTicket) ShouldShowNOCAction() bool {
+	// Only show NOC action for "gangguan" classification
+	// Hide for: psb, lainnya, dismantle
+	return t.ClassificationID == ClassificationGangguan
+}
+
+// ShouldShowInCards returns whether this ticket should be displayed in dashboard cards
+func (t *TroubleTicket) ShouldShowInCards() bool {
+	// Show in cards: gangguan, psb, dismantle, lainnya
+	// All classifications show in cards now
+	return true
 }
 
 // Enforce sane defaults before insert regardless of caller
@@ -99,6 +137,12 @@ func (t *TroubleTicket) BeforeCreate(tx *gorm.DB) (err error) {
 	if t.Status == "" || t.Status == "received" {
 		t.Status = "unfinished"
 	}
+
+	// Set default classification if not provided
+	if t.ClassificationID == "" {
+		t.ClassificationID = ClassificationGangguan
+	}
+
 	// Note: CurrentAssignee will be set by the service layer using dynamic role lookup
 	// This hook is kept for other defaults but role assignment is handled in service
 	return nil

@@ -35,13 +35,14 @@ func (h *Handler) List(c *fiber.Ctx) error {
 
 func (h *Handler) Create(c *fiber.Ctx) error {
 	var in struct {
-		CustomerID     string  `json:"customer_id"`
-		Title          string  `json:"title"`
-		Description    *string `json:"description"`
-		Type           *string `json:"type"`
-		AutoClassify   bool    `json:"auto_classify"`  // New field for auto-classification
-		Classification string  `json:"classification"` // "info" or "gangguan"
-		ImgCS          *string `json:"img_cs"`         // Optional: CS image filename from upload API
+		CustomerID       string  `json:"customer_id"`
+		Title            string  `json:"title"`
+		Description      *string `json:"description"`
+		Type             *string `json:"type"`
+		AutoClassify     bool    `json:"auto_classify"`     // New field for auto-classification
+		Classification   string  `json:"classification"`    // Legacy field for backward compatibility
+		ClassificationID string  `json:"classification_id"` // New field for classification system
+		ImgCS            *string `json:"img_cs"`            // Optional: CS image filename from upload API
 	}
 	if err := c.BodyParser(&in); err != nil {
 		return helpers.ResponseUtils(c, 400, false, err.Error(), nil)
@@ -92,8 +93,12 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 		}
 	}
 
+	// Use new classification_id field, fallback to legacy classification field
+	classification := in.ClassificationID
+	if classification == "" {
+		classification = in.Classification
+	}
 	// Default to "gangguan" if no classification provided
-	classification := in.Classification
 	if classification == "" {
 		classification = "gangguan"
 	}

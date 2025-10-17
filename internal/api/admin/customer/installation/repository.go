@@ -27,7 +27,7 @@ func NewAdminCustomerInstallationRepository(db *gorm.DB) AdminCustomerInstallati
 
 func (r AdminCustomerInstallationRepositoryStruct) FindAdminCustomerInstallationRepository() ([]entities.CustomerInstallation, error) {
 	customerInstallations := []entities.CustomerInstallation{}
-	tx := r.db.Preload("Customer").Preload("Technician").Preload("Images").Find(&customerInstallations)
+	tx := r.db.Preload("Customer", "deleted_at IS NULL").Preload("Technician").Preload("Images").Find(&customerInstallations)
 
 	if tx.Error != nil {
 		return customerInstallations, tx.Error
@@ -37,7 +37,7 @@ func (r AdminCustomerInstallationRepositoryStruct) FindAdminCustomerInstallation
 }
 func (r AdminCustomerInstallationRepositoryStruct) FindByIdAdminCustomerInstallationRepository(request IdAdminCustomerInstallationRequest) (entities.CustomerInstallation, error) {
 	customer := entities.CustomerInstallation{}
-	tx := r.db.Preload("Customer").Preload("Technician").Preload("Images").Find(&customer, "id = ?", request.Id)
+	tx := r.db.Preload("Customer", "deleted_at IS NULL").Preload("Technician").Preload("Images").Find(&customer, "id = ?", request.Id)
 	if tx.Error != nil {
 		return customer, tx.Error
 	}
@@ -144,7 +144,7 @@ func (r AdminCustomerInstallationRepositoryStruct) GetInstallationReportsByCusto
 	reports := []entities.CustomerInstallation{}
 
 	// Get all installation reports for the specified customer with related data
-	tx := r.db.Preload("Customer").Preload("Technician").Preload("Images").
+	tx := r.db.Preload("Customer", "deleted_at IS NULL").Preload("Technician").Preload("Images").
 		Where("customer_id = ?", customerId).
 		Order("created_at DESC").
 		Find(&reports)

@@ -13,7 +13,7 @@ type AdminDashboardServiceInterface interface {
 	GetTotalIncome() (int64, error)
 	GetTotalExpenses() (int64, error)
 	GetTotalCustomer() (int64, error)
-	GetDashboardStats() (map[string]interface{}, error)
+	GetDashboardStats(start *time.Time, end *time.Time) (map[string]interface{}, error)
 	GetRecentInvoices() ([]map[string]interface{}, error)
 	GetRecentTransactions() ([]map[string]interface{}, error)
 	GetCustomerGrowth(start *time.Time, end *time.Time) (map[string]interface{}, error)
@@ -94,8 +94,8 @@ func (s AdminDashboardServiceStruct) GetTotalCustomer() (int64, error) {
 	return data, nil
 }
 
-func (s AdminDashboardServiceStruct) GetDashboardStats() (map[string]interface{}, error) {
-	data, err := s.repository.GetDashboardStats()
+func (s AdminDashboardServiceStruct) GetDashboardStats(start *time.Time, end *time.Time) (map[string]interface{}, error) {
+	data, err := s.repository.GetDashboardStats(start, end)
 	if err != nil {
 		return nil, err
 	}

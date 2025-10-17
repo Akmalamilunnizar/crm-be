@@ -40,7 +40,7 @@ func (r AdminInstallationReportRepositoryStruct) FindCompleteInstallationReportR
 
 	var installation entities.CustomerInstallation
 
-	err := r.db.Preload("Customer").
+	err := r.db.Preload("Customer", "deleted_at IS NULL").
 		Preload("Technician").
 		Preload("Images").
 		Preload("AssetTransactions").
@@ -77,7 +77,7 @@ func (r AdminInstallationReportRepositoryStruct) FindCompleteInstallationReportW
 
 	var installation entities.CustomerInstallation
 
-	err := r.db.Preload("Customer").
+	err := r.db.Preload("Customer", "deleted_at IS NULL").
 		Preload("Technician").
 		Preload("Images").
 		Preload("AssetTransactions").
@@ -455,6 +455,7 @@ func (r AdminInstallationReportRepositoryStruct) FindInstallationSummaryPerCusto
 			END) as terlambat_count
 		FROM customer c
 		LEFT JOIN customer_installations ci ON c.id = ci.customer_id
+		WHERE c.deleted_at IS NULL
 		GROUP BY c.id, c.name, c.address, c.phone, c.service_request_date
 		ORDER BY total_installations DESC
 	`
@@ -507,7 +508,7 @@ func (r AdminInstallationReportRepositoryStruct) FindInstallationAssetReportRepo
 			GROUP_CONCAT(DISTINCT CASE WHEN at.transaction_type = 'out' THEN CONCAT(a.brand, ' ', a.model, ' (', at.quantity, ' pcs)') END SEPARATOR ', ') as assets_out_details,
 			GROUP_CONCAT(DISTINCT CASE WHEN at.transaction_type = 'in' THEN CONCAT(a.brand, ' ', a.model, ' (', at.quantity, ' pcs)') END SEPARATOR ', ') as assets_in_details
 		FROM customer_installations ci
-		LEFT JOIN customer c ON ci.customer_id = c.id
+		LEFT JOIN customer c ON ci.customer_id = c.id AND c.deleted_at IS NULL
 		LEFT JOIN asset_transactions at ON ci.id = at.customer_installation_id
 		LEFT JOIN assets a ON at.asset_id = a.id
 		WHERE ci.id = ?
@@ -830,7 +831,7 @@ func (r AdminInstallationReportRepositoryStruct) UpdateCompleteInstallationRepor
 	}()
 
 	// Find existing installation
-	if err := tx.Preload("Customer").Preload("Technician").Preload("Images").First(&installation, "id = ?", installationId).Error; err != nil {
+	if err := tx.Preload("Customer", "deleted_at IS NULL").Preload("Technician").Preload("Images").First(&installation, "id = ?", installationId).Error; err != nil {
 		tx.Rollback()
 		return installation, err
 	}

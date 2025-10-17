@@ -15,8 +15,6 @@ type CustomerDTO struct {
 	Name                  string    `json:"name"`
 	Phone                 string    `json:"phone"`
 	ServiceRequestDate    string    `json:"service_request_date"`
-	ProposedPackage       string    `json:"proposed_package"`
-	BandwidthCapacity     string    `json:"bandwidth_capacity"`
 	CreatedAt             time.Time `json:"created_at"`
 	UpdatedAt             time.Time `json:"updated_at"`
 	InstallationDate      time.Time `json:"installation_date"`

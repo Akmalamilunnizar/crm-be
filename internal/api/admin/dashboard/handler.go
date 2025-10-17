@@ -146,10 +146,76 @@ func (h AdminDashboardHandlerStruct) CardReportCash(c *fiber.Ctx) error {
 }
 
 func (h AdminDashboardHandlerStruct) GetDashboardStats(c *fiber.Ctx) error {
-	data, err := h.service.GetDashboardStats()
+	fmt.Printf("\n🔍 [DEBUG] ===== GetDashboardStats Handler Called =====\n")
+
+	// Parse filter parameters
+	days := c.QueryInt("days", 0)
+	yStart := c.QueryInt("year_start", 0)
+	yEnd := c.QueryInt("year_end", 0)
+	year := c.QueryInt("year", 0)
+	month := c.QueryInt("month", 0)
+	dateFrom := c.Query("date_from", "")
+	dateTo := c.Query("date_to", "")
+
+	fmt.Printf("🔍 [DEBUG] Query params - days: %d, year: %d, month: %d, year_start: %d, year_end: %d\n", days, year, month, yStart, yEnd)
+	fmt.Printf("🔍 [DEBUG] Query params - date_from: %s, date_to: %s\n", dateFrom, dateTo)
+
+	var startPtr *time.Time
+	var endPtr *time.Time
+
+	// Handle different filter types
+	if dateFrom != "" && dateTo != "" {
+		// Custom date range
+		start, err := time.Parse("2006-01-02", dateFrom)
+		if err == nil {
+			startPtr = &start
+		}
+		end, err := time.Parse("2006-01-02", dateTo)
+		if err == nil {
+			endPtr = &end
+		}
+	} else if year != 0 && month != 0 {
+		// Monthly filter
+		start := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.UTC)
+		end := start.AddDate(0, 1, -1)
+		startPtr = &start
+		endPtr = &end
+	} else if year != 0 {
+		// Yearly filter
+		start := time.Date(year, 1, 1, 0, 0, 0, 0, time.UTC)
+		end := time.Date(year, 12, 31, 23, 59, 59, 0, time.UTC)
+		startPtr = &start
+		endPtr = &end
+	} else if yStart != 0 && yEnd != 0 {
+		// Year range
+		startYear := yStart
+		endYear := yEnd
+		if yStart > yEnd {
+			startYear = yEnd
+			endYear = yStart
+		}
+		start := time.Date(startYear, 1, 1, 0, 0, 0, 0, time.UTC)
+		end := time.Date(endYear, 12, 31, 23, 59, 59, 0, time.UTC)
+		startPtr = &start
+		endPtr = &end
+	} else if days > 0 {
+		// Days range
+		end := time.Now().Truncate(24 * time.Hour)
+		start := end.AddDate(0, 0, -days+1)
+		startPtr = &start
+		endPtr = &end
+	}
+
+	fmt.Printf("🔍 [DEBUG] Calling service.GetDashboardStats with start: %v, end: %v\n", startPtr, endPtr)
+
+	data, err := h.service.GetDashboardStats(startPtr, endPtr)
 	if err != nil {
+		fmt.Printf("❌ [ERROR] Service returned error: %v\n", err)
 		return helpers.ResponseUtils(c, fiber.StatusBadRequest, false, "Failed Get Dashboard Stats", nil)
 	}
+
+	fmt.Printf("✅ [DEBUG] GetDashboardStats completed successfully, returning data\n")
+	fmt.Printf("📊 [DEBUG] Response data: %+v\n", data)
 
 	return helpers.ResponseUtils(c, fiber.StatusOK, true, "Success Get Dashboard Stats", data)
 }

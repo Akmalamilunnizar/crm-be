@@ -9,7 +9,6 @@ type CreateAdminCustomerRequest struct {
 	Latitude              float64 `json:"latitude" validate:"required"`
 	Longitude             float64 `json:"longitude" validate:"required"`
 	ServiceRequestDate    string  `json:"service_request_date" validate:"required"`
-	ProposedPackage       string  `json:"proposed_package" validate:"required"`
 	SalesRepresentativeID *string `json:"sales_representative_id"`
 	CompanyID             *string `json:"company_id"`
 }

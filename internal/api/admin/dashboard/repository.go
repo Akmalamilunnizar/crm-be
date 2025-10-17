@@ -18,7 +18,7 @@ type AdminDashboardRepositoryInterface interface {
 	GetTotalIncome() (int64, error)
 	GetTotalExpenses() (int64, error)
 	GetTotalCustomer() (int64, error)
-	GetDashboardStats() (map[string]interface{}, error)
+	GetDashboardStats(start *time.Time, end *time.Time) (map[string]interface{}, error)
 	GetRecentInvoices() ([]map[string]interface{}, error)
 	GetRecentTransactions() ([]map[string]interface{}, error)
 	GetCustomerGrowth(start *time.Time, end *time.Time) (map[string]interface{}, error)
@@ -55,7 +55,7 @@ type AreaCount struct {
 
 func (r AdminDashboardRepositoryStruct) CardCustomer() (map[string]interface{}, error) {
 	var total int64
-	if err := r.db.Model(&entities.Customer{}).Count(&total).Error; err != nil {
+	if err := r.db.Model(&entities.Customer{}).Where("deleted_at IS NULL").Count(&total).Error; err != nil {
 		return nil, err
 	}
 
@@ -103,7 +103,7 @@ func (r AdminDashboardRepositoryStruct) CardCustomer() (map[string]interface{}, 
 
 func (r AdminDashboardRepositoryStruct) CardPacketPopular() (map[string]interface{}, error) {
 	var total int64
-	if err := r.db.Model(&entities.Customer{}).Count(&total).Error; err != nil {
+	if err := r.db.Model(&entities.Customer{}).Where("deleted_at IS NULL").Count(&total).Error; err != nil {
 		return nil, err
 	}
 
@@ -131,13 +131,14 @@ func (r AdminDashboardRepositoryStruct) CardPacketPopular() (map[string]interfac
 
 func (r AdminDashboardRepositoryStruct) CardAreaPopular() (map[string]interface{}, error) {
 	var total int64
-	if err := r.db.Model(&entities.Customer{}).Count(&total).Error; err != nil {
+	if err := r.db.Model(&entities.Customer{}).Where("deleted_at IS NULL").Count(&total).Error; err != nil {
 		return nil, err
 	}
 
 	var results []AreaCount
 	err := r.db.
 		Model(&entities.Customer{}).
+		Where("deleted_at IS NULL").
 		Joins("JOIN areas ON areas.id = customer.area_id").
 		Select("COUNT(*) as count, areas.name_city,areas.name_subdistrict,areas.name_village").
 		Group("areas.id").
@@ -225,61 +226,97 @@ func (r AdminDashboardRepositoryStruct) GetTotalExpenses() (int64, error) {
 
 func (r AdminDashboardRepositoryStruct) GetTotalCustomer() (int64, error) {
 	var total int64
-	if err := r.db.Model(&entities.Customer{}).Count(&total).Error; err != nil {
+	if err := r.db.Model(&entities.Customer{}).Where("deleted_at IS NULL").Count(&total).Error; err != nil {
 		return 0, err
 	}
 
 	return total, nil
 }
+func (r AdminDashboardRepositoryStruct) GetDashboardStats(start *time.Time, end *time.Time) (map[string]interface{}, error) {
+	fmt.Printf("🔍 [DEBUG] GetDashboardStats called with start: %v, end: %v\n", start, end)
 
-func (r AdminDashboardRepositoryStruct) GetDashboardStats() (map[string]interface{}, error) {
-	// Get total customers
+	// Get total customers (filtered by creation date if date range provided)
 	var totalCustomers int64
-	if err := r.db.Model(&entities.Customer{}).Count(&totalCustomers).Error; err != nil {
+	customerQuery := r.db.Model(&entities.Customer{}).Where("deleted_at IS NULL")
+	if start != nil && end != nil {
+		fmt.Printf("🔍 [DEBUG] Filtering customers by createdAt BETWEEN %v AND %v\n", start, end)
+		customerQuery = customerQuery.Where("createdAt BETWEEN ? AND ?", start, end)
+	}
+	if err := customerQuery.Count(&totalCustomers).Error; err != nil {
+		fmt.Printf("❌ [ERROR] Failed to count customers: %v\n", err)
 		return nil, err
 	}
+	fmt.Printf("✅ [DEBUG] Total customers: %d\n", totalCustomers)
 
-	// Get total income
+	// Get total income (filtered by transaction date if date range provided)
 	var totalIncome int64
-	if err := r.db.Model(&entities.Transaction{}).
-		Where("type_in_out = ?", entities.TransactionsTypeInOutIn).
-		Select("COALESCE(SUM(amount), 0)").
-		Scan(&totalIncome).Error; err != nil {
+	incomeQuery := r.db.Model(&entities.Transaction{}).
+		Where("type_in_out = ?", entities.TransactionsTypeInOutIn)
+	if start != nil && end != nil {
+		fmt.Printf("🔍 [DEBUG] Filtering income by date BETWEEN %v AND %v\n", start, end)
+		incomeQuery = incomeQuery.Where("date BETWEEN ? AND ?", start, end)
+	}
+	if err := incomeQuery.Select("COALESCE(SUM(amount), 0)").Scan(&totalIncome).Error; err != nil {
+		fmt.Printf("❌ [ERROR] Failed to get total income: %v\n", err)
 		return nil, err
 	}
+	fmt.Printf("✅ [DEBUG] Total income: %d\n", totalIncome)
 
-	// Get total expenses
+	// Get total expenses (filtered by transaction date if date range provided)
 	var totalExpenses int64
-	if err := r.db.Model(&entities.Transaction{}).
-		Where("type_in_out = ?", entities.TransactionsTypeInOutOut).
-		Select("COALESCE(SUM(amount), 0)").
-		Scan(&totalExpenses).Error; err != nil {
+	expenseQuery := r.db.Model(&entities.Transaction{}).
+		Where("type_in_out = ?", entities.TransactionsTypeInOutOut)
+	if start != nil && end != nil {
+		fmt.Printf("🔍 [DEBUG] Filtering expenses by date BETWEEN %v AND %v\n", start, end)
+		expenseQuery = expenseQuery.Where("date BETWEEN ? AND ?", start, end)
+	}
+	if err := expenseQuery.Select("COALESCE(SUM(amount), 0)").Scan(&totalExpenses).Error; err != nil {
+		fmt.Printf("❌ [ERROR] Failed to get total expenses: %v\n", err)
 		return nil, err
 	}
+	fmt.Printf("✅ [DEBUG] Total expenses: %d\n", totalExpenses)
 
-	// Get total invoices
+	// Get total invoices (filtered by creation date if date range provided)
 	var totalInvoices int64
-	if err := r.db.Model(&entities.Invoice{}).Count(&totalInvoices).Error; err != nil {
+	invoiceQuery := r.db.Model(&entities.Invoice{})
+	if start != nil && end != nil {
+		fmt.Printf("🔍 [DEBUG] Filtering invoices by createdAt BETWEEN %v AND %v\n", start, end)
+		invoiceQuery = invoiceQuery.Where("createdAt BETWEEN ? AND ?", start, end)
+	}
+	if err := invoiceQuery.Count(&totalInvoices).Error; err != nil {
+		fmt.Printf("❌ [ERROR] Failed to count invoices: %v\n", err)
 		return nil, err
 	}
+	fmt.Printf("✅ [DEBUG] Total invoices: %d\n", totalInvoices)
 
-	// Get total areas
+	// Get total areas (not filtered by date as areas are static)
 	var totalAreas int64
 	if err := r.db.Model(&entities.Areas{}).Count(&totalAreas).Error; err != nil {
+		fmt.Printf("❌ [ERROR] Failed to count areas: %v\n", err)
 		return nil, err
 	}
+	fmt.Printf("✅ [DEBUG] Total areas: %d\n", totalAreas)
 
-	// Get total products
+	// Get total products (not filtered by date as products are static)
 	var totalProducts int64
 	if err := r.db.Model(&entities.Products{}).Count(&totalProducts).Error; err != nil {
+		fmt.Printf("❌ [ERROR] Failed to count products: %v\n", err)
 		return nil, err
 	}
+	fmt.Printf("✅ [DEBUG] Total products: %d\n", totalProducts)
 
-	// Get total trouble tickets (count of tickets)
+	// Get total trouble tickets (filtered by creation date if date range provided)
 	var totalTickets int64
-	if err := r.db.Model(&entities.TroubleTicket{}).Count(&totalTickets).Error; err != nil {
+	ticketQuery := r.db.Model(&entities.TroubleTicket{})
+	if start != nil && end != nil {
+		fmt.Printf("🔍 [DEBUG] Filtering tickets by created_at BETWEEN %v AND %v\n", start, end)
+		ticketQuery = ticketQuery.Where("created_at BETWEEN ? AND ?", start, end)
+	}
+	if err := ticketQuery.Count(&totalTickets).Error; err != nil {
+		fmt.Printf("❌ [ERROR] Failed to count tickets: %v\n", err)
 		return nil, err
 	}
+	fmt.Printf("✅ [DEBUG] Total tickets: %d\n", totalTickets)
 
 	// Calculate net worth
 	netWorth := totalIncome - totalExpenses
@@ -294,6 +331,9 @@ func (r AdminDashboardRepositoryStruct) GetDashboardStats() (map[string]interfac
 		"total_products":  totalProducts,
 		"total_tickets":   totalTickets,
 	}
+
+	fmt.Printf("✅ [DEBUG] GetDashboardStats completed successfully\n")
+	fmt.Printf("📊 [DEBUG] Dashboard Stats: %+v\n", data)
 
 	return data, nil
 }
@@ -375,7 +415,7 @@ func (r AdminDashboardRepositoryStruct) GetRecentTransactions() ([]map[string]in
 func (r AdminDashboardRepositoryStruct) GetCustomerGrowth(start *time.Time, end *time.Time) (map[string]interface{}, error) {
 	// First, let's check if customers table exists and has data
 	var totalCustomers int64
-	if err := r.db.Model(&entities.Customer{}).Count(&totalCustomers).Error; err != nil {
+	if err := r.db.Model(&entities.Customer{}).Where("deleted_at IS NULL").Count(&totalCustomers).Error; err != nil {
 		return nil, err
 	}
 
@@ -698,7 +738,7 @@ func (r AdminDashboardRepositoryStruct) GetUnpaidCustomersList() ([]map[string]i
 			COALESCE(t.total_paid, 0) as total_paid,
 			(i.amount - COALESCE(t.total_paid, 0)) as outstanding_amount
 		`).
-		Joins("LEFT JOIN customer c ON i.customer_id = c.id").
+		Joins("LEFT JOIN customer c ON i.customer_id = c.id AND c.deleted_at IS NULL").
 		Joins(`LEFT JOIN (
 			SELECT invoice_id, COALESCE(SUM(amount), 0) as total_paid 
 			FROM transactions 

@@ -27,19 +27,19 @@ func NewAdminNetworkDeviceRepository(db *gorm.DB) AdminNetworkDeviceRepositoryIn
 
 func (r AdminNetworkDeviceRepositoryStruct) GetAllAdminNetworkDeviceRepository() ([]entities.NetworkDevice, error) {
 	var networkDevices []entities.NetworkDevice
-	err := r.db.Preload("Product").Preload("Customer").Find(&networkDevices).Error
+	err := r.db.Preload("Product").Preload("Customer", "deleted_at IS NULL").Find(&networkDevices).Error
 	return networkDevices, err
 }
 
 func (r AdminNetworkDeviceRepositoryStruct) GetByIdAdminNetworkDeviceRepository(request IdNetworkDeviceRequest) (entities.NetworkDevice, error) {
 	var networkDevice entities.NetworkDevice
-	err := r.db.Preload("Product").Preload("Customer").Where("id = ?", request.Id).First(&networkDevice).Error
+	err := r.db.Preload("Product").Preload("Customer", "deleted_at IS NULL").Where("id = ?", request.Id).First(&networkDevice).Error
 	return networkDevice, err
 }
 
 func (r AdminNetworkDeviceRepositoryStruct) GetByCustomerIdAdminNetworkDeviceRepository(customerId string) ([]entities.NetworkDevice, error) {
 	var networkDevices []entities.NetworkDevice
-	err := r.db.Preload("Product").Preload("Customer").Where("customer_id = ?", customerId).Find(&networkDevices).Error
+	err := r.db.Preload("Product").Preload("Customer", "deleted_at IS NULL").Where("customer_id = ?", customerId).Find(&networkDevices).Error
 	return networkDevices, err
 }
 

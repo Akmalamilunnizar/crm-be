@@ -92,14 +92,14 @@ func TicketRoutes(api fiber.Router) {
 	log.Println("TicketRoutes: Creating accumulation handler...")
 	accumulationHandler := NewAccumulationHandler(accumulationService)
 	log.Println("TicketRoutes: Accumulation handler created successfully")
-	
+
 	// Accumulation endpoints
 	g.Get("/:id/similar", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "CUSTOMER_SERVICE", "NOC", "TECHNICIAN"), accumulationHandler.GetSimilarTroubles)
 	g.Post("/accumulation", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "CUSTOMER_SERVICE"), accumulationHandler.UpdateAccumulation)
 	g.Post("/accumulation/auto-detect", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "CUSTOMER_SERVICE"), accumulationHandler.AutoDetectAndGroup)
 	g.Get("/accumulation/stats", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "CUSTOMER_SERVICE", "NOC", "TECHNICIAN"), accumulationHandler.GetAccumulationStats)
 	g.Get("/accumulation/high", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "CUSTOMER_SERVICE", "NOC", "TECHNICIAN"), accumulationHandler.GetHighAccumulationTickets)
-	
+
 	log.Println("TicketRoutes: Accumulation routes registered successfully")
 
 	log.Println("TicketRoutes: All routes registered successfully")

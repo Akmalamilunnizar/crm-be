@@ -33,25 +33,33 @@ const environments = {
     PORT: '3001'
   },
   production: {
-    // MySQL Database Configuration - Production (Railway/cPanel)
-    MYSQL_HOST: 'your-production-host',
+    // MySQL Database Configuration - Production (VPS)
+    MYSQL_HOST: 'localhost',
     MYSQL_PORT: '3306',
-    MYSQL_USER: 'your-production-user',
-    MYSQL_PASSWORD: 'your-production-password',
-    MYSQL_DATABASE: 'iqgncnzy_skripsi',
+    MYSQL_USER: 'crm_user',
+    MYSQL_PASSWORD: 'YOUR_DB_PASSWORD_HERE',
+    MYSQL_DATABASE: 'menarane_lilly',
     
-    // Mikrotik Configuration - Production
+    // Alternative variable names (fallback)
+    DB_HOST: 'localhost',
+    DB_PORT: '3306',
+    DB_USER: 'crm_user',
+    DB_PASSWORD: 'YOUR_DB_PASSWORD_HERE',
+    DB_NAME: 'menarane_lilly',
+    
+    // Mikrotik Configuration - Production VPS
     MIKROTIK_HOST: '103.148.18.52',
-    MIKROTIK_PORT: '22',
-    MIKROTIK_USERNAME: 'your-production-mikrotik-user',
-    MIKROTIK_PASSWORD: 'your-production-mikrotik-password',
+    MIKROTIK_PORT: '8252',
+    MIKROTIK_USERNAME: 'polije',
+    MIKROTIK_PASSWORD: '2025',
     
     // JWT Secret
-    JWT_SECRET: 'your-production-secret-key-here',
-    JWT_SECRET_KEY: 'your-production-secret-key-here',
+    JWT_SECRET: 'your-production-secret-key-change-this',
+    JWT_SECRET_KEY: 'your-production-secret-key-change-this',
     
     // Server Configuration
-    PORT: '3001'
+    PORT: '3001',
+    NODE_ENV: 'production'
   }
 };
 

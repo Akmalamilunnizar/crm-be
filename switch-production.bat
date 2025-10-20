@@ -5,7 +5,7 @@ echo.
 echo ⚠️  WARNING: You are now in PRODUCTION mode!
 echo.
 echo Configuration:
-echo   - Database: localhost on VPS (menarane_lilly)
+echo   - Database: localhost on VPS (iqgncnzy_skripsi)
 echo   - MikroTik: 103.148.18.52:8252 (Production)
 echo   - Port: 3001
 echo.

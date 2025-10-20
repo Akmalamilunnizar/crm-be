@@ -38,14 +38,14 @@ const environments = {
     MYSQL_PORT: '3306',
     MYSQL_USER: 'crm_user',
     MYSQL_PASSWORD: 'YOUR_DB_PASSWORD_HERE',
-    MYSQL_DATABASE: 'menarane_lilly',
+    MYSQL_DATABASE: 'iqgncnzy_skripsi',
     
     // Alternative variable names (fallback)
     DB_HOST: 'localhost',
     DB_PORT: '3306',
     DB_USER: 'crm_user',
     DB_PASSWORD: 'YOUR_DB_PASSWORD_HERE',
-    DB_NAME: 'menarane_lilly',
+    DB_NAME: 'iqgncnzy_skripsi',
     
     // Mikrotik Configuration - Production VPS
     MIKROTIK_HOST: '103.148.18.52',

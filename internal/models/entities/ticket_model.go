@@ -39,6 +39,9 @@ type TroubleTicket struct {
 	NOCNote          *string               `gorm:"type:text" json:"noc_note,omitempty"`
 	TechnicianNote   *string               `gorm:"type:text" json:"technician_note,omitempty"`
 
+	// Asset reference - links to specific asset/device having trouble
+	AssetItemID *string `gorm:"column:asset_item_id;type:varchar(191)" json:"asset_item_id,omitempty"`
+
 	// Image fields
 	ImgCS     *string `gorm:"type:varchar(60)" json:"img_cs,omitempty"`
 	ImgNOC    *string `gorm:"type:varchar(60)" json:"img_noc,omitempty"`

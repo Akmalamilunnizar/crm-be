@@ -80,6 +80,18 @@ func (h CommonUploadFileHandlerStruct) CreateCommonUploadFileHandler(c *fiber.Ct
 		return helpers.ResponseUtils(c, fiber.StatusBadRequest, false, err.Error(), nil)
 	}
 
+	// For trouble ticket CS images, don't create Image records
+	// Just return the filename for direct use in trouble_tickets table
+	if strings.HasPrefix(request.Path, "cs-images") || strings.HasPrefix(request.Path, "noc-images") {
+		// For trouble tickets, just return the filename - don't create Image records
+		filename := request.Name + "." + extension
+		return helpers.ResponseUtils(c, fiber.StatusOK, true, "Success Create File", map[string]string{
+			"filename": filename,
+			"path":     request.Path,
+		})
+	}
+
+	// For other uploads (customer installations), create Image records as usual
 	image, err := h.service.CreateCommonUploadFileService(request)
 	if err != nil {
 		return helpers.ResponseUtils(c, fiber.StatusBadRequest, false, err.Error(), nil)

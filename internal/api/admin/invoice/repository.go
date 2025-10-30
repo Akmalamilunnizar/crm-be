@@ -237,6 +237,20 @@ func (r AdminInvoiceRepositoryStruct) CreateAdminInvoiceRepository(request Creat
 	// Trigger MikroTik based on status (best-effort)
 	go func(inv entities.Invoice) {
 		defer func() { _ = recover() }()
+
+		// Load customer to check customer type
+		var customer entities.Customer
+		if err := r.db.Where("id = ?", inv.CustomerID).First(&customer).Error; err != nil {
+			log.Printf("[mikrotik] fetch customer error invoice=%s: %v", inv.ID, err)
+			return
+		}
+
+		// Skip MikroTik operations for collaborator-only customers (collaborator=yes AND internet=no)
+		if customer.IsCollaborator == "yes" && customer.IsInternet == "no" {
+			log.Printf("[mikrotik] skip: customer=%s is collaborator-only (not internet), skipping MikroTik hotspot binding for invoice %s", inv.CustomerID, inv.ID)
+			return
+		}
+
 		svc := services.GetSharedMikroTikService()
 		if svc == nil || !svc.IsConnected() {
 			log.Printf("[mikrotik] skip: not connected (invoice=%s status=%s)", inv.ID, string(inv.Status))
@@ -289,110 +303,132 @@ func (r AdminInvoiceRepositoryStruct) CreateAdminInvoiceRepository(request Creat
 	}
 
 	// Synchronous preflight for unpaid scheduler existence so errors can bubble to API
-	svc := services.GetSharedMikroTikService()
-	if completeInvoice.Status == entities.InvoiceStatusUnpaid && completeInvoice.DueDate != nil && svc != nil && svc.IsConnected() {
-		name := r.generateSchedulerName(completeInvoice.CustomerID, completeInvoice.Customer.Name)
-		checkCmd := fmt.Sprintf("/system scheduler print count-only where name=\"%s\"", name)
-		if out, e := svc.ExecuteCommand(checkCmd); e == nil {
-			if strings.TrimSpace(out) == "0" {
-				msg := fmt.Sprintf("MikroTik scheduler not found: name=%s for invoice=%s", name, completeInvoice.ID)
-				log.Printf("[mikrotik] %s", msg)
-				_, _ = svc.ExecuteCommand(fmt.Sprintf(":log error \"CRM: %s\"", strings.ReplaceAll(msg, "\"", "'")))
-				return entities.Invoice{}, fmt.Errorf(msg)
+	// Skip MikroTik operations for collaborator-only customers (collaborator=yes AND internet=no)
+	if completeInvoice.Customer.IsCollaborator == "yes" && completeInvoice.Customer.IsInternet == "no" {
+		log.Printf("[mikrotik] skip: customer=%s is collaborator-only (not internet), skipping MikroTik scheduler check", completeInvoice.CustomerID)
+	} else {
+		svc := services.GetSharedMikroTikService()
+		if completeInvoice.Status == entities.InvoiceStatusUnpaid && completeInvoice.DueDate != nil && svc != nil && svc.IsConnected() {
+			name := r.generateSchedulerName(completeInvoice.CustomerID, completeInvoice.Customer.Name)
+			checkCmd := fmt.Sprintf("/system scheduler print count-only where name=\"%s\"", name)
+			if out, e := svc.ExecuteCommand(checkCmd); e == nil {
+				if strings.TrimSpace(out) == "0" {
+					msg := fmt.Sprintf("MikroTik scheduler not found: name=%s for invoice=%s", name, completeInvoice.ID)
+					log.Printf("[mikrotik] %s", msg)
+					_, _ = svc.ExecuteCommand(fmt.Sprintf(":log error \"CRM: %s\"", strings.ReplaceAll(msg, "\"", "'")))
+					return entities.Invoice{}, fmt.Errorf(msg)
+				}
 			}
 		}
 	}
 
 	// Create a Winbox (MikroTik) scheduler once per invoice based on status
-	go func(inv entities.Invoice) {
-		defer func() { _ = recover() }()
-		svc := services.GetSharedMikroTikService()
-		if svc == nil || !svc.IsConnected() {
-			log.Printf("[mikrotik] scheduler: skip (not connected) invoice=%s status=%s", inv.ID, string(inv.Status))
-			return
-		}
+	// Skip MikroTik operations for collaborator-only customers (collaborator=yes AND internet=no)
+	if completeInvoice.Customer.IsCollaborator == "yes" && completeInvoice.Customer.IsInternet == "no" {
+		log.Printf("[mikrotik] skip: customer=%s is collaborator-only (not internet), skipping MikroTik scheduler creation", completeInvoice.CustomerID)
+	} else {
+		go func(inv entities.Invoice) {
+			defer func() { _ = recover() }()
 
-		// Get first MAC for this customer
-		var dev []entities.NetworkDevice
-		if err := r.db.Where("customer_id = ? AND mac_address IS NOT NULL AND mac_address <> ''", inv.CustomerID).Order("created_at ASC").Limit(1).Find(&dev).Error; err != nil {
-			log.Printf("[mikrotik] scheduler: devices fetch error invoice=%s: %v", inv.ID, err)
-			return
-		}
-		if len(dev) == 0 || dev[0].MacAddress == nil || strings.TrimSpace(*dev[0].MacAddress) == "" {
-			log.Printf("[mikrotik] scheduler: no MAC found for customer=%s invoice=%s", inv.CustomerID, inv.ID)
-			return
-		}
-		mac := strings.TrimSpace(*dev[0].MacAddress)
+			// Ensure customer is loaded with customer type fields
+			if inv.Customer.ID == "" || inv.Customer.IsCollaborator == "" {
+				r.db.Preload("Customer").First(&inv, "id = ?", inv.ID)
+			}
 
-		// Generate scheduler name in format "Area - Customer Name"
-		schedulerName := r.generateSchedulerName(inv.CustomerID, inv.Customer.Name)
-		customerName := inv.Customer.Name
-		if customerName == "" {
-			customerName = inv.CustomerID
-		}
-		// Match script name with scheduler naming to keep things consistent on MikroTik
-		// Result: open_<CodeName - Customer Name>
-		scriptName := "open_" + schedulerName
+			// Double-check: Skip MikroTik operations for collaborator-only customers (collaborator=yes AND internet=no)
+			if inv.Customer.IsCollaborator == "yes" && inv.Customer.IsInternet == "no" {
+				log.Printf("[mikrotik] scheduler: skip - customer=%s is collaborator-only (not internet), invoice=%s", inv.CustomerID, inv.ID)
+				return
+			}
 
-		if inv.Status == entities.InvoiceStatusUnpaid {
-			// For unpaid invoices, update the scheduler with due_date using the new naming format
-			if inv.DueDate != nil {
-				// Format the due date for MikroTik scheduler (e.g., "oct/28/2025")
-				dueDateFormatted := inv.DueDate.Format("Jan/02/2006")
-				// Convert to lowercase for MikroTik format
-				dueDateFormatted = strings.ToLower(dueDateFormatted)
-				// Pre-check: ensure the scheduler exists; if not, log error both in Go and RouterOS
-				checkCmd := fmt.Sprintf("/system scheduler print count-only where name=\"%s\"", schedulerName)
-				outCheck, errCheck := svc.ExecuteCommand(checkCmd)
-				if errCheck != nil {
-					log.Printf("[mikrotik] scheduler check error invoice=%s: %v", inv.ID, errCheck)
-					// attempt to emit router log about the failure context
-					_, _ = svc.ExecuteCommand(fmt.Sprintf(":log error \"CRM: scheduler check error name='%s' invoice=%s\"", schedulerName, inv.ID))
-					return
-				}
-				if strings.TrimSpace(outCheck) == "0" {
-					msg := fmt.Sprintf("MikroTik scheduler not found: name=%s for invoice=%s", schedulerName, inv.ID)
-					log.Printf("[mikrotik] %s", msg)
-					_, _ = svc.ExecuteCommand(fmt.Sprintf(":log error \"CRM: %s\"", strings.ReplaceAll(msg, "\"", "'")))
-					// Surface this as hard error by updating DB status -> error and attaching message
-					_ = r.db.Model(&entities.Invoice{}).Where("id = ?", inv.ID).Updates(map[string]interface{}{
-						"status": string(entities.InvoiceStatusPending),
-						"link":   msg,
-					}).Error
-					// Also return immediately to avoid executing the set
-					return
-				}
-				// Append a RouterOS log so it is visible in Winbox logs
-				cmd := fmt.Sprintf("/system scheduler set [find name=\"%s\"] start-date=%s; :log info \"CRM: scheduler set name='%s' start-date=%s for invoice=%s\"", schedulerName, dueDateFormatted, schedulerName, dueDateFormatted, inv.ID)
-				log.Printf("[mikrotik] scheduler: set %s start-date=%s for unpaid invoice=%s", schedulerName, dueDateFormatted, inv.ID)
-				if out, err := svc.ExecuteCommand(cmd); err != nil {
-					log.Printf("[mikrotik] scheduler set error invoice=%s: %v", inv.ID, err)
+			svc := services.GetSharedMikroTikService()
+			if svc == nil || !svc.IsConnected() {
+				log.Printf("[mikrotik] scheduler: skip (not connected) invoice=%s status=%s", inv.ID, string(inv.Status))
+				return
+			}
+
+			// Get first MAC for this customer
+			var dev []entities.NetworkDevice
+			if err := r.db.Where("customer_id = ? AND mac_address IS NOT NULL AND mac_address <> ''", inv.CustomerID).Order("created_at ASC").Limit(1).Find(&dev).Error; err != nil {
+				log.Printf("[mikrotik] scheduler: devices fetch error invoice=%s: %v", inv.ID, err)
+				return
+			}
+			if len(dev) == 0 || dev[0].MacAddress == nil || strings.TrimSpace(*dev[0].MacAddress) == "" {
+				log.Printf("[mikrotik] scheduler: no MAC found for customer=%s invoice=%s", inv.CustomerID, inv.ID)
+				return
+			}
+			mac := strings.TrimSpace(*dev[0].MacAddress)
+
+			// Generate scheduler name in format "Area - Customer Name"
+			schedulerName := r.generateSchedulerName(inv.CustomerID, inv.Customer.Name)
+			customerName := inv.Customer.Name
+			if customerName == "" {
+				customerName = inv.CustomerID
+			}
+			// Match script name with scheduler naming to keep things consistent on MikroTik
+			// Result: open_<CodeName - Customer Name>
+			scriptName := "open_" + schedulerName
+
+			if inv.Status == entities.InvoiceStatusUnpaid {
+				// For unpaid invoices, update the scheduler with due_date using the new naming format
+				if inv.DueDate != nil {
+					// Format the due date for MikroTik scheduler (e.g., "oct/28/2025")
+					dueDateFormatted := inv.DueDate.Format("Jan/02/2006")
+					// Convert to lowercase for MikroTik format
+					dueDateFormatted = strings.ToLower(dueDateFormatted)
+					// Pre-check: ensure the scheduler exists; if not, log error both in Go and RouterOS
+					checkCmd := fmt.Sprintf("/system scheduler print count-only where name=\"%s\"", schedulerName)
+					outCheck, errCheck := svc.ExecuteCommand(checkCmd)
+					if errCheck != nil {
+						log.Printf("[mikrotik] scheduler check error invoice=%s: %v", inv.ID, errCheck)
+						// attempt to emit router log about the failure context
+						_, _ = svc.ExecuteCommand(fmt.Sprintf(":log error \"CRM: scheduler check error name='%s' invoice=%s\"", schedulerName, inv.ID))
+						return
+					}
+					if strings.TrimSpace(outCheck) == "0" {
+						msg := fmt.Sprintf("MikroTik scheduler not found: name=%s for invoice=%s", schedulerName, inv.ID)
+						log.Printf("[mikrotik] %s", msg)
+						_, _ = svc.ExecuteCommand(fmt.Sprintf(":log error \"CRM: %s\"", strings.ReplaceAll(msg, "\"", "'")))
+						// Surface this as hard error by updating DB status -> error and attaching message
+						_ = r.db.Model(&entities.Invoice{}).Where("id = ?", inv.ID).Updates(map[string]interface{}{
+							"status": string(entities.InvoiceStatusPending),
+							"link":   msg,
+						}).Error
+						// Also return immediately to avoid executing the set
+						return
+					}
+					// Append a RouterOS log so it is visible in Winbox logs
+					cmd := fmt.Sprintf("/system scheduler set [find name=\"%s\"] start-date=%s; :log info \"CRM: scheduler set name='%s' start-date=%s for invoice=%s\"", schedulerName, dueDateFormatted, schedulerName, dueDateFormatted, inv.ID)
+					log.Printf("[mikrotik] scheduler: set %s start-date=%s for unpaid invoice=%s", schedulerName, dueDateFormatted, inv.ID)
+					if out, err := svc.ExecuteCommand(cmd); err != nil {
+						log.Printf("[mikrotik] scheduler set error invoice=%s: %v", inv.ID, err)
+					} else {
+						log.Printf("[mikrotik] scheduler set out: %s", strings.TrimSpace(out))
+					}
 				} else {
-					log.Printf("[mikrotik] scheduler set out: %s", strings.TrimSpace(out))
+					log.Printf("[mikrotik] scheduler: no due date for unpaid invoice=%s", inv.ID)
 				}
 			} else {
-				log.Printf("[mikrotik] scheduler: no due date for unpaid invoice=%s", inv.ID)
-			}
-		} else {
-			// For paid and pending invoices, use the original scheduler logic with new naming format
-			var onEvent string
-			if inv.Status == entities.InvoiceStatusPaid {
-				onEvent = fmt.Sprintf("ip/hotspot/ip-binding/set type=byp [find mac-address=%s]; sys/script/set comment=sudahbayar [find name=\"%s\"];", mac, scriptName)
-			} else {
-				// treat pending the same as unpaid for this scheduler request
-				onEvent = fmt.Sprintf("ip/hotspot/ip-binding/set disabled=y [find mac-address=%s]; sys/script/set comment=belumbayar [find name=\"%s\"];", mac, scriptName)
-			}
+				// For paid and pending invoices, use the original scheduler logic with new naming format
+				var onEvent string
+				if inv.Status == entities.InvoiceStatusPaid {
+					onEvent = fmt.Sprintf("ip/hotspot/ip-binding/set type=byp [find mac-address=%s]; sys/script/set comment=sudahbayar [find name=\"%s\"];", mac, scriptName)
+				} else {
+					// treat pending the same as unpaid for this scheduler request
+					onEvent = fmt.Sprintf("ip/hotspot/ip-binding/set disabled=y [find mac-address=%s]; sys/script/set comment=belumbayar [find name=\"%s\"];", mac, scriptName)
+				}
 
-			// Append a RouterOS log so it is visible in Winbox logs
-			cmd := fmt.Sprintf("/system scheduler add name=\"%s\" on-event=\"%s\" start-time=startup; :log info \"CRM: scheduler add name='%s' status=%s\"", schedulerName, onEvent, schedulerName, string(inv.Status))
-			log.Printf("[mikrotik] scheduler: create name=%s invoice=%s status=%s mac=%s", schedulerName, inv.ID, string(inv.Status), mac)
-			if out, err := svc.ExecuteCommand(cmd); err != nil {
-				log.Printf("[mikrotik] scheduler create error invoice=%s: %v", inv.ID, err)
-			} else {
-				log.Printf("[mikrotik] scheduler create out: %s", strings.TrimSpace(out))
+				// Append a RouterOS log so it is visible in Winbox logs
+				cmd := fmt.Sprintf("/system scheduler add name=\"%s\" on-event=\"%s\" start-time=startup; :log info \"CRM: scheduler add name='%s' status=%s\"", schedulerName, onEvent, schedulerName, string(inv.Status))
+				log.Printf("[mikrotik] scheduler: create name=%s invoice=%s status=%s mac=%s", schedulerName, inv.ID, string(inv.Status), mac)
+				if out, err := svc.ExecuteCommand(cmd); err != nil {
+					log.Printf("[mikrotik] scheduler create error invoice=%s: %v", inv.ID, err)
+				} else {
+					log.Printf("[mikrotik] scheduler create out: %s", strings.TrimSpace(out))
+				}
 			}
-		}
-	}(completeInvoice)
+		}(completeInvoice)
+	}
 
 	return completeInvoice, nil
 }
@@ -490,14 +526,21 @@ func (r AdminInvoiceRepositoryStruct) UpdateStatusAdminInvoiceRepository(request
 // runOpenScriptForInvoice executes RouterOS script named "open_<Code - Customer>"
 func (r AdminInvoiceRepositoryStruct) runOpenScriptForInvoice(invoice entities.Invoice) {
 	defer func() { _ = recover() }()
+
+	// Skip MikroTik operations for collaborator-only customers (collaborator=yes AND internet=no)
+	// Ensure customer is loaded with customer type fields
+	if invoice.Customer.ID == "" {
+		r.db.Preload("Customer").First(&invoice, "id = ?", invoice.ID)
+	}
+	if invoice.Customer.IsCollaborator == "yes" && invoice.Customer.IsInternet == "no" {
+		log.Printf("[open-script] skip: customer=%s is collaborator-only (not internet), skipping MikroTik script for invoice %s", invoice.CustomerID, invoice.ID)
+		return
+	}
+
 	mt := services.GetSharedMikroTikService()
 	if mt == nil || !mt.IsConnected() {
 		log.Printf("[open-script] MikroTik not connected; skipping invoice %s", invoice.ID)
 		return
-	}
-	// Ensure customer is loaded
-	if invoice.Customer.ID == "" {
-		r.db.Preload("Customer").First(&invoice, "id = ?", invoice.ID)
 	}
 	// Build script name from code_name - customer name
 	schedulerName := r.generateSchedulerName(invoice.CustomerID, invoice.Customer.Name)
@@ -747,6 +790,16 @@ func (r AdminInvoiceRepositoryStruct) setTLSKSchedulerForUnpaidInvoice(invoice e
 		}
 	}()
 
+	// Skip MikroTik operations for collaborator-only customers (collaborator=yes AND internet=no)
+	// Ensure customer is loaded with customer type fields
+	if invoice.Customer.ID == "" {
+		r.db.Preload("Customer").First(&invoice, "id = ?", invoice.ID)
+	}
+	if invoice.Customer.IsCollaborator == "yes" && invoice.Customer.IsInternet == "no" {
+		log.Printf("[tlsk-scheduler] skip: customer=%s is collaborator-only (not internet), skipping MikroTik scheduler for invoice %s", invoice.CustomerID, invoice.ID)
+		return
+	}
+
 	mt := services.GetSharedMikroTikService()
 	if mt == nil || !mt.IsConnected() {
 		log.Printf("[tlsk-scheduler] MikroTik not connected; skipping invoice %s", invoice.ID)
@@ -800,6 +853,16 @@ func (r AdminInvoiceRepositoryStruct) enforceMikroTikForPaidInvoice(invoice enti
 		}
 	}()
 
+	// Skip MikroTik operations for collaborator-only customers (collaborator=yes AND internet=no)
+	// Ensure customer is loaded with customer type fields
+	if invoice.Customer.ID == "" {
+		r.db.Preload("Customer").First(&invoice, "id = ?", invoice.ID)
+	}
+	if invoice.Customer.IsCollaborator == "yes" && invoice.Customer.IsInternet == "no" {
+		log.Printf("[enforce-paid] skip: customer=%s is collaborator-only (not internet), skipping MikroTik enforcement for invoice %s", invoice.CustomerID, invoice.ID)
+		return
+	}
+
 	mt := services.GetSharedMikroTikService()
 	if mt == nil || !mt.IsConnected() {
 		log.Printf("[enforce-paid] MikroTik not connected; skipping invoice %s", invoice.ID)
@@ -840,12 +903,12 @@ func (r AdminInvoiceRepositoryStruct) enforceMikroTikForPaidInvoice(invoice enti
 	}
 }
 
-// PrintAllUnpaidInvoicesRepository generates thermal printer data for all unpaid invoices
+// PrintAllUnpaidInvoicesRepository generates thermal printer data for all unpaid and pending invoices
 func (r AdminInvoiceRepositoryStruct) PrintAllUnpaidInvoicesRepository() (map[string]interface{}, error) {
 	var invoices []entities.Invoice
 
-	// Get all unpaid invoices with customer and invoice items
-	err := r.db.Preload("Customer").Preload("InvoiceItems").Where("status = ?", entities.InvoiceStatusUnpaid).Find(&invoices).Error
+	// Get all unpaid and pending invoices with customer and invoice items
+	err := r.db.Preload("Customer").Preload("InvoiceItems").Where("status IN (?, ?)", entities.InvoiceStatusUnpaid, entities.InvoiceStatusPending).Find(&invoices).Error
 	if err != nil {
 		return nil, err
 	}
@@ -866,40 +929,63 @@ func (r AdminInvoiceRepositoryStruct) PrintAllUnpaidInvoicesRepository() (map[st
 func generateThermalPrinterData(invoices []entities.Invoice) string {
 	var output strings.Builder
 
-	// Compact header printed once
-	output.WriteString(centerText("PT JR Nusa Menara Networks", 30) + "\n")
-	output.WriteString(centerText("Jl Raya Talangsuko 373 Turen", 30) + "\n")
-	output.WriteString(centerText("PH: 08123511147, (0341)8224357", 30) + "\n")
-	output.WriteString(centerText("EMAIL: info@menara.net.id", 30) + "\n")
-	output.WriteString(centerText("LINK: www.menara.net.id", 30) + "\n")
-	output.WriteString(strings.Repeat("=", 30) + "\n")
+	// 58mm thermal printer width (approximately 32 characters)
+	printerWidth := 32
+
+	// Header section (printed once) - center alignment
+	output.WriteString(centerText("PT JR Nusa Menara Networks", printerWidth) + "\n")
+	output.WriteString(centerText("Jl Raya Talangsuko 373 Turen", printerWidth) + "\n")
+	output.WriteString(centerText("PH: 08123511147, (0341)8224357", printerWidth) + "\n")
+	output.WriteString(centerText("EMAIL: info@menara.net.id", printerWidth) + "\n")
+	output.WriteString(centerText("LINK: www.menara.net.id", printerWidth) + "\n")
+	output.WriteString(strings.Repeat("=", printerWidth) + "\n")
 
 	for i, invoice := range invoices {
-		output.WriteString(centerText("*** Tanda Terima ***", 30) + "\n")
-		output.WriteString("----- DITERBITKAN UNTUK -----\n")
-		output.WriteString(fmt.Sprintf("%s\n", invoice.Customer.Name))
-		output.WriteString("------------------------------\n")
+		// Issued for section - center alignment
+		output.WriteString(centerText("----- DITERBITKAN UNTUK -----", printerWidth) + "\n")
+		output.WriteString(centerText(invoice.Customer.Name, printerWidth) + "\n")
+		output.WriteString(strings.Repeat("-", printerWidth) + "\n")
 
-		// Aligned key-values
-		output.WriteString(formatKV("Nomor", invoice.ID, 30) + "\n")
-		output.WriteString(formatKV("Tanggal", invoice.CreatedAt.Format("02-01-2006"), 30) + "\n")
+		// Receipt details section - center alignment
+		output.WriteString(centerText("*** Tanda Terima ***", printerWidth) + "\n")
 
-		output.WriteString("------------------------------\n")
-		output.WriteString(centerText("DETAIL", 30) + "\n")
+		// Key-value pairs with proper alignment
+		output.WriteString(formatKV("Nomor Tanda", invoice.ID, printerWidth) + "\n")
+		output.WriteString(formatKV("Terima", invoice.ID, printerWidth) + "\n")
+		output.WriteString(formatKV("Tanggal penerimaan", invoice.CreatedAt.Format("2006-01-02"), printerWidth) + "\n")
+		output.WriteString(strings.Repeat("-", printerWidth) + "\n")
 
-		// Compact item list
-		for _, item := range invoice.InvoiceItems {
-			output.WriteString("- " + item.Name + "\n")
+		// Item details section
+		output.WriteString(formatKV("Tertentu", "Jumlah", printerWidth) + "\n")
+		output.WriteString(strings.Repeat("-", 5) + "          " + strings.Repeat("-", 5) + "\n")
+
+		// Item description with month countdown
+		currentMonth := time.Now().Month()
+		for j, item := range invoice.InvoiceItems {
+			// Calculate month countdown from current month
+			monthCountdown := int(currentMonth) - j
+			if monthCountdown <= 0 {
+				monthCountdown = 12 + monthCountdown
+			}
+			monthName := time.Month(monthCountdown).String()[:3] // Get first 3 letters
+			output.WriteString(fmt.Sprintf("%s - %s", item.Name, monthName) + "\n")
 		}
 
-		output.WriteString("------------------------------\n")
-		output.WriteString(formatKV("Total", "Rp "+formatCurrency(invoice.Amount), 30) + "\n")
-		output.WriteString(formatKV("Dibayar", "Rp 0", 30) + "\n")
-		output.WriteString(formatKV("Saldo", "Rp "+formatCurrency(invoice.Amount), 30) + "\n")
+		// Period (using invoice date)
+		output.WriteString(invoice.CreatedAt.Format("Jan 2006") + "\n")
+		output.WriteString(strings.Repeat("-", printerWidth) + "\n")
 
-		// Keep a single blank line between invoices, none at the end
+		// Financial summary section
+		output.WriteString(formatKV("Total keseluruhan", "Rp "+formatCurrency(invoice.Amount), printerWidth) + "\n")
+		output.WriteString(formatKV("(-) Digaji", "0,00", printerWidth) + "\n")
+		output.WriteString(strings.Repeat("-", printerWidth) + "\n")
+		output.WriteString(formatKV("Saldo", "Rp "+formatCurrency(invoice.Amount), printerWidth) + "\n")
+
+		// Add separator and gap between invoices for easier cutting
 		if i < len(invoices)-1 {
-			output.WriteString("\n")
+			output.WriteString(strings.Repeat("=", printerWidth) + "\n")
+			// Add multiple blank lines for easier cutting
+			output.WriteString("\n\n\n")
 		}
 	}
 
@@ -927,11 +1013,24 @@ func centerText(text string, width int) string {
 	if l >= width || width <= 0 {
 		return text
 	}
-	pad := (width - l) / 2
-	if pad < 0 {
-		pad = 0
+	// Calculate total padding needed
+	totalPadding := width - l
+	// Split padding evenly on both sides
+	leftPad := totalPadding / 2
+	rightPad := totalPadding - leftPad
+	return strings.Repeat(" ", leftPad) + text + strings.Repeat(" ", rightPad)
+}
+
+func justifyText(text string, width int) string {
+	l := len(text)
+	if l >= width || width <= 0 {
+		return text
 	}
-	return strings.Repeat(" ", pad) + text
+	// For justified text, distribute spaces evenly
+	spaces := width - l
+	leftSpaces := spaces / 2
+	rightSpaces := spaces - leftSpaces
+	return strings.Repeat(" ", leftSpaces) + text + strings.Repeat(" ", rightSpaces)
 }
 
 func padRight(s string, width int) string {

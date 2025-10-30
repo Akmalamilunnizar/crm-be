@@ -20,6 +20,7 @@ type AdminCustomerRepositoryInterface interface {
 	FindByIdAdminCustomerRepository(request IdAdminCustomerRequest) (entities.Customer, error)
 	FindByIdDetailAdminCustomerRepository(request IdAdminCustomerRequest) (*CustomerDetailResponse, error)
 	FindAdminCustomerRepository() ([]CustomerListResponse, error)
+	FindAdminCustomerRepositoryWithFilter(isInternet, isCollaborator string) ([]CustomerListResponse, error)
 }
 type AdminCustomerRepositoryStruct struct {
 	db *gorm.DB
@@ -311,4 +312,79 @@ func (r AdminCustomerRepositoryStruct) getRealTimeNetwatchStatus(ipAddress strin
 	}
 
 	return "unknown", time.Time{}, fmt.Errorf("device %s not found in MikroTik Netwatch", ipAddress)
+}
+
+func (r AdminCustomerRepositoryStruct) FindAdminCustomerRepositoryWithFilter(isInternet, isCollaborator string) ([]CustomerListResponse, error) {
+	customers := []entities.Customer{}
+
+	// Build query with filters
+	query := r.db.Preload("Area").Preload("Company").Where("deleted_at IS NULL")
+
+	// Apply filters if provided
+	if isInternet != "" {
+		query = query.Where("is_internet = ?", isInternet)
+	}
+	if isCollaborator != "" {
+		query = query.Where("is_collaborator = ?", isCollaborator)
+	}
+
+	tx := query.Find(&customers)
+
+	if tx.Error != nil {
+		return nil, tx.Error
+	}
+
+	// Build response with network device data (same logic as FindAdminCustomerRepository)
+	var response []CustomerListResponse
+	for _, customer := range customers {
+		// Get network devices for this customer (with Product and Assets)
+		networkDevices := []entities.NetworkDevice{}
+		r.db.Preload("Product").Preload("Assets").Where("customer_id = ?", customer.ID).Find(&networkDevices)
+
+		// Aggregate IP and MAC addresses from network devices
+		var ipAddresses []string
+		var macAddresses []string
+		var productName *string
+		var productPrice *int64
+
+		for _, device := range networkDevices {
+			if device.IPStatic != nil && *device.IPStatic != "" {
+				ipAddresses = append(ipAddresses, *device.IPStatic)
+			}
+			if device.MacAddress != nil && *device.MacAddress != "" {
+				macAddresses = append(macAddresses, *device.MacAddress)
+			}
+			// Get product information from the first device with a product
+			if device.Product != nil && productName == nil {
+				productName = &device.Product.Name
+				productPrice = &device.Product.Price
+			}
+		}
+
+		// Create combined strings
+		var combinedIP *string
+		var combinedMAC *string
+
+		if len(ipAddresses) > 0 {
+			combined := strings.Join(ipAddresses, ", ")
+			combinedIP = &combined
+		}
+
+		if len(macAddresses) > 0 {
+			combined := strings.Join(macAddresses, ", ")
+			combinedMAC = &combined
+		}
+
+		customerResponse := CustomerListResponse{
+			Customer:     customer,
+			IPStatic:     combinedIP,
+			MacAddress:   combinedMAC,
+			ProductName:  productName,
+			ProductPrice: productPrice,
+		}
+
+		response = append(response, customerResponse)
+	}
+
+	return response, nil
 }

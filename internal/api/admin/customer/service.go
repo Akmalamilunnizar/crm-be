@@ -8,6 +8,7 @@ import (
 
 type AdminCustomerServiceInterface interface {
 	GetAllAdminCustomerService() ([]CustomerListResponse, error)
+	GetAllAdminCustomerServiceWithFilter(isInternet, isCollaborator string) ([]CustomerListResponse, error)
 	GetByIdAdminCustomerService(request IdAdminCustomerRequest) (entities.Customer, error)
 	GetByIdDetailAdminCustomerService(request IdAdminCustomerRequest) (*CustomerDetailResponse, error)
 	CreateAdminCustomerService(request CreateAdminCustomerRequest) (entities.Customer, error)
@@ -27,6 +28,15 @@ func NewAdminCustomerService(repository AdminCustomerRepositoryInterface) AdminC
 
 func (s AdminCustomerServiceStruct) GetAllAdminCustomerService() ([]CustomerListResponse, error) {
 	customer, err := s.repository.FindAdminCustomerRepository()
+	if err != nil {
+		return customer, err
+	}
+
+	return customer, err
+}
+
+func (s AdminCustomerServiceStruct) GetAllAdminCustomerServiceWithFilter(isInternet, isCollaborator string) ([]CustomerListResponse, error) {
+	customer, err := s.repository.FindAdminCustomerRepositoryWithFilter(isInternet, isCollaborator)
 	if err != nil {
 		return customer, err
 	}

@@ -8,13 +8,15 @@ import (
 )
 
 // Role mapping to handle different role name formats
+// ADMIN role no longer exists - SUPERADMIN is the only admin role
 var roleMapping = map[string]string{
 	"CUSTOMER SERVICE": "CUSTOMER_SERVICE",
 	"CUSTOMER_SERVICE": "CUSTOMER_SERVICE",
-	"ADMIN":            "ADMIN",
+	"SUPERADMIN":       "SUPERADMIN", // SUPERADMIN is the only admin role
 	"NOC":              "NOC",
 	"TECHNICIAN":       "TECHNICIAN",
 	"FINANCE":          "FINANCE",
+	"SIDEKEEPER":       "SIDEKEEPER",
 }
 
 func NormalizeRole(role string) string {
@@ -28,25 +30,37 @@ func NormalizeRole(role string) string {
 func RequireRoles(roles ...string) fiber.Handler {
 	allowed := map[string]struct{}{}
 	for _, r := range roles {
-		allowed[r] = struct{}{}
+		// ADMIN role no longer exists - map it to SUPERADMIN for backward compatibility
+		if r == "ADMIN" {
+			allowed["SUPERADMIN"] = struct{}{}
+		} else {
+			allowed[r] = struct{}{}
+		}
 	}
 	return func(c *fiber.Ctx) error {
 		v := c.Locals("role")
 		role, _ := v.(string)
 
+		// Get original role before normalization (for SUPERADMIN check)
+		originalRole := role
+
 		// Normalize role name using comprehensive mapping
 		normalizedRole := NormalizeRole(role)
 
 		// Debug logging
-		log.Printf("RequireRoles - Original role: '%s', Normalized role: '%s'", role, normalizedRole)
-		log.Printf("RequireRoles - Allowed roles: %v", roles)
+		log.Printf("RequireRoles - Original role: '%s', Normalized role: '%s'", originalRole, normalizedRole)
+		log.Printf("RequireRoles - Allowed roles: %v (ADMIN mapped to SUPERADMIN)", roles)
 
+		// Check if normalized role is allowed
 		if _, ok := allowed[normalizedRole]; !ok {
-			log.Printf("RequireRoles - Access denied for role: '%s' (normalized: '%s')", role, normalizedRole)
-			return ResponseUtils(c, fiber.StatusForbidden, false, "forbidden", nil)
+			// Also check original role (for SUPERADMIN which doesn't get normalized)
+			if _, ok := allowed[originalRole]; !ok {
+				log.Printf("RequireRoles - Access denied for role: '%s' (normalized: '%s')", originalRole, normalizedRole)
+				return ResponseUtils(c, fiber.StatusForbidden, false, "forbidden", nil)
+			}
 		}
 
-		log.Printf("RequireRoles - Access granted for role: '%s' (normalized: '%s')", role, normalizedRole)
+		log.Printf("RequireRoles - Access granted for role: '%s' (normalized: '%s')", originalRole, normalizedRole)
 		return c.Next()
 	}
 }

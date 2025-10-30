@@ -368,30 +368,31 @@ func (s *MikrotikProvisioningService) CleanupInstallation(installation entities.
 		return nil
 	}
 
-	log.Printf("🧹 Starting Mikrotik cleanup for installation %s (Code: %s)", installation.ID, *installation.CodeName)
+	log.Printf("🧹 Starting Mikrotik disable for installation %s (Code: %s)", installation.ID, *installation.CodeName)
 
 	// Get all network devices for this installation
+	// Using customer_id and mac_address from network_devices table as requested
 	var networkDevices []entities.NetworkDevice
 	if err := s.db.Where("customer_installation_id = ?", installation.ID).Find(&networkDevices).Error; err != nil {
-		log.Printf("❌ Failed to get network devices for cleanup: %v", err)
+		log.Printf("❌ Failed to get network devices for disable: %v", err)
 		return err
 	}
 
-	// Clean up configurations for each network device
+	// Disable configurations for each network device based on customer_id and mac_address
 	for _, device := range networkDevices {
 		if device.MacAddress != nil && *device.MacAddress != "" {
 			if err := s.cleanupDeviceConfigurations(*device.MacAddress, installation.CodeName, dryRun); err != nil {
-				log.Printf("❌ Failed to cleanup device %s: %v", *device.MacAddress, err)
+				log.Printf("❌ Failed to disable device %s (customer_id: %s): %v", *device.MacAddress, device.CustomerID, err)
 				// Continue with other devices even if one fails
 			}
 		}
 	}
 
-	log.Printf("✅ Mikrotik cleanup completed for installation %s", installation.ID)
+	log.Printf("✅ Mikrotik disable completed for installation %s", installation.ID)
 	return nil
 }
 
-// cleanupDeviceConfigurations removes all Mikrotik configurations for a specific device
+// cleanupDeviceConfigurations disables all Mikrotik configurations for a specific device
 func (s *MikrotikProvisioningService) cleanupDeviceConfigurations(macAddress string, codeName *string, dryRun bool) error {
 	if macAddress == "" {
 		return nil
@@ -402,31 +403,31 @@ func (s *MikrotikProvisioningService) cleanupDeviceConfigurations(macAddress str
 		codeNameStr = *codeName
 	}
 
-	// List of commands to remove all configurations
-	cleanupCommands := []string{
-		// Remove queue simple rules
-		fmt.Sprintf("/queue/simple/remove [find name=\"%s\"]", codeNameStr),
+	// List of commands to disable all configurations (instead of removing)
+	// Based on customer_id data and mac_address from network_devices table
+	disableCommands := []string{
+		// Disable queue simple rules
+		fmt.Sprintf("/queue/simple/disable [find name=\"%s\"]", codeNameStr),
 
-		// Remove hotspot IP bindings
-		fmt.Sprintf("/ip/hotspot/ip-binding/remove [find mac-address=%s]", macAddress),
+		// Disable hotspot IP bindings (use set disabled=yes for IP bindings)
+		fmt.Sprintf("/ip/hotspot/ip-binding/set disabled=yes [find mac-address=%s]", macAddress),
 
-		// Remove netwatch entries
-		fmt.Sprintf("/tool/netwatch/remove [find comment=\"%s\"]", codeNameStr),
+		// Disable netwatch entries
+		fmt.Sprintf("/tool/netwatch/disable [find comment=\"%s\"]", codeNameStr),
 
-		// Remove schedulers
-		fmt.Sprintf("/system/scheduler/remove [find name=\"%s\"]", codeNameStr),
+		// Disable schedulers (this also prevents scripts from being executed by schedulers)
+		fmt.Sprintf("/system/scheduler/disable [find name=\"%s\"]", codeNameStr),
 
-		// Remove scripts
-		fmt.Sprintf("/system/script/remove [find name=\"open_%s\"]", codeNameStr),
-
-		// Remove DHCP leases
-		fmt.Sprintf("/ip/dhcp-server/lease/remove [find mac-address=%s]", macAddress),
+		// Mark scripts as disabled via comment (RouterOS scripts don't have a disable command)
+		// The scheduler being disabled above already prevents script execution
+		// Adding DISABLED comment for documentation/tracking purposes
+		fmt.Sprintf("/system/script/set comment=\"DISABLED_%s\" [find name=\"open_%s\"]", codeNameStr, codeNameStr),
 	}
 
-	log.Printf("🗑️ Executing %d cleanup commands for MAC %s, Code %s", len(cleanupCommands), macAddress, codeNameStr)
+	log.Printf("🔒 Executing %d disable commands for MAC %s, Code %s", len(disableCommands), macAddress, codeNameStr)
 
-	// Execute each cleanup command
-	for _, cmd := range cleanupCommands {
+	// Execute each disable command
+	for _, cmd := range disableCommands {
 		if dryRun {
 			log.Printf("DRY RUN: Would execute: %s", cmd)
 			continue
@@ -434,10 +435,10 @@ func (s *MikrotikProvisioningService) cleanupDeviceConfigurations(macAddress str
 
 		output, err := s.mikrotikConn.ExecuteCommand(cmd)
 		if err != nil {
-			log.Printf("⚠️ Warning: Failed to execute cleanup command '%s': %v", cmd, err)
+			log.Printf("⚠️ Warning: Failed to execute disable command '%s': %v", cmd, err)
 			// Continue with other commands even if one fails
 		} else {
-			log.Printf("✅ Cleanup command executed: %s", cmd)
+			log.Printf("✅ Disable command executed: %s", cmd)
 			if output != "" {
 				log.Printf("   Output: %s", strings.TrimSpace(output))
 			}

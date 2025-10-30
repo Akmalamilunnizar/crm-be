@@ -12,6 +12,7 @@ type UserRole string
 
 const (
 	RoleAdmin           UserRole = "ADMIN"
+	RoleSuperAdmin      UserRole = "SUPERADMIN"
 	RoleTechnician      UserRole = "TECHNICIAN"
 	RoleFinance         UserRole = "FINANCE"
 	RoleCustomerService UserRole = "CUSTOMER_SERVICE"
@@ -141,6 +142,8 @@ type Customer struct {
 	SalesRepresentative   *User      `gorm:"foreignKey:SalesRepresentativeID" json:"sales_representative"`
 	CompanyID             *string    `gorm:"column:company_id" json:"company_id"`
 	Company               *Company   `gorm:"foreignKey:CompanyID" json:"company"`
+	IsInternet            string     `gorm:"column:is_internet;default:yes" json:"is_internet"`
+	IsCollaborator        string     `gorm:"column:is_collaborator;default:no" json:"is_collaborator"`
 
 	// One-to-Many relationship with CustomerInstallation
 	InstallationReports []CustomerInstallation `gorm:"foreignKey:CustomerID;references:ID" json:"installation_reports,omitempty"`

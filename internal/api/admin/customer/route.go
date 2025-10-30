@@ -15,6 +15,7 @@ func AdminCustomerRoute(app fiber.Router) {
 
 	app.Use(helpers.VerifyToken)
 	app.Get("", handler.GetAllAdminCustomerHandler)
+	app.Get("/filter", handler.GetAllAdminCustomerWithFilterHandler)
 	app.Get("/:id", handler.GetByIdAdminCustomerHandler)
 	app.Get("/:id/detail", handler.GetByIdDetailAdminCustomerHandler)
 	app.Get("/:id/related-records", handler.GetCustomerRelatedRecords)

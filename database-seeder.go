@@ -69,6 +69,7 @@ func main() {
 func seedRoles(db *gorm.DB) map[string]entities.Role {
 	roles := []entities.Role{
 		{ID: uuid.New().String(), Name: "ADMIN"},
+		{ID: uuid.New().String(), Name: "SUPERADMIN"},
 		{ID: uuid.New().String(), Name: "CUSTOMER_SERVICE"},
 		{ID: uuid.New().String(), Name: "NOC"},
 		{ID: uuid.New().String(), Name: "TECHNICIAN"},

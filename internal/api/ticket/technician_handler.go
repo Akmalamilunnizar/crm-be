@@ -241,7 +241,7 @@ func (h *Handler) GetTechnicianChecklist(c *fiber.Ctx) error {
 	}
 
 	technicianID := c.Query("technician_id")
-	if technicianID == "" || technicianID == "TECHNICIAN" || technicianID == "ADMIN" || technicianID == "CUSTOMER_SERVICE" {
+	if technicianID == "" || technicianID == "TECHNICIAN" || technicianID == "SUPERADMIN" || technicianID == "CUSTOMER_SERVICE" {
 		if uid, ok := c.Locals("user_id").(string); ok && uid != "" {
 			technicianID = uid
 		}

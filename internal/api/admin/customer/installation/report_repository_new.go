@@ -548,10 +548,10 @@ func (r *ReportInstallationRepository) DeleteInstallation(installationId string)
 		}
 	}
 
-	// Perform Mikrotik cleanup before deleting database records
+	// Perform Mikrotik disable before deleting database records
 	if err := r.performMikrotikCleanup(installation); err != nil {
-		log.Printf("⚠️ Warning: Mikrotik cleanup failed for installation %s: %v", installationId, err)
-		// Continue with deletion even if Mikrotik cleanup fails
+		log.Printf("⚠️ Warning: Mikrotik disable failed for installation %s: %v", installationId, err)
+		// Continue with deletion even if Mikrotik disable fails
 	}
 
 	// Delete related records first (to avoid foreign key constraints)
@@ -628,7 +628,7 @@ func (r *ReportInstallationRepository) DeleteInstallation(installationId string)
 		return err
 	}
 
-	log.Printf("✅ Successfully deleted installation %s, cleaned up Mikrotik configurations, deleted provisioning logs, deleted recurring invoices, and updated asset statuses to 'in_stock'", installationId)
+	log.Printf("✅ Successfully deleted installation %s, disabled Mikrotik configurations, deleted provisioning logs, deleted recurring invoices, and updated asset statuses to 'in_stock'", installationId)
 	return nil
 }
 
@@ -639,18 +639,19 @@ func (r *ReportInstallationRepository) UpdateInstallationCodeName(installationId
 		Update("code_name", codeName).Error
 }
 
-// performMikrotikCleanup performs Mikrotik RouterOS cleanup for an installation
+// performMikrotikCleanup performs Mikrotik RouterOS disable for an installation
+// Disables queues, netwatch, IP bindings, schedulers, and scripts based on customer_id and mac_address
 func (r *ReportInstallationRepository) performMikrotikCleanup(installation entities.CustomerInstallation) error {
 	// Get shared Mikrotik service
 	mikrotikService := services.GetSharedMikroTikService()
 	if mikrotikService == nil {
-		log.Printf("⚠️ No shared Mikrotik service available, skipping cleanup")
+		log.Printf("⚠️ No shared Mikrotik service available, skipping disable")
 		return nil
 	}
 
-	// Create provisioning service for cleanup
+	// Create provisioning service for disable
 	provisioningService := services.NewMikrotikProvisioningService(r.db, mikrotikService)
 
-	// Perform cleanup (not dry run)
+	// Perform disable (not dry run)
 	return provisioningService.CleanupInstallation(installation, false)
 }

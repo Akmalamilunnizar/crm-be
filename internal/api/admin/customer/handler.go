@@ -24,6 +24,19 @@ func (h AdminCustomerHandlerStruct) GetAllAdminCustomerHandler(c *fiber.Ctx) err
 
 	return helpers.ResponseUtils(c, fiber.StatusOK, true, "Success Get Customer!", customer)
 }
+
+func (h AdminCustomerHandlerStruct) GetAllAdminCustomerWithFilterHandler(c *fiber.Ctx) error {
+	// Get query parameters
+	isInternet := c.Query("is_internet", "")
+	isCollaborator := c.Query("is_collaborator", "")
+
+	customer, err := h.service.GetAllAdminCustomerServiceWithFilter(isInternet, isCollaborator)
+	if err != nil {
+		return helpers.ResponseUtils(c, fiber.StatusBadRequest, false, err.Error(), "")
+	}
+
+	return helpers.ResponseUtils(c, fiber.StatusOK, true, "Success Get Filtered Customer!", customer)
+}
 func (h AdminCustomerHandlerStruct) GetByIdAdminCustomerHandler(c *fiber.Ctx) error {
 	request := IdAdminCustomerRequest{}
 	request.Id = c.Params("id")

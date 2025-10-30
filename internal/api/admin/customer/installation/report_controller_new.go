@@ -187,15 +187,12 @@ func (c *ReportInstallationController) CreateReportInstallation(ctx *fiber.Ctx) 
 				return helpers.ResponseUtils(ctx, 500, false, "Failed to save document photo", err.Error())
 			}
 
-			documentPhotoPath = filePath
+			// Store only the filename in document_photo field, not the full path
+			documentPhotoPath = filename
 
-			// Log successful upload before normalization
+			// Log successful upload
 			log.Printf("✅ Document photo uploaded successfully - filePath: %s, filename: %s", filePath, filename)
-
-			// Normalize the path to prevent any duplication issues
-			originalPath := documentPhotoPath
-			documentPhotoPath = normalizeDocumentPhotoPath(documentPhotoPath)
-			log.Printf("Path normalization: '%s' -> '%s'", originalPath, documentPhotoPath)
+			log.Printf("✅ Document photo field will store filename only: %s", documentPhotoPath)
 
 			// Verify file exists
 			if _, err := os.Stat(filePath); err == nil {

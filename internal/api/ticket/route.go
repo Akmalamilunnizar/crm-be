@@ -59,10 +59,10 @@ func TicketRoutes(api fiber.Router) {
 	// Technician workflow routes
 	g.Get("/technician-steps", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "TECHNICIAN"), h.GetTechnicianSteps)
 	g.Get("/spare-parts", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "TECHNICIAN"), h.GetSpareParts)
-	g.Get("/:id/technician-checklist", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "TECHNICIAN"), h.GetTechnicianChecklist)
-	g.Get("/:id/technician-steps", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "TECHNICIAN"), h.GetTicketTechnicianSteps)
+	g.Get("/:id/technician-checklist", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "TECHNICIAN", "CUSTOMER_SERVICE"), h.GetTechnicianChecklist)
+	g.Get("/:id/technician-steps", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "TECHNICIAN", "CUSTOMER_SERVICE"), h.GetTicketTechnicianSteps)
 	g.Post("/:id/technician-step", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "TECHNICIAN"), h.UpdateTechnicianStep)
-	g.Get("/:id/technician-progress", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "TECHNICIAN"), h.GetTechnicianStepProgress)
+	g.Get("/:id/technician-progress", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "TECHNICIAN", "CUSTOMER_SERVICE"), h.GetTechnicianStepProgress)
 	g.Post("/:id/technician-complete", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "TECHNICIAN"), h.MarkTechnicianJobCompleted)
 
 	// CS verification/close

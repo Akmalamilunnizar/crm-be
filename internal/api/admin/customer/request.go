@@ -11,6 +11,8 @@ type CreateAdminCustomerRequest struct {
 	ServiceRequestDate    string  `json:"service_request_date" validate:"required"`
 	SalesRepresentativeID *string `json:"sales_representative_id"`
 	CompanyID             *string `json:"company_id"`
+	IsInternet            string  `json:"is_internet"`
+	IsCollaborator        string  `json:"is_collaborator"`
 }
 
 type IdAdminCustomerRequest struct {

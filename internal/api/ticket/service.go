@@ -43,7 +43,7 @@ func (s *Service) CreateCS(input entities.TroubleTicket, classification string) 
 	}
 
 	// Send Telegram notification to CS channel
-	if err := s.telegramService.SendTicketNotification("CUSTOMER SERVICE", &input, "New Ticket Created"); err != nil {
+	if err := s.telegramService.SendTicketNotification("CUSTOMER SERVICE", &input, "Tiket Baru Dibuat"); err != nil {
 		log.Printf("Failed to send Telegram notification: %v", err)
 	}
 
@@ -124,7 +124,7 @@ func (s *Service) SendToNOC(id uint64, note string, imageFilename *string) (*ent
 	}
 
 	// Send Telegram notification to NOC channel
-	if err := s.telegramService.SendTicketNotification("NOC", t, "Ticket Assigned to NOC"); err != nil {
+	if err := s.telegramService.SendTicketNotification("NOC", t, "Tiket Ditugaskan ke NOC"); err != nil {
 		log.Printf("Failed to send Telegram notification to NOC: %v", err)
 	}
 
@@ -168,7 +168,7 @@ func (s *Service) SendToCS(id uint64, note string, tType *string, imageFilename 
 	}
 
 	// Send Telegram notification to CS channel
-	if err := s.telegramService.SendTicketNotification("CUSTOMER SERVICE", t, "Ticket Returned to Customer Service"); err != nil {
+	if err := s.telegramService.SendTicketNotification("CUSTOMER SERVICE", t, "Tiket Dikembalikan ke Customer Service"); err != nil {
 		log.Printf("Failed to send Telegram notification to CS: %v", err)
 	}
 
@@ -196,7 +196,7 @@ func (s *Service) NOCSolved(id uint64, note string) (*entities.TroubleTicket, er
 	}
 
 	// Send Telegram notification to CS channel
-	if err := s.telegramService.SendTicketNotification("CUSTOMER SERVICE", t, "Ticket Solved by NOC"); err != nil {
+	if err := s.telegramService.SendTicketNotification("CUSTOMER SERVICE", t, "Tiket Diselesaikan oleh NOC"); err != nil {
 		log.Printf("Failed to send Telegram notification to CS: %v", err)
 	}
 
@@ -224,7 +224,7 @@ func (s *Service) NOCPhysical(id uint64, note string) (*entities.TroubleTicket, 
 	}
 
 	// Send Telegram notification to CS channel
-	if err := s.telegramService.SendTicketNotification("CUSTOMER SERVICE", t, "Ticket Requires Physical Check"); err != nil {
+	if err := s.telegramService.SendTicketNotification("CUSTOMER SERVICE", t, "Tiket Memerlukan Pemeriksaan Fisik"); err != nil {
 		log.Printf("Failed to send Telegram notification to CS: %v", err)
 	}
 
@@ -255,7 +255,7 @@ func (s *Service) AssignTechnician(id uint64) (*entities.TroubleTicket, error) {
 	}
 
 	// Send Telegram notification to Technician channel
-	if err := s.telegramService.SendTicketNotification("TECHNICIAN", t, "Ticket Assigned to Technician"); err != nil {
+	if err := s.telegramService.SendTicketNotification("TECHNICIAN", t, "Tiket Ditugaskan ke Teknisi"); err != nil {
 		log.Printf("Failed to send Telegram notification to Technician: %v", err)
 	}
 
@@ -283,7 +283,7 @@ func (s *Service) TechnicianResolve(id uint64, note string) (*entities.TroubleTi
 	}
 
 	// Send Telegram notification to CS channel
-	if err := s.telegramService.SendTicketNotification("CUSTOMER SERVICE", t, "Ticket Resolved by Technician"); err != nil {
+	if err := s.telegramService.SendTicketNotification("CUSTOMER SERVICE", t, "Tiket Diselesaikan oleh Teknisi"); err != nil {
 		log.Printf("Failed to send Telegram notification to CS: %v", err)
 	}
 
@@ -298,7 +298,7 @@ func (s *Service) CSResolve(id uint64, note string) (*entities.TroubleTicket, er
 	}
 	// Enforce technician completion before CS can resolve
 	if t.TechnicianCompleted == nil || (t.TechnicianCompleted != nil && !*t.TechnicianCompleted) {
-		return nil, fmt.Errorf("technician has not completed the job yet")
+		return nil, fmt.Errorf("teknisi belum menyelesaikan pekerjaan")
 	}
 	t.Status = "finished"
 	// Keep assigned to CS since they're resolving it
@@ -340,7 +340,7 @@ func (s *Service) AddTechnicianNote(id uint64, note string, imgTechBf *string, i
 	}
 
 	// Send Telegram notification to CS channel about technician note
-	if err := s.telegramService.SendTicketNotification("CUSTOMER SERVICE", t, "Technician Note Added"); err != nil {
+	if err := s.telegramService.SendTicketNotification("CUSTOMER SERVICE", t, "Catatan Teknisi Ditambahkan"); err != nil {
 		log.Printf("Failed to send Telegram notification to CS: %v", err)
 	}
 
@@ -354,7 +354,7 @@ func (s *Service) AcceptTicket(id uint64, technicianUserID string) (*entities.Tr
 		return nil, err
 	}
 	if t.AssignedTo != nil && *t.AssignedTo != "" && *t.AssignedTo != technicianUserID {
-		return nil, fmt.Errorf("ticket already accepted by another technician")
+		return nil, fmt.Errorf("tiket sudah diterima oleh teknisi lain")
 	}
 	t.AssignedTo = &technicianUserID
 	if t.Status == "unfinished" {
@@ -373,7 +373,7 @@ func (s *Service) SetTeam(ticketID uint64, team []entities.TechnicianTeamMember)
 		switch m.Role {
 		case "senior", "junior", "helper":
 		default:
-			return fmt.Errorf("invalid team role: %s", m.Role)
+			return fmt.Errorf("peran tim tidak valid: %s", m.Role)
 		}
 	}
 	return s.repo.ReplaceTeamMembers(ticketID, team)
@@ -386,7 +386,7 @@ func (s *Service) AddStep(ticketID uint64, step entities.TicketStep) error {
 		return err
 	}
 	if cnt >= 7 {
-		return fmt.Errorf("maximum of 7 steps reached")
+		return fmt.Errorf("maksimum 7 langkah telah tercapai")
 	}
 	step.TicketID = ticketID
 	step.StepOrder = int(cnt) + 1
@@ -437,7 +437,7 @@ func (s *Service) MarkTechnicianCompleted(ticketID uint64, technicianUserID stri
 	}
 
 	// Send Telegram notification to CS channel
-	if err := s.telegramService.SendTicketNotification("CUSTOMER SERVICE", ticket, "Technician Work Completed - Ready for CS Review"); err != nil {
+	if err := s.telegramService.SendTicketNotification("CUSTOMER SERVICE", ticket, "Pekerjaan Teknisi Selesai - Siap untuk Review CS"); err != nil {
 		log.Printf("Failed to send Telegram notification: %v", err)
 	}
 
@@ -457,14 +457,14 @@ func (s *Service) ValidateAndSetTeam(ticketID uint64, teamMembers []entities.Tec
 
 	// Clear existing team members for this ticket
 	if err := s.repo.DB.Where("ticket_id = ?", ticketID).Delete(&entities.TechnicianTeamMember{}).Error; err != nil {
-		return fmt.Errorf("failed to clear existing team: %v", err)
+		return fmt.Errorf("gagal menghapus tim yang ada: %v", err)
 	}
 
 	// Add new team members
 	for _, member := range teamMembers {
 		member.TicketID = ticketID
 		if err := s.repo.DB.Create(&member).Error; err != nil {
-			return fmt.Errorf("failed to add team member: %v", err)
+			return fmt.Errorf("gagal menambahkan anggota tim: %v", err)
 		}
 	}
 

@@ -78,7 +78,7 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 	uidVal := c.Locals("user_id")
 	uid, _ := uidVal.(string)
 	if uid == "" {
-		return helpers.ResponseUtils(c, 401, false, "unauthorized", nil)
+		return helpers.ResponseUtils(c, 401, false, "Tidak terotorisasi", nil)
 	}
 
 	t := entities.TroubleTicket{
@@ -147,7 +147,7 @@ func (h *Handler) ClassifyTicket(c *fiber.Ctx) error {
 	}
 
 	if in.Title == "" {
-		return helpers.ResponseUtils(c, 400, false, "Title is required", nil)
+		return helpers.ResponseUtils(c, 400, false, "Judul wajib diisi", nil)
 	}
 
 	// Initialize ML service
@@ -159,7 +159,7 @@ func (h *Handler) ClassifyTicket(c *fiber.Ctx) error {
 		return helpers.ResponseUtils(c, 500, false, err.Error(), nil)
 	}
 
-	return helpers.ResponseUtils(c, 200, true, "Classification successful", classification)
+	return helpers.ResponseUtils(c, 200, true, "Klasifikasi berhasil", classification)
 }
 
 // GetMLStats returns ML classifier statistics
@@ -167,7 +167,7 @@ func (h *Handler) GetMLStats(c *fiber.Ctx) error {
 	mlService := NewMLService()
 	stats := mlService.GetClassificationStats()
 
-	return helpers.ResponseUtils(c, 200, true, "ML stats retrieved", stats)
+	return helpers.ResponseUtils(c, 200, true, "Statistik ML berhasil diambil", stats)
 }
 
 func idParam(c *fiber.Ctx) (uint64, error) { return strconv.ParseUint(c.Params("id"), 10, 64) }
@@ -175,7 +175,7 @@ func idParam(c *fiber.Ctx) (uint64, error) { return strconv.ParseUint(c.Params("
 func (h *Handler) SendToNOC(c *fiber.Ctx) error {
 	id, err := idParam(c)
 	if err != nil {
-		return helpers.ResponseUtils(c, 400, false, "bad id", nil)
+		return helpers.ResponseUtils(c, 400, false, "ID tidak valid", nil)
 	}
 
 	// Parse multipart form (note + optional image)
@@ -183,7 +183,7 @@ func (h *Handler) SendToNOC(c *fiber.Ctx) error {
 	form, err := c.MultipartForm()
 	if err != nil {
 		log.Printf("SendToNOC Handler: Failed to parse multipart form: %v", err)
-		return helpers.ResponseUtils(c, 400, false, "failed to parse multipart form", nil)
+		return helpers.ResponseUtils(c, 400, false, "Gagal memparse formulir multipart", nil)
 	}
 
 	log.Printf("SendToNOC Handler: Form values: %v", form.Value)
@@ -192,7 +192,7 @@ func (h *Handler) SendToNOC(c *fiber.Ctx) error {
 	notes := form.Value["note"]
 	if len(notes) == 0 {
 		log.Printf("SendToNOC Handler: No note provided in form")
-		return helpers.ResponseUtils(c, 400, false, "note is required", nil)
+		return helpers.ResponseUtils(c, 400, false, "Catatan wajib diisi", nil)
 	}
 	note := notes[0]
 	log.Printf("SendToNOC Handler: Note received: %s", note)
@@ -203,11 +203,11 @@ func (h *Handler) SendToNOC(c *fiber.Ctx) error {
 		file := files[0]
 		log.Printf("SendToNOC Handler: Image file name: %s, size: %d", file.Filename, file.Size)
 		if file.Size > 20*1024*1024 {
-			return helpers.ResponseUtils(c, 400, false, "image file too large (max 10MB)", nil)
+			return helpers.ResponseUtils(c, 400, false, "Ukuran file gambar terlalu besar (maks 10MB)", nil)
 		}
 		uploadDir := "uploads/cs-images"
 		if err := os.MkdirAll(uploadDir, 0755); err != nil {
-			return helpers.ResponseUtils(c, 500, false, "failed to create upload directory", nil)
+			return helpers.ResponseUtils(c, 500, false, "Gagal membuat direktori upload", nil)
 		}
 		ext := filepath.Ext(file.Filename)
 		filename := fmt.Sprintf("%d-cs%s", id, ext)
@@ -215,7 +215,7 @@ func (h *Handler) SendToNOC(c *fiber.Ctx) error {
 		log.Printf("SendToNOC Handler: Saving image to: %s", fullPath)
 		if err := c.SaveFile(file, fullPath); err != nil {
 			log.Printf("SendToNOC Handler: Failed to save image: %v", err)
-			return helpers.ResponseUtils(c, 500, false, "failed to save image file", nil)
+			return helpers.ResponseUtils(c, 500, false, "Gagal menyimpan file gambar", nil)
 		}
 		log.Printf("SendToNOC Handler: Image saved successfully")
 		imageFilename = &filename
@@ -233,7 +233,7 @@ func (h *Handler) SendToNOC(c *fiber.Ctx) error {
 func (h *Handler) NOCSolved(c *fiber.Ctx) error {
 	id, err := idParam(c)
 	if err != nil {
-		return helpers.ResponseUtils(c, 400, false, "bad id", nil)
+		return helpers.ResponseUtils(c, 400, false, "ID tidak valid", nil)
 	}
 	var body struct {
 		Note string `json:"note"`
@@ -250,19 +250,19 @@ func (h *Handler) NOCSolved(c *fiber.Ctx) error {
 func (h *Handler) SendToCS(c *fiber.Ctx) error {
 	id, err := idParam(c)
 	if err != nil {
-		return helpers.ResponseUtils(c, 400, false, "bad id", nil)
+		return helpers.ResponseUtils(c, 400, false, "ID tidak valid", nil)
 	}
 
 	// Parse multipart form
 	form, err := c.MultipartForm()
 	if err != nil {
-		return helpers.ResponseUtils(c, 400, false, "failed to parse multipart form", nil)
+		return helpers.ResponseUtils(c, 400, false, "Gagal memparse formulir multipart", nil)
 	}
 
 	// Get note from form
 	notes := form.Value["note"]
 	if len(notes) == 0 || notes[0] == "" {
-		return helpers.ResponseUtils(c, 400, false, "note is required", nil)
+		return helpers.ResponseUtils(c, 400, false, "Catatan wajib diisi", nil)
 	}
 	note := notes[0]
 
@@ -279,13 +279,13 @@ func (h *Handler) SendToCS(c *fiber.Ctx) error {
 	if files := form.File["image"]; len(files) > 0 {
 		file := files[0]
 		if file.Size > 20*1024*1024 { // 10MB limit
-			return helpers.ResponseUtils(c, 400, false, "image file too large (max 10MB)", nil)
+			return helpers.ResponseUtils(c, 400, false, "Ukuran file gambar terlalu besar (maks 10MB)", nil)
 		}
 
 		// Create uploads directory if not exists
 		uploadDir := "uploads/noc-images"
 		if err := os.MkdirAll(uploadDir, 0755); err != nil {
-			return helpers.ResponseUtils(c, 500, false, "failed to create upload directory", nil)
+			return helpers.ResponseUtils(c, 500, false, "Gagal membuat direktori upload", nil)
 		}
 
 		// Generate filename
@@ -295,7 +295,7 @@ func (h *Handler) SendToCS(c *fiber.Ctx) error {
 
 		// Save file
 		if err := c.SaveFile(file, filepath); err != nil {
-			return helpers.ResponseUtils(c, 500, false, "failed to save image file", nil)
+			return helpers.ResponseUtils(c, 500, false, "Gagal menyimpan file gambar", nil)
 		}
 
 		// Store filename for database
@@ -307,7 +307,7 @@ func (h *Handler) SendToCS(c *fiber.Ctx) error {
 		return helpers.ResponseUtils(c, 500, false, err.Error(), nil)
 	}
 
-	return helpers.ResponseUtils(c, 200, true, "Ticket sent to CS successfully", fiber.Map{
+	return helpers.ResponseUtils(c, 200, true, "Tiket berhasil dikirim ke CS", fiber.Map{
 		"ticket_id":        out.ID,
 		"note":             out.NOCNote,
 		"type":             out.Type,
@@ -319,7 +319,7 @@ func (h *Handler) SendToCS(c *fiber.Ctx) error {
 func (h *Handler) NOCPhysical(c *fiber.Ctx) error {
 	id, err := idParam(c)
 	if err != nil {
-		return helpers.ResponseUtils(c, 400, false, "bad id", nil)
+		return helpers.ResponseUtils(c, 400, false, "ID tidak valid", nil)
 	}
 	var body struct {
 		Note string `json:"note"`
@@ -335,7 +335,7 @@ func (h *Handler) NOCPhysical(c *fiber.Ctx) error {
 func (h *Handler) AssignTechnician(c *fiber.Ctx) error {
 	id, err := idParam(c)
 	if err != nil {
-		return helpers.ResponseUtils(c, 400, false, "bad id", nil)
+		return helpers.ResponseUtils(c, 400, false, "ID tidak valid", nil)
 	}
 	// No longer require technician_id - assign to TECHNICIAN role in general
 	out, err := h.svc.AssignTechnician(id)
@@ -348,7 +348,7 @@ func (h *Handler) AssignTechnician(c *fiber.Ctx) error {
 func (h *Handler) TechnicianResolve(c *fiber.Ctx) error {
 	id, err := idParam(c)
 	if err != nil {
-		return helpers.ResponseUtils(c, 400, false, "bad id", nil)
+		return helpers.ResponseUtils(c, 400, false, "ID tidak valid", nil)
 	}
 	var body struct {
 		Note string `json:"note"`
@@ -364,7 +364,7 @@ func (h *Handler) TechnicianResolve(c *fiber.Ctx) error {
 func (h *Handler) CSResolve(c *fiber.Ctx) error {
 	id, err := idParam(c)
 	if err != nil {
-		return helpers.ResponseUtils(c, 400, false, "bad id", nil)
+		return helpers.ResponseUtils(c, 400, false, "ID tidak valid", nil)
 	}
 	var body struct {
 		Note string `json:"note"`
@@ -393,7 +393,7 @@ func (h *Handler) AddTechnicianNote(c *fiber.Ctx) error {
 	id, err := idParam(c)
 	if err != nil {
 		log.Printf("AddTechnicianNote: Invalid ID parameter: %v", err)
-		return helpers.ResponseUtils(c, 400, false, "bad id", nil)
+		return helpers.ResponseUtils(c, 400, false, "ID tidak valid", nil)
 	}
 
 	log.Printf("AddTechnicianNote: Parsing multipart form for ticket ID: %d", id)
@@ -404,7 +404,7 @@ func (h *Handler) AddTechnicianNote(c *fiber.Ctx) error {
 	if err != nil {
 		log.Printf("AddTechnicianNote: Failed to parse multipart form: %v", err)
 		log.Printf("AddTechnicianNote: Request body size: %d", len(c.Body()))
-		return helpers.ResponseUtils(c, 400, false, "failed to parse multipart form", nil)
+		return helpers.ResponseUtils(c, 400, false, "Gagal memparse formulir multipart", nil)
 	}
 
 	log.Printf("AddTechnicianNote: Successfully parsed multipart form")
@@ -413,7 +413,7 @@ func (h *Handler) AddTechnicianNote(c *fiber.Ctx) error {
 	notes := form.Value["note"]
 	if len(notes) == 0 || notes[0] == "" {
 		log.Printf("AddTechnicianNote: Note is required but not provided")
-		return helpers.ResponseUtils(c, 400, false, "note is required", nil)
+		return helpers.ResponseUtils(c, 400, false, "Catatan wajib diisi", nil)
 	}
 	note := notes[0]
 	log.Printf("AddTechnicianNote: Note received: %s", note)
@@ -434,7 +434,7 @@ func (h *Handler) AddTechnicianNote(c *fiber.Ctx) error {
 
 		if file.Size > 20*1024*1024 { // 10MB limit
 			log.Printf("AddTechnicianNote: img_tech_bf file too large: %d bytes", file.Size)
-			return helpers.ResponseUtils(c, 400, false, "img_tech_bf file too large (max 10MB)", nil)
+			return helpers.ResponseUtils(c, 400, false, "File gambar sebelum terlalu besar (maks 10MB)", nil)
 		}
 
 		// Create uploads directory if not exists - using separate directory
@@ -442,7 +442,7 @@ func (h *Handler) AddTechnicianNote(c *fiber.Ctx) error {
 		log.Printf("AddTechnicianNote: Creating upload directory: %s", uploadDir)
 		if err := os.MkdirAll(uploadDir, 0755); err != nil {
 			log.Printf("AddTechnicianNote: Failed to create upload directory: %v", err)
-			return helpers.ResponseUtils(c, 500, false, "failed to create upload directory", nil)
+			return helpers.ResponseUtils(c, 500, false, "Gagal membuat direktori upload", nil)
 		}
 
 		// Generate filename - using same pattern as SendToCS
@@ -454,7 +454,7 @@ func (h *Handler) AddTechnicianNote(c *fiber.Ctx) error {
 		// Save file - using exact same logic as SendToCS
 		if err := c.SaveFile(file, filepath); err != nil {
 			log.Printf("AddTechnicianNote: Failed to save img_tech_bf file: %v", err)
-			return helpers.ResponseUtils(c, 500, false, "failed to save img_bf file", nil)
+			return helpers.ResponseUtils(c, 500, false, "Gagal menyimpan file gambar sebelum", nil)
 		}
 
 		log.Printf("AddTechnicianNote: Successfully saved img_tech_bf file")
@@ -467,13 +467,13 @@ func (h *Handler) AddTechnicianNote(c *fiber.Ctx) error {
 	if files := form.File["img_tech_af"]; len(files) > 0 {
 		file := files[0]
 		if file.Size > 20*1024*1024 { // 10MB limit
-			return helpers.ResponseUtils(c, 400, false, "img_tech_af file too large (max 10MB)", nil)
+			return helpers.ResponseUtils(c, 400, false, "File gambar sesudah terlalu besar (maks 10MB)", nil)
 		}
 
 		// Create uploads directory if not exists - using separate directory
 		uploadDir := "uploads/technician-images"
 		if err := os.MkdirAll(uploadDir, 0755); err != nil {
-			return helpers.ResponseUtils(c, 500, false, "failed to create upload directory", nil)
+			return helpers.ResponseUtils(c, 500, false, "Gagal membuat direktori upload", nil)
 		}
 
 		// Generate filename - using same pattern as SendToCS
@@ -483,7 +483,7 @@ func (h *Handler) AddTechnicianNote(c *fiber.Ctx) error {
 
 		// Save file - using exact same logic as SendToCS
 		if err := c.SaveFile(file, filepath); err != nil {
-			return helpers.ResponseUtils(c, 500, false, "failed to save img_tech_af file", nil)
+			return helpers.ResponseUtils(c, 500, false, "Gagal menyimpan file gambar sesudah", nil)
 		}
 
 		// Store filename for database
@@ -499,7 +499,7 @@ func (h *Handler) AddTechnicianNote(c *fiber.Ctx) error {
 	}
 
 	log.Printf("AddTechnicianNote: Service call successful, returning response")
-	return helpers.ResponseUtils(c, 200, true, "Technician note & images added successfully", fiber.Map{
+	return helpers.ResponseUtils(c, 200, true, "Catatan teknisi dan gambar berhasil ditambahkan", fiber.Map{
 		"ticket_id":       out.ID,
 		"technician_note": out.TechnicianNote,
 		"img_tech_bf":     out.ImgTechBF,
@@ -513,7 +513,7 @@ func (h *Handler) AddTechnicianNote(c *fiber.Ctx) error {
 func (h *Handler) Accept(c *fiber.Ctx) error {
 	id, err := idParam(c)
 	if err != nil {
-		return helpers.ResponseUtils(c, 400, false, "bad id", nil)
+		return helpers.ResponseUtils(c, 400, false, "ID tidak valid", nil)
 	}
 	uidVal := c.Locals("user_id")
 	uid, _ := uidVal.(string)
@@ -528,7 +528,7 @@ func (h *Handler) Accept(c *fiber.Ctx) error {
 func (h *Handler) SetTeam(c *fiber.Ctx) error {
 	id, err := idParam(c)
 	if err != nil {
-		return helpers.ResponseUtils(c, 400, false, "bad id", nil)
+		return helpers.ResponseUtils(c, 400, false, "ID tidak valid", nil)
 	}
 	var body struct {
 		Members []struct {
@@ -553,12 +553,12 @@ func (h *Handler) SetTeam(c *fiber.Ctx) error {
 func (h *Handler) AddStep(c *fiber.Ctx) error {
 	id, err := idParam(c)
 	if err != nil {
-		return helpers.ResponseUtils(c, 400, false, "bad id", nil)
+		return helpers.ResponseUtils(c, 400, false, "ID tidak valid", nil)
 	}
 	// Parse multipart form
 	form, err := c.MultipartForm()
 	if err != nil {
-		return helpers.ResponseUtils(c, 400, false, "failed to parse multipart form", nil)
+		return helpers.ResponseUtils(c, 400, false, "Gagal memparse formulir multipart", nil)
 	}
 	desc := ""
 	if vals := form.Value["description"]; len(vals) > 0 {
@@ -574,14 +574,14 @@ func (h *Handler) AddStep(c *fiber.Ctx) error {
 	// Create step explicitly to get ID
 	s := entities.TicketStep{TicketID: id, Description: desc}
 	if err := h.svc.repo.AddTicketStep(&s); err != nil {
-		return helpers.ResponseUtils(c, 500, false, "failed to create step", nil)
+		return helpers.ResponseUtils(c, 500, false, "Gagal membuat langkah", nil)
 	}
 	// Handle multiple files
 	var saved []string
 	if files := form.File["images"]; len(files) > 0 {
 		uploadDir := "uploads/tickets"
 		if err := os.MkdirAll(uploadDir, 0755); err != nil {
-			return helpers.ResponseUtils(c, 500, false, "failed to create upload directory", nil)
+			return helpers.ResponseUtils(c, 500, false, "Gagal membuat direktori upload", nil)
 		}
 		for _, file := range files {
 			if file.Size > 20*1024*1024 {
@@ -594,7 +594,7 @@ func (h *Handler) AddStep(c *fiber.Ctx) error {
 			}
 		}
 		if err := h.svc.AddStepImages(s.ID, saved); err != nil {
-			return helpers.ResponseUtils(c, 500, false, "failed to save step images", nil)
+			return helpers.ResponseUtils(c, 500, false, "Gagal menyimpan gambar langkah", nil)
 		}
 	}
 	return helpers.ResponseUtils(c, 200, true, "ok", fiber.Map{"step_id": s.ID, "images": saved})
@@ -604,7 +604,7 @@ func (h *Handler) AddStep(c *fiber.Ctx) error {
 func (h *Handler) VerifyAndClose(c *fiber.Ctx) error {
 	id, err := idParam(c)
 	if err != nil {
-		return helpers.ResponseUtils(c, 400, false, "bad id", nil)
+		return helpers.ResponseUtils(c, 400, false, "ID tidak valid", nil)
 	}
 	uidVal := c.Locals("user_id")
 	uid, _ := uidVal.(string)
@@ -681,7 +681,7 @@ func (h *Handler) UpdatesSince(c *fiber.Ctx) error {
 	}
 	since, err := time.Parse(time.RFC3339, sinceStr)
 	if err != nil {
-		return helpers.ResponseUtils(c, 400, false, "bad since timestamp", nil)
+		return helpers.ResponseUtils(c, 400, false, "Timestamp tidak valid", nil)
 	}
 
 	roleVal := c.Locals("role")
@@ -702,17 +702,17 @@ func (h *Handler) UploadNOCImage(c *fiber.Ctx) error {
 	// Parse multipart form
 	file, err := c.FormFile("image")
 	if err != nil {
-		return helpers.ResponseUtils(c, 400, false, "no image file provided", nil)
+		return helpers.ResponseUtils(c, 400, false, "File gambar tidak disediakan", nil)
 	}
 
 	// Validate file type
 	if !isValidImageType(file.Header.Get("Content-Type")) {
-		return helpers.ResponseUtils(c, 400, false, "invalid file type. only images are allowed", nil)
+		return helpers.ResponseUtils(c, 400, false, "Tipe file tidak valid. Hanya gambar yang diizinkan", nil)
 	}
 
 	// Validate file size (10MB limit)
 	if file.Size > 20*1024*1024 {
-		return helpers.ResponseUtils(c, 400, false, "file size too large. maximum 10MB allowed", nil)
+		return helpers.ResponseUtils(c, 400, false, "Ukuran file terlalu besar. Maksimum 10MB", nil)
 	}
 
 	// Generate unique filename
@@ -721,15 +721,15 @@ func (h *Handler) UploadNOCImage(c *fiber.Ctx) error {
 	// Save file to uploads directory
 	uploadDir := "./uploads/noc-images"
 	if err := os.MkdirAll(uploadDir, 0755); err != nil {
-		return helpers.ResponseUtils(c, 500, false, "failed to create upload directory", nil)
+		return helpers.ResponseUtils(c, 500, false, "Gagal membuat direktori upload", nil)
 	}
 
 	filepath := uploadDir + "/" + filename
 	if err := c.SaveFile(file, filepath); err != nil {
-		return helpers.ResponseUtils(c, 500, false, "failed to save file", nil)
+		return helpers.ResponseUtils(c, 500, false, "Gagal menyimpan file", nil)
 	}
 
-	return helpers.ResponseUtils(c, 200, true, "image uploaded successfully", map[string]string{
+	return helpers.ResponseUtils(c, 200, true, "Gambar berhasil diunggah", map[string]string{
 		"filename": filename,
 	})
 }
@@ -768,7 +768,7 @@ func (h *Handler) MarkTechnicianCompleted(c *fiber.Ctx) error {
 	// Get technician user ID from token
 	technicianUserID := c.Locals("user_id").(string)
 	if technicianUserID == "" {
-		return helpers.ResponseUtils(c, 401, false, "technician user ID not found", nil)
+		return helpers.ResponseUtils(c, 401, false, "ID pengguna teknisi tidak ditemukan", nil)
 	}
 
 	result, err := h.svc.MarkTechnicianCompleted(id, technicianUserID)
@@ -776,7 +776,7 @@ func (h *Handler) MarkTechnicianCompleted(c *fiber.Ctx) error {
 		return helpers.ResponseUtils(c, 500, false, err.Error(), nil)
 	}
 
-	return helpers.ResponseUtils(c, 200, true, "technician work marked as completed", result)
+	return helpers.ResponseUtils(c, 200, true, "Pekerjaan teknisi ditandai sebagai selesai", result)
 }
 
 // (removed duplicate SetNetworkArchitecture; see technician_handler.go)
@@ -799,7 +799,7 @@ func (h *Handler) ValidateAndSetTeam(c *fiber.Ctx) error {
 		return helpers.ResponseUtils(c, 400, false, err.Error(), nil)
 	}
 
-	return helpers.ResponseUtils(c, 200, true, "team composition set successfully", nil)
+	return helpers.ResponseUtils(c, 200, true, "Komposisi tim berhasil diatur", nil)
 }
 
 // GetTechnicianTeamMembers gets all team members for a ticket
@@ -814,5 +814,5 @@ func (h *Handler) GetTechnicianTeamMembers(c *fiber.Ctx) error {
 		return helpers.ResponseUtils(c, 500, false, err.Error(), nil)
 	}
 
-	return helpers.ResponseUtils(c, 200, true, "team members retrieved", members)
+	return helpers.ResponseUtils(c, 200, true, "Anggota tim berhasil diambil", members)
 }

@@ -47,6 +47,25 @@ func (s *Service) CreateCS(input entities.TroubleTicket, classification string) 
 		log.Printf("Failed to send Telegram notification: %v", err)
 	}
 
+	// Auto assign technician AND return updated ticket for PSB, LAINNYA, DISMANTLE
+	if input.ClassificationID == entities.ClassificationPSB ||
+		input.ClassificationID == entities.ClassificationLainnya ||
+		input.ClassificationID == entities.ClassificationDismantle {
+		log.Printf("[Auto Assign] Ticket %d is %s. Auto-assigning technician...", input.ID, input.ClassificationID)
+		if _, err := s.AssignTechnician(input.ID); err != nil {
+			log.Printf("[Auto Assign] Failed to auto-assign technician for ticket %d: %v", input.ID, err)
+			// Still proceed to try reloading and return
+		}
+		// Reload ticket from DB to get updated assignee
+		updated, err := s.repo.ByID(input.ID)
+		if err != nil {
+			log.Printf("[Auto Assign] Failed to reload ticket %d after assignment: %v", input.ID, err)
+			return &input, nil // fallback to pre-assign ticket
+		}
+		return updated, nil
+	}
+
+	// For all other types, return the CS-assigned ticket
 	return &input, nil
 }
 

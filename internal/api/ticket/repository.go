@@ -63,6 +63,25 @@ func (r *Repo) ListAll() ([]TicketWithAssignee, error) {
 	return items, err
 }
 
+// ListForTechnician returns tickets that are either unassigned (assigned_to IS NULL)
+// or assigned to the specific technician user ID
+func (r *Repo) ListForTechnician(technicianUserID string) ([]TicketWithAssignee, error) {
+	var items []TicketWithAssignee
+	err := r.DB.Table("trouble_tickets t").
+		Select("t.*, r1.name as assignee_name, r2.name as current_assignee_name, tt.name as type_name, c.name as customer_name, c.latitude as gps_lat, c.longitude as gps_lng, c.address as customer_address, c.phone as customer_phone").
+		Joins("LEFT JOIN users r1 ON r1.id = t.assigned_to").
+		Joins("LEFT JOIN roles r2 ON r2.id = t.current_assignee_role").
+		Joins("LEFT JOIN trouble_type tt ON tt.id = t.type").
+		Joins("LEFT JOIN customer c ON c.id = t.customer_id").
+		Where("t.assigned_to IS NULL OR t.assigned_to = ?", technicianUserID).
+		Order("t.created_at DESC").
+		Scan(&items).Error
+
+	log.Printf("ListForTechnician: Found %d tickets for technician %s (unassigned or assigned to them)", len(items), technicianUserID)
+
+	return items, err
+}
+
 // Debug method to check roles and assigned_to values
 func (r *Repo) DebugRolesAndAssignments() {
 	// Check what roles exist

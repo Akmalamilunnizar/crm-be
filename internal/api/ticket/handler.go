@@ -23,7 +23,34 @@ func (h *Handler) List(c *fiber.Ctx) error {
 	// Debug: Check roles and assignments
 	h.svc.repo.DebugRolesAndAssignments()
 
-	items, err := h.svc.repo.ListAll()
+	// Get user role and ID from context (set by auth middleware)
+	roleVal := c.Locals("role")
+	role, _ := roleVal.(string)
+	uidVal := c.Locals("user_id")
+	userID, _ := uidVal.(string)
+
+	// Check if history mode is requested (show all tickets regardless of assignment)
+	historyMode := c.Query("history") == "true"
+
+	// Normalize role to handle different formats (e.g., "technician" vs "TECHNICIAN")
+	normalizedRole := helpers.NormalizeRole(role)
+
+	log.Printf("Ticket List: user role='%s' (normalized: '%s'), user_id='%s', history_mode=%v", role, normalizedRole, userID, historyMode)
+
+	var items []TicketWithAssignee
+	var err error
+
+	// For technicians: filter tickets UNLESS in history mode
+	// In history mode, show all tickets from the table
+	if normalizedRole == "TECHNICIAN" && userID != "" && !historyMode {
+		log.Printf("Ticket List: Filtering for technician %s (current mode)", userID)
+		items, err = h.svc.repo.ListForTechnician(userID)
+	} else {
+		// For other roles (ADMIN, NOC, CUSTOMER_SERVICE) or technicians in history mode: show all tickets
+		log.Printf("Ticket List: Returning all tickets (role=%s, history_mode=%v)", normalizedRole, historyMode)
+		items, err = h.svc.repo.ListAll()
+	}
+
 	if err != nil {
 		log.Printf("Ticket List error: %v", err)
 		return helpers.ResponseUtils(c, 500, false, err.Error(), nil)

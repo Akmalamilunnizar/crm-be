@@ -51,6 +51,12 @@ func RequireRoles(roles ...string) fiber.Handler {
 		log.Printf("RequireRoles - Original role: '%s', Normalized role: '%s'", originalRole, normalizedRole)
 		log.Printf("RequireRoles - Allowed roles: %v (ADMIN mapped to SUPERADMIN)", roles)
 
+		// SUPERADMIN has access to all routes automatically
+		if normalizedRole == "SUPERADMIN" || originalRole == "SUPERADMIN" {
+			log.Printf("RequireRoles - Access granted to SUPERADMIN (bypasses role check)")
+			return c.Next()
+		}
+
 		// Check if normalized role is allowed
 		if _, ok := allowed[normalizedRole]; !ok {
 			// Also check original role (for SUPERADMIN which doesn't get normalized)

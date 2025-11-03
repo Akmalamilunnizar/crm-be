@@ -19,11 +19,12 @@ const environments = {
     DB_PASSWORD: '',
     DB_NAME: 'iqgncnzy_skripsi',
     
-    // Mikrotik Configuration - Local
-    MIKROTIK_HOST: '10.10.9.203',
-    MIKROTIK_PORT: '22',
-    MIKROTIK_USERNAME: 'rnd',
-    MIKROTIK_PASSWORD: 'rnd@123',
+    // Mikrotik Configuration - Local (connecting to production MikroTik for testing)
+    // Note: If testing production MikroTik from localhost, use production config
+    MIKROTIK_HOST: '103.148.18.52',
+    MIKROTIK_PORT: '8252',
+    MIKROTIK_USERNAME: 'polije',
+    MIKROTIK_PASSWORD: '2025',
     
     // JWT Secret
     JWT_SECRET: 'your-local-secret-key-here',

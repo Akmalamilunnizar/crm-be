@@ -53,6 +53,26 @@ func (s *MikroTikService) Connect() error {
 		},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		Timeout:         20 * time.Second,
+		// Add cipher and key exchange algorithms compatible with MikroTik RouterOS
+		// Prioritize older algorithms that MikroTik RouterOS supports
+		Config: ssh.Config{
+			Ciphers: []string{
+				"aes128-cbc", "aes192-cbc", "aes256-cbc",
+				"3des-cbc",
+				"aes128-ctr", "aes192-ctr", "aes256-ctr",
+			},
+			KeyExchanges: []string{
+				"diffie-hellman-group1-sha1",
+				"diffie-hellman-group14-sha1",
+				"diffie-hellman-group-exchange-sha1",
+				"diffie-hellman-group14-sha256",
+				"diffie-hellman-group-exchange-sha256",
+			},
+			MACs: []string{
+				"hmac-md5", "hmac-sha1",
+				"hmac-sha2-256", "hmac-sha2-512",
+			},
+		},
 	}
 
 	client, err := ssh.Dial("tcp", fmt.Sprintf("%s:%d", s.config.Host, s.config.Port), sshConfig)
@@ -519,12 +539,12 @@ func (s *MikroTikService) parseNetwatchDevices(output string) []map[string]inter
 		}
 
 		device := make(map[string]interface{})
-		
+
 		// Extract fields based on position
-		device[".id"] = parts[0]        // ID
-		device["type"] = parts[1]       // TYPE
-		device["host"] = parts[2]       // HOST
-		
+		device[".id"] = parts[0]  // ID
+		device["type"] = parts[1] // TYPE
+		device["host"] = parts[2] // HOST
+
 		// Handle optional fields
 		if len(parts) > 3 {
 			// Check if next field is timeout (contains 's' or 'm')

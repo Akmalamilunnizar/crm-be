@@ -300,9 +300,29 @@ func (s *MikrotikProvisioningService) findDHCPLeaseIP(macAddress string, provide
 		return "192.168.1.100", nil // Default IP for dry run
 	}
 
-	// Execute actual command to find DHCP lease
+	// Check if connection is still valid before executing command
+	if !s.mikrotikConn.IsConnected() {
+		log.Printf("⚠️ MikroTik connection not available, using fallback IP for MAC %s", macAddress)
+		result.CommandsOutput = append(result.CommandsOutput, "WARNING: MikroTik connection unavailable, using fallback IP: 192.168.1.100")
+		return "192.168.1.100", nil
+	}
+
+	// Execute actual command to find DHCP lease with timeout handling
 	output, err := s.mikrotikConn.ExecuteCommand(cmd)
 	if err != nil {
+		// Check if it's a connection/timeout error
+		errMsg := err.Error()
+		if strings.Contains(errMsg, "timeout") || 
+		   strings.Contains(errMsg, "connection") || 
+		   strings.Contains(errMsg, "failed to create SSH session") {
+			log.Printf("⚠️ DHCP lease query failed due to connection issue (%v), using fallback IP for MAC %s", err, macAddress)
+			result.CommandsOutput = append(result.CommandsOutput, 
+				fmt.Sprintf("WARNING: DHCP lease query failed (%v), using fallback IP: 192.168.1.100", err))
+			// Don't fail the installation - use fallback IP instead
+			return "192.168.1.100", nil
+		}
+		// For other errors, still return error but log it
+		log.Printf("❌ DHCP lease query error for MAC %s: %v", macAddress, err)
 		return "", err
 	}
 
@@ -316,6 +336,8 @@ func (s *MikrotikProvisioningService) findDHCPLeaseIP(macAddress string, provide
 	}
 
 	// Fallback to default IP if parsing fails
+	log.Printf("⚠️ Could not parse IP from DHCP lease output for MAC %s, using fallback IP", macAddress)
+	result.CommandsOutput = append(result.CommandsOutput, "WARNING: Could not parse IP from DHCP lease, using fallback IP: 192.168.1.100")
 	return "192.168.1.100", nil
 }
 
@@ -368,7 +390,7 @@ func (s *MikrotikProvisioningService) CleanupInstallation(installation entities.
 		return nil
 	}
 
-	log.Printf("🧹 Starting Mikrotik disable for installation %s (Code: %s)", installation.ID, *installation.CodeName)
+	log.Printf("🧹 Starting Mikrotik cleanup (disable/remove) for installation %s (Code: %s)", installation.ID, *installation.CodeName)
 
 	// Get all network devices for this installation
 	// Using customer_id and mac_address from network_devices table as requested
@@ -388,11 +410,12 @@ func (s *MikrotikProvisioningService) CleanupInstallation(installation entities.
 		}
 	}
 
-	log.Printf("✅ Mikrotik disable completed for installation %s", installation.ID)
+	log.Printf("✅ Mikrotik cleanup completed for installation %s", installation.ID)
 	return nil
 }
 
-// cleanupDeviceConfigurations disables all Mikrotik configurations for a specific device
+// cleanupDeviceConfigurations disables/removes all Mikrotik configurations for a specific device
+// Removes scripts and schedulers completely, disables queues, IP bindings, and netwatch
 func (s *MikrotikProvisioningService) cleanupDeviceConfigurations(macAddress string, codeName *string, dryRun bool) error {
 	if macAddress == "" {
 		return nil
@@ -403,7 +426,7 @@ func (s *MikrotikProvisioningService) cleanupDeviceConfigurations(macAddress str
 		codeNameStr = *codeName
 	}
 
-	// List of commands to disable all configurations (instead of removing)
+	// List of commands to disable/remove all configurations
 	// Based on customer_id data and mac_address from network_devices table
 	disableCommands := []string{
 		// Disable queue simple rules
@@ -415,18 +438,16 @@ func (s *MikrotikProvisioningService) cleanupDeviceConfigurations(macAddress str
 		// Disable netwatch entries
 		fmt.Sprintf("/tool/netwatch/disable [find comment=\"%s\"]", codeNameStr),
 
-		// Disable schedulers (this also prevents scripts from being executed by schedulers)
-		fmt.Sprintf("/system/scheduler/disable [find name=\"%s\"]", codeNameStr),
+		// Remove schedulers (removes the scheduled execution)
+		fmt.Sprintf("/system/scheduler/remove [find name=\"%s\"]", codeNameStr),
 
-		// Mark scripts as disabled via comment (RouterOS scripts don't have a disable command)
-		// The scheduler being disabled above already prevents script execution
-		// Adding DISABLED comment for documentation/tracking purposes
-		fmt.Sprintf("/system/script/set comment=\"DISABLED_%s\" [find name=\"open_%s\"]", codeNameStr, codeNameStr),
+		// Remove scripts (RouterOS scripts don't have a disable command, must be removed)
+		fmt.Sprintf("/system/script/remove [find name=\"open_%s\"]", codeNameStr),
 	}
 
-	log.Printf("🔒 Executing %d disable commands for MAC %s, Code %s", len(disableCommands), macAddress, codeNameStr)
+	log.Printf("🔒 Executing %d cleanup commands (disable/remove) for MAC %s, Code %s", len(disableCommands), macAddress, codeNameStr)
 
-	// Execute each disable command
+	// Execute each cleanup command
 	for _, cmd := range disableCommands {
 		if dryRun {
 			log.Printf("DRY RUN: Would execute: %s", cmd)
@@ -435,10 +456,10 @@ func (s *MikrotikProvisioningService) cleanupDeviceConfigurations(macAddress str
 
 		output, err := s.mikrotikConn.ExecuteCommand(cmd)
 		if err != nil {
-			log.Printf("⚠️ Warning: Failed to execute disable command '%s': %v", cmd, err)
+			log.Printf("⚠️ Warning: Failed to execute cleanup command '%s': %v", cmd, err)
 			// Continue with other commands even if one fails
 		} else {
-			log.Printf("✅ Disable command executed: %s", cmd)
+			log.Printf("✅ Cleanup command executed: %s", cmd)
 			if output != "" {
 				log.Printf("   Output: %s", strings.TrimSpace(output))
 			}

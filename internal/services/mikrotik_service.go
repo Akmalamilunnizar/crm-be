@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"strings"
@@ -323,18 +324,51 @@ func (s *MikroTikService) ExecuteCommand(command string) (string, error) {
 		return "", fmt.Errorf("not connected to MikroTik")
 	}
 
+	// Check if SSH client is still valid before creating session
+	if s.sshClient == nil {
+		s.isConnected = false
+		return "", fmt.Errorf("SSH client is nil, connection lost")
+	}
+
 	session, err := s.sshClient.NewSession()
 	if err != nil {
+		// Mark connection as lost if session creation fails
+		s.isConnected = false
 		return "", fmt.Errorf("failed to create SSH session: %v", err)
 	}
 	defer session.Close()
 
-	output, err := session.Output(command)
-	if err != nil {
-		return "", fmt.Errorf("failed to execute command: %v", err)
-	}
+	// Set a timeout for command execution (30 seconds)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
-	return string(output), nil
+	// Use a channel to handle timeout
+	type result struct {
+		output string
+		err    error
+	}
+	resultChan := make(chan result, 1)
+
+	go func() {
+		output, err := session.Output(command)
+		resultChan <- result{string(output), err}
+	}()
+
+	select {
+	case res := <-resultChan:
+		if res.err != nil {
+			// Check if it's a connection error - mark connection as lost
+			errMsg := res.err.Error()
+			if strings.Contains(errMsg, "connection") || strings.Contains(errMsg, "timeout") {
+				s.isConnected = false
+			}
+			return "", fmt.Errorf("failed to execute command: %v", res.err)
+		}
+		return res.output, nil
+	case <-ctx.Done():
+		s.isConnected = false
+		return "", fmt.Errorf("command execution timeout after 30 seconds")
+	}
 }
 
 // Hotspot IP Binding Management

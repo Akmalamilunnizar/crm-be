@@ -1,13 +1,15 @@
 package ticketapi
 
 import (
+	"encoding/json"
 	"fmt"
 	"skripsi-be/internal/models/entities"
 )
 
 // GetTechnicianSteps gets all predefined technician steps
-func (s *Service) GetTechnicianSteps() ([]entities.TechnicianStep, error) {
-	return s.repo.GetTechnicianSteps()
+// If networkArchitecture is provided, filters steps to only those applicable to that architecture
+func (s *Service) GetTechnicianSteps(networkArchitecture *string) ([]entities.TechnicianStep, error) {
+	return s.repo.GetTechnicianSteps(networkArchitecture)
 }
 
 // GetSpareParts gets all available spare parts
@@ -109,4 +111,24 @@ func (s *Service) UpsertTechnicianTeam(ticketID uint64, members []entities.Techn
 		m.TicketID = ticketID
 	}
 	return s.repo.UpsertTechnicianTeam(ticketID, members)
+}
+
+// SaveSelfieStep saves a selfie photo as step 0 for a ticket
+func (s *Service) SaveSelfieStep(ticketID uint64, technicianID string, imagePath string) error {
+	// Get step with step_order = 0
+	step, err := s.repo.GetStepByOrder(0)
+	if err != nil {
+		return fmt.Errorf("step 0 (selfie step) not found in technician_steps table. Please ensure a step with step_order=0 exists: %v", err)
+	}
+
+	// Convert single image path to JSON array
+	imagePaths := []string{imagePath}
+	imagePathsBytes, err := json.Marshal(imagePaths)
+	if err != nil {
+		return fmt.Errorf("failed to marshal image paths: %v", err)
+	}
+	imagePathsJSON := string(imagePathsBytes)
+
+	// Save as done status with the image
+	return s.repo.UpdateTechnicianStepWithImages(ticketID, step.ID, technicianID, "done", nil, nil, &imagePathsJSON)
 }

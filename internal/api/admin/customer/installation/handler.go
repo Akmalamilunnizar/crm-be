@@ -17,7 +17,10 @@ func NewAdminCustomerInstallationHandler(service AdminCustomerInstallationServic
 }
 
 func (h AdminCustomerInstallationHandlerStruct) GetAllAdminCustomerInstallationHandler(c *fiber.Ctx) error {
-	customer, err := h.service.GetAllAdminCustomerInstallationService()
+	// Get is_terminal query parameter if provided
+	isTerminal := c.Query("is_terminal", "")
+
+	customer, err := h.service.GetAllAdminCustomerInstallationService(isTerminal)
 	if err != nil {
 		return helpers.ResponseUtils(c, fiber.StatusBadRequest, false, err.Error(), "")
 	}

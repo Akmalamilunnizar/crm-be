@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -43,32 +44,143 @@ type WhatsAppAPIResponse struct {
 }
 
 func NewWAService() *WAService {
+	// Use local whatsapp-web.js service if available, otherwise fall back to Meta API
+	serviceURL := os.Getenv("WHATSAPP_SERVICE_URL")
+	if serviceURL == "" {
+		serviceURL = "http://localhost:3002" // Default whatsapp-web.js service URL
+	}
+
 	return &WAService{
-		apiURL:   os.Getenv("WHATSAPP_API_URL"),
-		apiToken: os.Getenv("WHATSAPP_API_TOKEN"),
-		phoneID:  os.Getenv("WHATSAPP_PHONE_ID"),
+		apiURL:   serviceURL,
+		apiToken: os.Getenv("WHATSAPP_API_TOKEN"), // Not used for local service
+		phoneID:  os.Getenv("WHATSAPP_PHONE_ID"),  // Not used for local service
 		client: &http.Client{
 			Timeout: 30 * time.Second,
 		},
 	}
 }
 
+// normalizePhoneNumber normalizes Indonesian phone numbers to WhatsApp format
+// Converts: 08970833338 -> 628970833338
+// Converts: +628970833338 -> 628970833338
+// Converts: 628970833338 -> 628970833338 (already correct)
+func normalizePhoneNumber(phone string) string {
+	// Remove all whitespace and non-digit characters except +
+	phone = strings.TrimSpace(phone)
+	phone = strings.ReplaceAll(phone, " ", "")
+	phone = strings.ReplaceAll(phone, "-", "")
+
+	// Remove + if present
+	if strings.HasPrefix(phone, "+") {
+		phone = phone[1:]
+	}
+
+	// If starts with 0, replace with 62 (Indonesia country code)
+	if strings.HasPrefix(phone, "0") {
+		phone = "62" + phone[1:]
+	}
+
+	// If doesn't start with 62, add it (assuming Indonesian numbers)
+	if !strings.HasPrefix(phone, "62") && len(phone) >= 9 {
+		phone = "62" + phone
+	}
+
+	return phone
+}
+
 func (s *WAService) SendMessage(to, message string) error {
-	// If no API configuration, just log (mock mode)
-	if s.apiURL == "" || s.apiToken == "" || s.phoneID == "" {
-		fmt.Printf("[WA MOCK] Would send to %s: %s\n", to, message)
-		fmt.Printf("[WA MOCK] To enable real messaging, set environment variables:\n")
-		fmt.Printf("[WA MOCK] - WHATSAPP_API_URL=https://graph.facebook.com/v18.0\n")
-		fmt.Printf("[WA MOCK] - WHATSAPP_API_TOKEN=your_meta_access_token\n")
-		fmt.Printf("[WA MOCK] - WHATSAPP_PHONE_ID=your_phone_number_id\n")
+	// Normalize phone number format (remove +, convert 0 to 62)
+	normalizedTo := normalizePhoneNumber(to)
+
+	// Ensure phone number format (add country code if missing)
+	if !s.isValidPhoneNumber(normalizedTo) {
+		return fmt.Errorf("invalid phone number format: %s (normalized: %s, use format: 628123456789)", to, normalizedTo)
+	}
+
+	// Check if using local whatsapp-web.js service or Meta API
+	// If apiURL doesn't contain "graph.facebook.com", assume it's local service
+	usingLocalService := !strings.Contains(s.apiURL, "graph.facebook.com")
+
+	if usingLocalService {
+		// Use local whatsapp-web.js service
+		return s.sendViaLocalService(normalizedTo, message)
+	}
+
+	// Fall back to Meta WhatsApp Business API (if configured)
+	if s.apiToken == "" || s.phoneID == "" {
+		return fmt.Errorf("WhatsApp service not configured. Please set WHATSAPP_SERVICE_URL or configure Meta API")
+	}
+
+	return s.sendViaMetaAPI(normalizedTo, message)
+}
+
+// sendViaLocalService sends message via local whatsapp-web.js service
+func (s *WAService) sendViaLocalService(to, message string) error {
+	// Prepare request for local service
+	reqBody := map[string]string{
+		"to":      to,
+		"message": message,
+	}
+
+	jsonData, err := json.Marshal(reqBody)
+	if err != nil {
+		return fmt.Errorf("failed to marshal request: %v", err)
+	}
+
+	// Create HTTP request to local service
+	url := fmt.Sprintf("%s/send-message", s.apiURL)
+	fmt.Printf("[WA] Sending via local service to %s\n", url)
+
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return fmt.Errorf("failed to create request: %v", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	// Send request
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to send request to local service: %v", err)
+	}
+	defer resp.Body.Close()
+
+	// Read response
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read response: %v", err)
+	}
+
+	// Check status code
+	if resp.StatusCode != http.StatusOK {
+		var errorResp struct {
+			Status  string `json:"status"`
+			Message string `json:"message"`
+		}
+		if err := json.Unmarshal(body, &errorResp); err == nil {
+			return fmt.Errorf("WhatsApp service error: %s", errorResp.Message)
+		}
+		return fmt.Errorf("WhatsApp service error: %d - %s", resp.StatusCode, string(body))
+	}
+
+	// Parse success response
+	var successResp struct {
+		Status string `json:"status"`
+		Data   struct {
+			MessageID string `json:"message_id"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(body, &successResp); err == nil {
+		fmt.Printf("[WA] Message sent successfully to %s (Message ID: %s)\n", to, successResp.Data.MessageID)
 		return nil
 	}
 
-	// Ensure phone number format (add country code if missing)
-	if !s.isValidPhoneNumber(to) {
-		return fmt.Errorf("invalid phone number format: %s (use format: 628123456789)", to)
-	}
+	fmt.Printf("[WA] Message sent successfully to %s\n", to)
+	return nil
+}
 
+// sendViaMetaAPI sends message via Meta WhatsApp Business API (legacy)
+func (s *WAService) sendViaMetaAPI(to, message string) error {
 	// Prepare the request for Meta WhatsApp Business API
 	reqBody := WhatsAppAPIRequest{
 		MessagingProduct: "whatsapp",
@@ -85,15 +197,6 @@ func (s *WAService) SendMessage(to, message string) error {
 	// Create HTTP request to Meta Graph API
 	url := fmt.Sprintf("%s/%s/messages", s.apiURL, s.phoneID)
 
-	// Verbose request logging (safe: token masked)
-	maskedToken := ""
-	if len(s.apiToken) > 12 {
-		maskedToken = s.apiToken[:8] + "***" + s.apiToken[len(s.apiToken)-4:]
-	}
-	fmt.Printf("[WA DEBUG] POST %s\n", url)
-	fmt.Printf("[WA DEBUG] PhoneID=%s To=%s Type=text\n", s.phoneID, to)
-	fmt.Printf("[WA DEBUG] Authorization=Bearer %s\n", maskedToken)
-	fmt.Printf("[WA DEBUG] Payload=%s\n", string(jsonData))
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %v", err)
@@ -116,34 +219,8 @@ func (s *WAService) SendMessage(to, message string) error {
 		return fmt.Errorf("failed to read response: %v", err)
 	}
 
-	// Verbose response logging
-	fmt.Printf("[WA DEBUG] Status=%d\n", resp.StatusCode)
-	fmt.Printf("[WA DEBUG] Response=%s\n", string(body))
-
 	// Check status code
 	if resp.StatusCode != http.StatusOK {
-		// Parse error response for better error messages
-		var errorResp struct {
-			Error struct {
-				Message string `json:"message"`
-				Code    int    `json:"code"`
-			} `json:"error"`
-		}
-
-		if err := json.Unmarshal(body, &errorResp); err == nil {
-			// Handle specific error codes
-			// switch errorResp.Error.Code {
-			// case 131030:
-			// 	return fmt.Errorf("phone number %s is not in the allowed list. Please add it to your Meta WhatsApp Business API allowed recipients list", to)
-			// case 190:
-			// 	return fmt.Errorf("access token expired. Please update your WHATSAPP_API_TOKEN")
-			// case 368:
-			// 	return fmt.Errorf("rate limit exceeded. Please wait before sending more messages")
-			// default:
-			// 	return fmt.Errorf("WhatsApp API error: %s", errorResp.Error.Message)
-			// }
-		}
-
 		return fmt.Errorf("Meta WhatsApp API error: %d - %s", resp.StatusCode, string(body))
 	}
 
@@ -158,21 +235,37 @@ func (s *WAService) SendMessage(to, message string) error {
 		return nil
 	}
 
-	// 200 but no messages array – log as anomaly for visibility
-	fmt.Printf("[WA WARN] 200 OK but no messages id returned. Contacts=%v\n", apiResp.Contacts)
 	return fmt.Errorf("Meta responded 200 but no message id returned for %s", to)
 }
 
 // isValidPhoneNumber checks if the phone number is in the correct format
+// WhatsApp Business API requires: 628123456789 (no +, no leading 0, with country code)
 func (s *WAService) isValidPhoneNumber(phone string) bool {
-	// Basic validation: should start with country code and be numeric
+	// Remove + if present for validation
+	phone = strings.TrimSpace(phone)
+	if strings.HasPrefix(phone, "+") {
+		phone = phone[1:]
+	}
+
+	// Basic validation: should be 10-15 digits
 	if len(phone) < 10 || len(phone) > 15 {
 		return false
 	}
 
-	// Check if it starts with a country code (like 62 for Indonesia)
-	if phone[0] != '+' && (len(phone) < 10 || len(phone) > 15) {
-		return false
+	// Check if it's all numeric (after removing +)
+	for _, char := range phone {
+		if char < '0' || char > '9' {
+			return false
+		}
+	}
+
+	// Should start with country code (62 for Indonesia, or other country codes)
+	// Accept 62 (Indonesia), 1 (US/Canada), etc.
+	if !strings.HasPrefix(phone, "62") && !strings.HasPrefix(phone, "1") {
+		// Allow other country codes but must be at least 2 digits
+		if len(phone) < 11 {
+			return false
+		}
 	}
 
 	return true

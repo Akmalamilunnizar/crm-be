@@ -4,17 +4,18 @@ import "time"
 
 // TechnicianStep represents a predefined step in the technician workflow
 type TechnicianStep struct {
-	ID          uint64     `gorm:"primaryKey;autoIncrement" json:"id"`
-	StepOrder   int        `gorm:"column:step_order;not null" json:"step_order"`
-	Title       string     `gorm:"type:varchar(255);not null" json:"title"`
-	Description string     `gorm:"type:text" json:"description"`
-	Tools       string     `gorm:"type:text" json:"tools"`       // Peralatan (Tools)
-	SpareParts  string     `gorm:"type:text" json:"spare_parts"` // Suku Cadang (Spare Parts)
-	Procedure   string     `gorm:"type:text" json:"procedure"`   // Langkah Pengecekan (Procedure)
-	Solution    string     `gorm:"type:text" json:"solution"`    // Solusi (Solution)
-	IsActive    bool       `gorm:"default:true" json:"is_active"`
-	CreatedAt   *time.Time `gorm:"column:created_at" json:"created_at,omitempty"`
-	UpdatedAt   *time.Time `gorm:"column:updated_at" json:"updated_at,omitempty"`
+	ID                  uint64     `gorm:"primaryKey;autoIncrement" json:"id"`
+	StepOrder           int        `gorm:"column:step_order;not null" json:"step_order"`
+	Title               string     `gorm:"type:varchar(255);not null" json:"title"`
+	Description         string     `gorm:"type:text" json:"description"`
+	Tools               string     `gorm:"type:text" json:"tools"`                                 // Peralatan (Tools)
+	SpareParts          string     `gorm:"type:text" json:"spare_parts"`                           // Suku Cadang (Spare Parts)
+	Procedure           string     `gorm:"type:text" json:"procedure"`                             // Langkah Pengecekan (Procedure)
+	Solution            string     `gorm:"type:text" json:"solution"`                              // Solusi (Solution)
+	NetworkArchitecture *string    `gorm:"type:varchar(50)" json:"network_architecture,omitempty"` // NULL = all, 'FTTH' = FTTH only, 'HTB' = HTB only, comma-separated for multiple
+	IsActive            bool       `gorm:"default:true" json:"is_active"`
+	CreatedAt           *time.Time `gorm:"column:created_at" json:"created_at,omitempty"`
+	UpdatedAt           *time.Time `gorm:"column:updated_at" json:"updated_at,omitempty"`
 }
 
 func (TechnicianStep) TableName() string { return "technician_steps" }

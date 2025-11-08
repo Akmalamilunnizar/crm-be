@@ -63,6 +63,19 @@ func (c *ReportInstallationController) CreateReportInstallation(ctx *fiber.Ctx) 
 	request.TrialEndDate = ctx.FormValue("trial_end_date")
 	request.ServiceReadyDate = ctx.FormValue("service_ready_date")
 	request.InstallationCompletedAt = ctx.FormValue("installation_completed_at")
+	request.IsTerminal = ctx.FormValue("is_terminal")
+	request.TerminalCustomerInstallationId = ctx.FormValue("terminal_customer_installation_id")
+	// Parse latitude and longitude from form
+	if latStr := ctx.FormValue("latitude"); latStr != "" {
+		if parsed, err := strconv.ParseFloat(latStr, 64); err == nil {
+			request.Latitude = parsed
+		}
+	}
+	if lonStr := ctx.FormValue("longitude"); lonStr != "" {
+		if parsed, err := strconv.ParseFloat(lonStr, 64); err == nil {
+			request.Longitude = parsed
+		}
+	}
 	request.DocumentType = ctx.FormValue("document_type")
 	request.SwitchID = ctx.FormValue("switch_id")
 	request.PortNumber = ctx.FormValue("port_number")

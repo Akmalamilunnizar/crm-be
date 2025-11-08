@@ -602,20 +602,46 @@ func (r AdminInstallationReportRepositoryStruct) CreateCompleteInstallationRepor
 	fmt.Printf("Document Photo from request: '%s'\n", request.DocumentPhoto)
 	fmt.Printf("Document Type from request: '%s'\n", request.DocumentType)
 
+	// Handle terminal fields
+	var isTerminal *string
+	if request.IsTerminal != "" {
+		isTerminal = &request.IsTerminal
+	}
+	
+	var terminalCustomerInstallationId *string
+	if request.TerminalCustomerInstallationId != "" {
+		terminalCustomerInstallationId = &request.TerminalCustomerInstallationId
+	}
+	
+	// Handle location fields
+	var latitude *float64
+	if request.Latitude != 0 {
+		latitude = &request.Latitude
+	}
+	
+	var longitude *float64
+	if request.Longitude != 0 {
+		longitude = &request.Longitude
+	}
+
 	// Create main installation record
 	installation := entities.CustomerInstallation{
-		ID:                      "",
-		CustomerID:              &request.CustomerId,
-		TechnicianID:            &request.TechnicianId,
-		Status:                  request.Status,
-		Notes:                   request.Notes,
-		DocumentType:            &request.DocumentType,
-		DocumentPhoto:           &request.DocumentPhoto,
-		InstallationType:        request.InstallationType,
-		InstallationCompletedAt: installationCompletedAt,
-		TrialEndDate:            trialEndDate,
-		ServiceReadyDate:        serviceReadyDate,
-		OnAirDate:               onAirDate,
+		ID:                            "",
+		CustomerID:                    &request.CustomerId,
+		TechnicianID:                  &request.TechnicianId,
+		Status:                        request.Status,
+		Notes:                         request.Notes,
+		DocumentType:                  &request.DocumentType,
+		DocumentPhoto:                 &request.DocumentPhoto,
+		InstallationType:              request.InstallationType,
+		InstallationCompletedAt:       installationCompletedAt,
+		TrialEndDate:                  trialEndDate,
+		ServiceReadyDate:              serviceReadyDate,
+		OnAirDate:                     onAirDate,
+		IsTerminal:                    isTerminal,
+		TerminalCustomerInstallationID: terminalCustomerInstallationId,
+		Latitude:                      latitude,
+		Longitude:                     longitude,
 	}
 
 	if err := tx.Create(&installation).Error; err != nil {
@@ -936,6 +962,28 @@ func (r AdminInstallationReportRepositoryStruct) UpdateCompleteInstallationRepor
 		if completedAt, err := time.Parse("2006-01-02T15:04:05", request.InstallationCompletedAt); err == nil {
 			installation.InstallationCompletedAt = &completedAt
 		}
+	}
+	
+	// Update terminal fields
+	if request.IsTerminal != "" {
+		installation.IsTerminal = &request.IsTerminal
+	}
+	if request.TerminalCustomerInstallationId != "" {
+		installation.TerminalCustomerInstallationID = &request.TerminalCustomerInstallationId
+	} else {
+		installation.TerminalCustomerInstallationID = nil
+	}
+	
+	// Update location fields
+	if request.Latitude != 0 {
+		installation.Latitude = &request.Latitude
+	} else {
+		installation.Latitude = nil
+	}
+	if request.Longitude != 0 {
+		installation.Longitude = &request.Longitude
+	} else {
+		installation.Longitude = nil
 	}
 
 	// Save installation

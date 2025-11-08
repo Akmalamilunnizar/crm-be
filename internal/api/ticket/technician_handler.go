@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"mime/multipart"
 	"os"
 	"path/filepath"
 	"skripsi-be/internal/helpers"
@@ -17,7 +18,14 @@ import (
 
 // GetTechnicianSteps gets all predefined technician steps
 func (h *Handler) GetTechnicianSteps(c *fiber.Ctx) error {
-	steps, err := h.svc.GetTechnicianSteps()
+	// Optional network architecture filter from query
+	networkArch := c.Query("network_architecture")
+	var networkArchPtr *string
+	if networkArch != "" {
+		networkArchPtr = &networkArch
+	}
+
+	steps, err := h.svc.GetTechnicianSteps(networkArchPtr)
 	if err != nil {
 		return helpers.ResponseUtils(c, 500, false, err.Error(), nil)
 	}
@@ -247,8 +255,15 @@ func (h *Handler) GetTechnicianChecklist(c *fiber.Ctx) error {
 		}
 	}
 
-	// Get all predefined steps
-	steps, err := h.svc.GetTechnicianSteps()
+	// Get ticket to retrieve network architecture
+	ticket, terr := h.svc.repo.GetTicketByID(id)
+	var networkArchPtr *string
+	if terr == nil && ticket.NetworkArchitecture != nil && *ticket.NetworkArchitecture != "" {
+		networkArchPtr = ticket.NetworkArchitecture
+	}
+
+	// Get all predefined steps filtered by network architecture
+	steps, err := h.svc.GetTechnicianSteps(networkArchPtr)
 	if err != nil {
 		return helpers.ResponseUtils(c, 500, false, err.Error(), nil)
 	}
@@ -296,8 +311,8 @@ func (h *Handler) GetTechnicianChecklist(c *fiber.Ctx) error {
 		checklist = append(checklist, item)
 	}
 
-	// also include ticket network architecture to drive UI
-	ticket, terr := h.svc.repo.GetTicketByID(id)
+	// Return checklist with network architecture
+	// Ticket was already fetched above, reuse it
 	if terr != nil {
 		// do not fail the whole response; return checklist only
 		return helpers.ResponseUtils(c, 200, true, "technician checklist retrieved", fiber.Map{
@@ -310,4 +325,246 @@ func (h *Handler) GetTechnicianChecklist(c *fiber.Ctx) error {
 		"checklist":            checklist,
 		"network_architecture": ticket.NetworkArchitecture,
 	})
+}
+
+// SaveSelfieStep saves a selfie photo as step 0 for a ticket
+func (h *Handler) SaveSelfieStep(c *fiber.Ctx) error {
+	id, err := idParam(c)
+	if err != nil {
+		return helpers.ResponseUtils(c, 400, false, err.Error(), nil)
+	}
+
+	// Handle multipart form data for selfie image
+	form, err := c.MultipartForm()
+	if err != nil {
+		fmt.Printf("Error parsing multipart form: %v\n", err)
+		return helpers.ResponseUtils(c, 400, false, fmt.Sprintf("failed to parse multipart form: %v", err), nil)
+	}
+
+	// Get technician ID from JWT or form
+	technicianID := ""
+	if techID := form.Value["technician_id"]; len(techID) > 0 && techID[0] != "" {
+		technicianID = techID[0]
+	}
+
+	// Resolve technician ID from JWT if missing or looks like a role label
+	if technicianID == "" || technicianID == "TECHNICIAN" || technicianID == "ADMIN" || technicianID == "CUSTOMER_SERVICE" {
+		if uid, ok := c.Locals("user_id").(string); ok && uid != "" {
+			technicianID = uid
+		} else if auth := c.Get("Authorization"); strings.HasPrefix(auth, "Bearer ") {
+			parts := strings.Split(strings.TrimPrefix(auth, "Bearer "), ".")
+			if len(parts) == 3 {
+				if payloadBytes, err := base64.RawURLEncoding.DecodeString(parts[1]); err == nil {
+					var payload map[string]interface{}
+					if err := json.Unmarshal(payloadBytes, &payload); err == nil {
+						if sub, ok := payload["sub"].(string); ok && sub != "" {
+							technicianID = sub
+						}
+					}
+				}
+			}
+		}
+	}
+
+	if technicianID == "" {
+		fmt.Printf("Technician ID not found. Locals user_id: %v\n", c.Locals("user_id"))
+		return helpers.ResponseUtils(c, 400, false, "technician_id is required. Please ensure you are authenticated.", nil)
+	}
+
+	// Handle uploaded selfie image
+	var savedImagePath string
+	uploadDir := filepath.Join("public", "uploads", "technician-selfie")
+	if _, err := os.Stat(uploadDir); os.IsNotExist(err) {
+		_ = os.MkdirAll(uploadDir, 0755)
+	}
+
+	// Get selfie file (expecting field name "selfie" or "image")
+	var selfieFile *multipart.FileHeader
+	if files := form.File["selfie"]; len(files) > 0 {
+		selfieFile = files[0]
+	} else if files := form.File["image"]; len(files) > 0 {
+		selfieFile = files[0]
+	} else if files := form.File["images"]; len(files) > 0 {
+		selfieFile = files[0]
+	}
+
+	if selfieFile == nil {
+		// Log available form fields for debugging
+		var fileKeys []string
+		for k := range form.File {
+			fileKeys = append(fileKeys, k)
+		}
+		fmt.Printf("No selfie file found. Available file fields: %v\n", fileKeys)
+		return helpers.ResponseUtils(c, 400, false, "selfie image is required. Please ensure the file field is named 'selfie', 'image', or 'images'", nil)
+	}
+
+	// Validate file size (max 20MB)
+	if selfieFile.Size > 20*1024*1024 {
+		return helpers.ResponseUtils(c, 400, false, "image size exceeds 20MB limit", nil)
+	}
+
+	// Save file
+	filename := fmt.Sprintf("%d_%s_selfie_%s", time.Now().Unix(), technicianID, selfieFile.Filename)
+	fullpath := filepath.Join(uploadDir, filename)
+
+	if err := c.SaveFile(selfieFile, fullpath); err != nil {
+		return helpers.ResponseUtils(c, 500, false, fmt.Sprintf("failed to save image: %v", err), nil)
+	}
+
+	// Save full path to database (relative to public directory)
+	savedImagePath = filepath.Join("uploads", "technician-selfie", filename)
+
+	// Save to database as step 0
+	if err := h.svc.SaveSelfieStep(id, technicianID, savedImagePath); err != nil {
+		// Clean up saved file on error
+		_ = os.Remove(fullpath)
+		// Log the error for debugging
+		fmt.Printf("Error saving selfie step: %v\n", err)
+		return helpers.ResponseUtils(c, 400, false, fmt.Sprintf("Failed to save selfie: %v", err), nil)
+	}
+
+	return helpers.ResponseUtils(c, 200, true, "Foto selfie disimpan", fiber.Map{
+		"selfie_path": filename, // Return just filename for frontend URL construction
+		"step_order":  0,
+	})
+}
+
+// GetSelfieStep retrieves the selfie photo (step 0) for a ticket
+func (h *Handler) GetSelfieStep(c *fiber.Ctx) error {
+	id, err := idParam(c)
+	if err != nil {
+		return helpers.ResponseUtils(c, 400, false, err.Error(), nil)
+	}
+
+	// Get user role to determine if admin/customer service can view any technician's selfie
+	roleVal := c.Locals("role")
+	role, _ := roleVal.(string)
+	normalizedRole := helpers.NormalizeRole(role)
+
+	// Get technician ID from query parameter
+	technicianID := c.Query("technician_id")
+
+	// For technicians, use their own ID if not provided
+	// For admin/customer service, allow querying any technician or find any selfie on the ticket
+	if normalizedRole == "TECHNICIAN" {
+		if technicianID == "" || technicianID == "TECHNICIAN" || technicianID == "ADMIN" || technicianID == "CUSTOMER_SERVICE" {
+			if uid, ok := c.Locals("user_id").(string); ok && uid != "" {
+				technicianID = uid
+			} else if auth := c.Get("Authorization"); strings.HasPrefix(auth, "Bearer ") {
+				parts := strings.Split(strings.TrimPrefix(auth, "Bearer "), ".")
+				if len(parts) == 3 {
+					if payloadBytes, err := base64.RawURLEncoding.DecodeString(parts[1]); err == nil {
+						var payload map[string]interface{}
+						if err := json.Unmarshal(payloadBytes, &payload); err == nil {
+							if sub, ok := payload["sub"].(string); ok && sub != "" {
+								technicianID = sub
+							}
+						}
+					}
+				}
+			}
+		}
+		if technicianID == "" {
+			return helpers.ResponseUtils(c, 400, false, "technician_id is required", nil)
+		}
+	}
+
+	// Get step with step_order = 0
+	step, err := h.svc.repo.GetStepByOrder(0)
+	if err != nil {
+		return helpers.ResponseUtils(c, 404, false, "step 0 not found", nil)
+	}
+
+	var ticketStep *entities.TicketTechnicianStep
+
+	// For admin/customer service: if technician_id is provided, use it; otherwise find any selfie on the ticket
+	if normalizedRole == "ADMIN" || normalizedRole == "CUSTOMER_SERVICE" || normalizedRole == "SUPERADMIN" {
+		if technicianID != "" && technicianID != "ADMIN" && technicianID != "CUSTOMER_SERVICE" && technicianID != "SUPERADMIN" {
+			// Query specific technician
+			ticketSteps, err := h.svc.GetTicketTechnicianSteps(id, technicianID)
+			if err != nil {
+				return helpers.ResponseUtils(c, 500, false, err.Error(), nil)
+			}
+			for i := range ticketSteps {
+				if ticketSteps[i].StepID == step.ID {
+					ticketStep = &ticketSteps[i]
+					break
+				}
+			}
+		} else {
+			// Find any selfie on the ticket (query all technician steps for step 0)
+			// Get all technician team members for this ticket to find their selfies
+			var teamMembers []entities.TechnicianTeamMember
+			if err := h.svc.repo.DB.Where("ticket_id = ?", id).Find(&teamMembers).Error; err == nil {
+				// Try each team member
+				for _, member := range teamMembers {
+					steps, err := h.svc.GetTicketTechnicianSteps(id, member.UserID)
+					if err == nil {
+						for i := range steps {
+							if steps[i].StepID == step.ID {
+								ticketStep = &steps[i]
+								break
+							}
+						}
+						if ticketStep != nil {
+							break
+						}
+					}
+				}
+			}
+			// Fallback: direct query if team members approach doesn't work
+			if ticketStep == nil {
+				var allSteps []entities.TicketTechnicianStep
+				if err := h.svc.repo.DB.Where("ticket_id = ? AND step_id = ?", id, step.ID).Find(&allSteps).Error; err == nil {
+					if len(allSteps) > 0 {
+						// Return the first selfie found
+						ticketStep = &allSteps[0]
+					}
+				}
+			}
+		}
+	} else {
+		// For technicians: must query their own steps
+		if technicianID == "" {
+			return helpers.ResponseUtils(c, 400, false, "technician_id is required", nil)
+		}
+		ticketSteps, err := h.svc.GetTicketTechnicianSteps(id, technicianID)
+		if err != nil {
+			return helpers.ResponseUtils(c, 500, false, err.Error(), nil)
+		}
+		for i := range ticketSteps {
+			if ticketSteps[i].StepID == step.ID {
+				ticketStep = &ticketSteps[i]
+				break
+			}
+		}
+	}
+
+	if ticketStep == nil {
+		return helpers.ResponseUtils(c, 404, false, "selfie not found", nil)
+	}
+
+	// Extract image path from JSON array
+	var imagePaths []string
+	if ticketStep.ImagePaths != nil && *ticketStep.ImagePaths != "" {
+		if err := json.Unmarshal([]byte(*ticketStep.ImagePaths), &imagePaths); err == nil && len(imagePaths) > 0 {
+			// Extract just the filename from the path (handle both old and new path formats)
+			fullPath := imagePaths[0]
+			// Normalize path separators (handle Windows backslashes)
+			fullPath = strings.ReplaceAll(fullPath, "\\", "/")
+			// Remove any path prefixes (uploads/technician-progress/ or uploads/technician-selfie/)
+			fullPath = strings.TrimPrefix(fullPath, "uploads/technician-progress/")
+			fullPath = strings.TrimPrefix(fullPath, "uploads/technician-selfie/")
+			// Extract just the filename
+			filename := filepath.Base(fullPath)
+			// Debug: log the extracted filename
+			fmt.Printf("Extracted filename from path '%s': '%s'\n", imagePaths[0], filename)
+			// Ensure we only return the filename, not the path
+			return helpers.ResponseUtils(c, 200, true, "selfie retrieved", fiber.Map{
+				"selfie_path": filename,
+			})
+		}
+	}
+
+	return helpers.ResponseUtils(c, 404, false, "selfie image not found", nil)
 }

@@ -25,7 +25,7 @@ func NewAssetItemRepository(db *gorm.DB) *AssetItemRepositoryStruct {
 
 func (r AssetItemRepositoryStruct) FindAssetItemsRepository(request GetAssetItemsRequest) ([]entities.AssetItem, error) {
 	items := []entities.AssetItem{}
-	query := r.db.Preload("Asset")
+	query := r.db.Preload("Asset").Preload("Company")
 
 	if request.AssetID != nil {
 		query = query.Where("asset_id = ?", *request.AssetID)
@@ -52,14 +52,14 @@ func (r AssetItemRepositoryStruct) CreateAssetItemRepository(request CreateAsset
 	}
 
 	// Reload with relations
-	r.db.Preload("Asset").First(&item, "id = ?", item.ID)
+	r.db.Preload("Asset").Preload("Company").First(&item, "id = ?", item.ID)
 
 	return item, nil
 }
 
 func (r AssetItemRepositoryStruct) FindByIdAssetItemRepository(request IdAssetItemRequest) (entities.AssetItem, error) {
 	item := entities.AssetItem{}
-	tx := r.db.Preload("Asset").First(&item, "id = ?", request.Id)
+	tx := r.db.Preload("Asset").Preload("Company").First(&item, "id = ?", request.Id)
 	if tx.Error != nil {
 		return item, tx.Error
 	}
@@ -80,7 +80,7 @@ func (r AssetItemRepositoryStruct) UpdateAssetItemRepository(request UpdateAsset
 	}
 
 	// Reload with relations
-	r.db.Preload("Asset").First(&item, "id = ?", item.ID)
+	r.db.Preload("Asset").Preload("Company").First(&item, "id = ?", item.ID)
 
 	return item, nil
 }
@@ -99,4 +99,3 @@ func (r AssetItemRepositoryStruct) DeleteAssetItemRepository(request IdAssetItem
 
 	return item, nil
 }
-

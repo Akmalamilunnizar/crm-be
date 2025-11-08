@@ -47,6 +47,9 @@ func (h CommonUploadFileHandlerStruct) CreateCommonUploadFileHandler(c *fiber.Ct
 		})
 	}
 
+	// Get archive_installation_id from form data if provided
+	request.ArchiveInstallationId = c.FormValue("archive_installation_id")
+
 	if err := validation.ValidationRequest(&request); err != nil {
 		return helpers.ResponseUtils(c, fiber.StatusBadRequest, false, strings.Join(err, ", "), nil)
 	}

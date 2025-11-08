@@ -26,6 +26,14 @@ type CustomerInstallation struct {
 	TrialEndDate            *time.Time `gorm:"column:trial_end_date;type:date" json:"trial_end_date,omitempty"`
 	ServiceReadyDate        *time.Time `gorm:"column:service_ready_date;type:date" json:"service_ready_date,omitempty"`
 	OnAirDate               *time.Time `gorm:"column:on_air_date;type:date" json:"on_air_date,omitempty"`
+	
+	// Installation location coordinates
+	Latitude                *float64   `gorm:"column:latitude;type:double" json:"latitude,omitempty"`
+	Longitude               *float64   `gorm:"column:longitude;type:double" json:"longitude,omitempty"`
+	
+	// Terminal installation fields
+	IsTerminal                      *string    `gorm:"column:is_terminal;type:enum('yes','no');default:'no'" json:"is_terminal,omitempty"`
+	TerminalCustomerInstallationID *string    `gorm:"column:terminal_customer_installation_id;type:varchar;index:idx_customer_installations_terminal_installation_id" json:"terminal_customer_installation_id,omitempty"`
 
 	// Technician Photo Documentation is now handled via Images relationship
 	// Use installation.Images to access technician photos with archive_installation_id
@@ -36,6 +44,7 @@ type CustomerInstallation struct {
 	// Relations
 	Customer                     *Customer                      `gorm:"foreignKey:CustomerID;references:id;constraint:OnDelete:SET NULL,OnUpdate:CASCADE" json:"customer,omitempty"`
 	Technician                   *User                          `gorm:"foreignKey:TechnicianID;references:id;constraint:OnDelete:SET NULL,OnUpdate:CASCADE" json:"technician,omitempty"` // Legacy: for backward compatibility
+	TerminalCustomerInstallation *CustomerInstallation         `gorm:"foreignKey:TerminalCustomerInstallationID;references:ID;constraint:OnDelete:SET NULL,OnUpdate:CASCADE" json:"terminal_customer_installation,omitempty"`
 	Images                       []Image                        `gorm:"foreignKey:ArchiveInstallationId;references:ID" json:"images"`
 	AssetTransactions            []AssetTransaction             `gorm:"foreignKey:CustomerInstallationID;references:ID" json:"asset_transactions,omitempty"`
 	NetworkDevices               []NetworkDevice                `gorm:"foreignKey:CustomerInstallationID;references:ID" json:"network_devices,omitempty"`

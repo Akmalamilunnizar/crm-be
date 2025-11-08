@@ -51,6 +51,10 @@ type CreateReportInstallationRequest struct {
 	TrialEndDate                  string                 `form:"trial_end_date" json:"trial_end_date"`
 	ServiceReadyDate              string                 `form:"service_ready_date" json:"service_ready_date"`
 	InstallationCompletedAt       string                 `form:"installation_completed_at" json:"installation_completed_at"`
+	IsTerminal                    string                 `form:"is_terminal" json:"is_terminal"` // 'yes' or 'no'
+	TerminalCustomerInstallationId string                `form:"terminal_customer_installation_id" json:"terminal_customer_installation_id"` // Installation ID of the terminal installation
+	Latitude                      float64                `form:"latitude" json:"latitude"`
+	Longitude                     float64                `form:"longitude" json:"longitude"`
 	SwitchID                      string                 `form:"switch_id" json:"switch_id"`
 	PortNumber                    string                 `form:"port_number" json:"port_number"`
 	RemotePort                    string                 `form:"remote_port" json:"remote_port"`

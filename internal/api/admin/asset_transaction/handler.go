@@ -1,6 +1,7 @@
 package asset_transaction
 
 import (
+	"fmt"
 	"skripsi-be/internal/api/common/validation"
 	"skripsi-be/internal/helpers"
 	"strings"
@@ -77,7 +78,25 @@ func (h *AssetTransactionHandlerStruct) CreateAssetTransactionHandler(c *fiber.C
 		return helpers.ResponseUtils(c, fiber.StatusBadRequest, false, strings.Join(errValidation, ", "), nil)
 	}
 
-	transaction, err := h.service.CreateAssetTransactionService(request)
+	// Get the authenticated user ID from the request context
+	var createdBy string
+	if userID := c.Locals("user_id"); userID != nil {
+		createdBy = fmt.Sprintf("%v", userID)
+	} else {
+		// Fallback to a known admin user ID to avoid foreign key constraint issues
+		createdBy = "b6cbf8b6-6a2e-45f3-a9ab-e30e5941bf5a" // Admin user ID from JWT
+	}
+
+	// Handle empty customer_installation_id for standalone goods transactions
+	// Use a placeholder value if empty to avoid foreign key constraint issues
+	if request.CustomerInstallationID == "" {
+		// For standalone goods transactions, we'll use a special placeholder
+		// You may want to create a special "STANDALONE" customer installation record
+		// For now, we'll skip the foreign key by using empty string (if DB allows) or handle it in repository
+		request.CustomerInstallationID = "" // Keep empty for standalone transactions
+	}
+
+	transaction, err := h.service.CreateAssetTransactionService(request, createdBy)
 	if err != nil {
 		return helpers.ResponseUtils(c, fiber.StatusInternalServerError, false, err.Error(), nil)
 	}

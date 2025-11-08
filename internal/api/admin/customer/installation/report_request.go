@@ -19,6 +19,14 @@ type UpdateCompleteInstallationReportRequest struct {
 	TrialEndDate            string `json:"trial_end_date"`
 	ServiceReadyDate        string `json:"service_ready_date"`
 	InstallationCompletedAt string `json:"installation_completed_at"`
+	
+	// Terminal installation fields
+	IsTerminal                      string `json:"is_terminal"` // 'yes' or 'no'
+	TerminalCustomerInstallationId  string `json:"terminal_customer_installation_id"` // Installation ID of the terminal installation
+	
+	// Installation location
+	Latitude                        float64 `json:"latitude"`
+	Longitude                       float64 `json:"longitude"`
 
 	// Network Devices (multiple devices support)
 	NetworkDevices []NetworkDeviceRequest `json:"network_devices"`
@@ -51,6 +59,14 @@ type CreateCompleteInstallationReportRequest struct {
 	TrialEndDate            string `json:"trial_end_date"`
 	ServiceReadyDate        string `json:"service_ready_date"`
 	InstallationCompletedAt string `json:"installation_completed_at"`
+	
+	// Terminal installation fields
+	IsTerminal                      string `json:"is_terminal"` // 'yes' or 'no'
+	TerminalCustomerInstallationId  string `json:"terminal_customer_installation_id"` // Installation ID of the terminal installation
+	
+	// Installation location
+	Latitude                        float64 `json:"latitude"`
+	Longitude                       float64 `json:"longitude"`
 
 	// Asset Tracking
 	AssetTransactions []AssetTransactionRequest `json:"asset_transactions"`

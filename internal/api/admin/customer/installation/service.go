@@ -5,7 +5,7 @@ import (
 )
 
 type AdminCustomerInstallationServiceInterface interface {
-	GetAllAdminCustomerInstallationService() ([]entities.CustomerInstallation, error)
+	GetAllAdminCustomerInstallationService(isTerminal string) ([]entities.CustomerInstallation, error)
 	GetByIdAdminCustomerInstallationService(request IdAdminCustomerInstallationRequest) (entities.CustomerInstallation, error)
 	CreateAdminCustomerInstallationService(request CreateAdminCustomerInstallationRequest) (entities.CustomerInstallation, error)
 	UpdateAdminCustomerInstallationService(request UpdateAdminCustomerInstallationRequest) (entities.CustomerInstallation, error)
@@ -21,8 +21,8 @@ func NewAdminCustomerInstallationService(repository AdminCustomerInstallationRep
 	return AdminCustomerInstallationServiceStruct{repository}
 }
 
-func (s AdminCustomerInstallationServiceStruct) GetAllAdminCustomerInstallationService() ([]entities.CustomerInstallation, error) {
-	customer, err := s.repository.FindAdminCustomerInstallationRepository()
+func (s AdminCustomerInstallationServiceStruct) GetAllAdminCustomerInstallationService(isTerminal string) ([]entities.CustomerInstallation, error) {
+	customer, err := s.repository.FindAdminCustomerInstallationRepository(isTerminal)
 	if err != nil {
 		return customer, err
 	}

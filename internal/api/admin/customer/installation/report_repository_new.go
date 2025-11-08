@@ -197,15 +197,41 @@ func (r *ReportInstallationRepository) CreateReportInstallationRepository(reques
 		}
 	}
 
+	// Handle terminal fields
+	var isTerminal *string
+	if request.IsTerminal != "" {
+		isTerminal = &request.IsTerminal
+	}
+	
+	var terminalCustomerInstallationId *string
+	if request.TerminalCustomerInstallationId != "" {
+		terminalCustomerInstallationId = &request.TerminalCustomerInstallationId
+	}
+	
+	// Handle location fields
+	var latitude *float64
+	if request.Latitude != 0 {
+		latitude = &request.Latitude
+	}
+	
+	var longitude *float64
+	if request.Longitude != 0 {
+		longitude = &request.Longitude
+	}
+
 	// Create main installation record
 	installation := entities.CustomerInstallation{
-		CustomerID:              stringToPtr(request.CustomerID),
-		TechnicianID:            technicianID,
-		Status:                  request.Status,
-		Notes:                   request.Notes,
-		DocumentType:            stringToPtr(request.DocumentType),
-		DocumentPhoto:           stringToPtr(request.DocumentPhoto),
-		InstallationType:        request.InstallationType,
+		CustomerID:                    stringToPtr(request.CustomerID),
+		TechnicianID:                  technicianID,
+		Status:                        request.Status,
+		Notes:                         request.Notes,
+		DocumentType:                  stringToPtr(request.DocumentType),
+		DocumentPhoto:                 stringToPtr(request.DocumentPhoto),
+		InstallationType:              request.InstallationType,
+		IsTerminal:                    isTerminal,
+		TerminalCustomerInstallationID: terminalCustomerInstallationId,
+		Latitude:                      latitude,
+		Longitude:                     longitude,
 		InstallationCompletedAt: installationCompletedAt,
 		TrialEndDate:            trialEndDate,
 		ServiceReadyDate:        serviceReadyDate,

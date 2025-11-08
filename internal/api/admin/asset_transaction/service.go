@@ -4,7 +4,7 @@ import "skripsi-be/internal/models/entities"
 
 type AssetTransactionServiceInterface interface {
 	GetAssetTransactionsService(request GetAssetTransactionsRequest) ([]entities.AssetTransaction, error)
-	CreateAssetTransactionService(request CreateAssetTransactionRequest) (entities.AssetTransaction, error)
+	CreateAssetTransactionService(request CreateAssetTransactionRequest, createdBy string) (entities.AssetTransaction, error)
 	GetByIdAssetTransactionService(request IdAssetTransactionRequest) (entities.AssetTransaction, error)
 	UpdateAssetTransactionService(request UpdateAssetTransactionRequest) (entities.AssetTransaction, error)
 	DeleteAssetTransactionService(request IdAssetTransactionRequest) (entities.AssetTransaction, error)
@@ -34,8 +34,8 @@ func (s AssetTransactionServiceStruct) GetByIdAssetTransactionService(request Id
 	return transaction, err
 }
 
-func (s AssetTransactionServiceStruct) CreateAssetTransactionService(request CreateAssetTransactionRequest) (entities.AssetTransaction, error) {
-	transaction, err := s.repository.CreateAssetTransactionRepository(request)
+func (s AssetTransactionServiceStruct) CreateAssetTransactionService(request CreateAssetTransactionRequest, createdBy string) (entities.AssetTransaction, error) {
+	transaction, err := s.repository.CreateAssetTransactionRepository(request, createdBy)
 	if err != nil {
 		return transaction, err
 	}

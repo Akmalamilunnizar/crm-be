@@ -40,7 +40,7 @@ func (u *Accounts) BeforeCreate(tx *gorm.DB) error {
 
 // CustomerInstallation model moved to customer_installation_model.go
 
-// Assets model - Updated to remove deprecated columns (status, status_in_out, quantity)
+// Assets model - Catalog only, no company_id or site (these belong to asset_items)
 type Asset struct {
 	ID           string             `json:"id" gorm:"primaryKey"`
 	Type         string             `json:"type" validate:"required"`
@@ -48,11 +48,8 @@ type Asset struct {
 	Model        string             `json:"model" validate:"required"`
 	SerialNumber string             `json:"serial_number" validate:"required"`
 	Date         string             `json:"date" validate:"required"`
-	CompanyID    *string            `json:"company_id" gorm:"type:varchar(191)"`
-	Company      *Company           `json:"company,omitempty" gorm:"foreignKey:CompanyID;references:ID"`
 	Price        float64            `json:"price" validate:"required"`
 	Description  string             `json:"description"`
-	Site         string             `json:"site" validate:"required"`
 	CreatedAt    time.Time          `json:"createdAt" gorm:"column:createdAt;default:current_timestamp"`
 	UpdatedAt    time.Time          `json:"updatedAt" gorm:"column:updatedAt;"`
 	ReportAssets *ReportAssets      `json:"report_assets" gorm:"foreignKey:ID"`
@@ -71,7 +68,7 @@ func (u *Asset) BeforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
-// AssetItem model for tracking individual asset items
+// AssetItem model for tracking individual asset items (instances with company and site)
 type AssetItem struct {
 	ID           string    `json:"id" gorm:"primaryKey"`
 	AssetID      string    `json:"asset_id" gorm:"type:varchar(191);not null"`
@@ -79,6 +76,9 @@ type AssetItem struct {
 	MacAddress   string    `json:"mac_address" gorm:"type:varchar(17);uniqueIndex;not null"`
 	SerialNumber *string   `json:"serial_number" gorm:"type:varchar(191)"`
 	Status       string    `json:"status" gorm:"type:enum('in_stock','in_use','maintenance','damaged','retired');default:'in_stock'"`
+	CompanyID    *string   `json:"company_id" gorm:"type:varchar(191)"`
+	Company      *Company  `json:"company,omitempty" gorm:"foreignKey:CompanyID;references:ID"`
+	Site         string    `json:"site" gorm:"type:varchar(191)"`
 	CreatedAt    time.Time `json:"created_at" gorm:"column:created_at;default:current_timestamp"`
 	UpdatedAt    time.Time `json:"updated_at" gorm:"column:updated_at;default:current_timestamp"`
 }

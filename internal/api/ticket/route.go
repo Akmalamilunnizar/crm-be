@@ -62,6 +62,8 @@ func TicketRoutes(api fiber.Router) {
 	g.Get("/:id/technician-checklist", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "TECHNICIAN", "CUSTOMER_SERVICE"), h.GetTechnicianChecklist)
 	g.Get("/:id/technician-steps", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "TECHNICIAN", "CUSTOMER_SERVICE"), h.GetTicketTechnicianSteps)
 	g.Post("/:id/technician-step", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "TECHNICIAN"), h.UpdateTechnicianStep)
+	g.Post("/:id/technician-selfie", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "TECHNICIAN"), h.SaveSelfieStep)
+	g.Get("/:id/technician-selfie", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "TECHNICIAN", "CUSTOMER_SERVICE"), h.GetSelfieStep)
 	g.Get("/:id/technician-progress", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "TECHNICIAN", "CUSTOMER_SERVICE"), h.GetTechnicianStepProgress)
 	g.Post("/:id/technician-complete", helpers.VerifyToken, helpers.RequireRoles("ADMIN", "TECHNICIAN"), h.MarkTechnicianJobCompleted)
 

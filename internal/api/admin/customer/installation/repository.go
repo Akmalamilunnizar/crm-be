@@ -14,7 +14,7 @@ type AdminCustomerInstallationRepositoryInterface interface {
 	UpdateAdminCustomerInstallationRepository(request UpdateAdminCustomerInstallationRequest) (entities.CustomerInstallation, error)
 	DeleteAdminCustomerInstallationRepository(request IdAdminCustomerInstallationRequest) (entities.CustomerInstallation, error)
 	FindByIdAdminCustomerInstallationRepository(request IdAdminCustomerInstallationRequest) (entities.CustomerInstallation, error)
-	FindAdminCustomerInstallationRepository() ([]entities.CustomerInstallation, error)
+	FindAdminCustomerInstallationRepository(isTerminal string) ([]entities.CustomerInstallation, error)
 	GetInstallationReportsByCustomerRepository(customerId string) ([]entities.CustomerInstallation, error) // NEW
 }
 type AdminCustomerInstallationRepositoryStruct struct {
@@ -25,9 +25,16 @@ func NewAdminCustomerInstallationRepository(db *gorm.DB) AdminCustomerInstallati
 	return AdminCustomerInstallationRepositoryStruct{db}
 }
 
-func (r AdminCustomerInstallationRepositoryStruct) FindAdminCustomerInstallationRepository() ([]entities.CustomerInstallation, error) {
+func (r AdminCustomerInstallationRepositoryStruct) FindAdminCustomerInstallationRepository(isTerminal string) ([]entities.CustomerInstallation, error) {
 	customerInstallations := []entities.CustomerInstallation{}
-	tx := r.db.Preload("Customer", "deleted_at IS NULL").Preload("Technician").Preload("Images").Find(&customerInstallations)
+	query := r.db.Preload("Customer", "deleted_at IS NULL").Preload("Technician").Preload("Images")
+
+	// Filter by is_terminal if provided
+	if isTerminal != "" {
+		query = query.Where("is_terminal = ?", isTerminal)
+	}
+
+	tx := query.Find(&customerInstallations)
 
 	if tx.Error != nil {
 		return customerInstallations, tx.Error

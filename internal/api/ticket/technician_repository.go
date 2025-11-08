@@ -9,9 +9,28 @@ import (
 )
 
 // GetTechnicianSteps gets all predefined technician steps
-func (r *Repo) GetTechnicianSteps() ([]entities.TechnicianStep, error) {
+// If networkArchitecture is provided, filters steps to only those applicable to that architecture
+// Steps with network_architecture = NULL apply to all architectures
+func (r *Repo) GetTechnicianSteps(networkArchitecture *string) ([]entities.TechnicianStep, error) {
 	var steps []entities.TechnicianStep
-	if err := r.DB.Where("is_active = ?", true).Order("step_order ASC").Find(&steps).Error; err != nil {
+	query := r.DB.Where("is_active = ?", true)
+
+	// Filter by network architecture if provided
+	if networkArchitecture != nil && *networkArchitecture != "" {
+		// Include steps that:
+		// 1. Have NULL network_architecture (applies to all)
+		// 2. Match the exact architecture (e.g., 'HTB' = 'HTB')
+		// 3. Contain the architecture in comma-separated list (e.g., 'FTTH,HTB' contains 'HTB')
+		query = query.Where(
+			"network_architecture IS NULL OR network_architecture = ? OR network_architecture LIKE ? OR network_architecture LIKE ? OR network_architecture LIKE ?",
+			*networkArchitecture,
+			*networkArchitecture+",%",
+			"%,"+*networkArchitecture,
+			"%,"+*networkArchitecture+",%",
+		)
+	}
+
+	if err := query.Order("step_order ASC").Find(&steps).Error; err != nil {
 		return nil, fmt.Errorf("failed to get technician steps: %v", err)
 	}
 	return steps, nil
@@ -107,6 +126,15 @@ func (r *Repo) GetStepByID(stepID uint64) (*entities.TechnicianStep, error) {
 	var s entities.TechnicianStep
 	if err := r.DB.Where("id = ?", stepID).First(&s).Error; err != nil {
 		return nil, fmt.Errorf("failed to get step: %v", err)
+	}
+	return &s, nil
+}
+
+// GetStepByOrder returns a predefined step by step_order
+func (r *Repo) GetStepByOrder(stepOrder int) (*entities.TechnicianStep, error) {
+	var s entities.TechnicianStep
+	if err := r.DB.Where("step_order = ? AND is_active = ?", stepOrder, true).First(&s).Error; err != nil {
+		return nil, fmt.Errorf("failed to get step by order: %v", err)
 	}
 	return &s, nil
 }

@@ -15,6 +15,8 @@ import (
 	"skripsi-be/internal/api/admin/geocoding"
 	"skripsi-be/internal/api/admin/inventory"
 	"skripsi-be/internal/api/admin/invoice"
+	itemscatalog "skripsi-be/internal/api/admin/items_catalog"
+	itemstransaction "skripsi-be/internal/api/admin/items_transaction"
 	"skripsi-be/internal/api/admin/mikrotik"
 	networkdevice "skripsi-be/internal/api/admin/network-device"
 	network_monitoring "skripsi-be/internal/api/admin/network_monitoring"
@@ -25,6 +27,7 @@ import (
 	"skripsi-be/internal/api/admin/transaction"
 	usermanagement "skripsi-be/internal/api/admin/user-management"
 	authapi "skripsi-be/internal/api/auth"
+	broadcastapi "skripsi-be/internal/api/broadcast"
 	upload_file "skripsi-be/internal/api/common/upload_file"
 	customerdashboard "skripsi-be/internal/api/customer/dashboard"
 	"skripsi-be/internal/api/customer/monitoring"
@@ -73,6 +76,8 @@ func RouteFiber(app *fiber.App) {
 	asset.AdminAssetRoute(admin.Group("/asset"))
 	assetitem.AssetItemRoute(admin.Group("/asset-item"))
 	assettransaction.AssetTransactionRoute(admin.Group("/asset-transaction"))
+	itemstransaction.ItemsTransactionRoute(admin.Group("/items-transaction"))
+	itemscatalog.ItemsCatalogRoute(admin.Group("/items-catalog"))
 	transaction.AdminTrasactionRoute(admin.Group("/transaction"))
 	invoice.AdminInvoiceRoute(admin.Group("/invoice"))
 	recurring_invoice.AdminRecurringInvoiceRoute(admin.Group("/recurring-invoice"))
@@ -123,5 +128,10 @@ func RouteFiber(app *fiber.App) {
 
 	// WhatsApp routes
 	waapi.WARoutes(app)
+
+	// Broadcast routes
+	log.Println("Registering broadcast routes...")
+	broadcastapi.SetupBroadcastRoutes(app, database.GetDB())
+	log.Println("Broadcast routes registered successfully")
 
 }

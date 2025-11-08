@@ -50,6 +50,12 @@ func (r CommonUploadFileRepositoryStruct) CreateCommonUploadFileRepository(reque
 	}
 	image.File = request.Name + extension
 	image.FullPath = "uploads/" + request.Path + "/" + request.Name + extension
+	
+	// Set archive_installation_id if provided
+	if request.ArchiveInstallationId != "" {
+		image.ArchiveInstallationId = request.ArchiveInstallationId
+	}
+	
 	tx := r.db.Create(&image)
 	if tx.Error != nil {
 		return image, tx.Error

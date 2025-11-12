@@ -26,8 +26,13 @@ func EnqueueRouterJob(db *gorm.DB, invoiceID string, action RouterAction, delay 
 	}
 	unique := invoiceID + ":" + string(action)
 	job := entities.RouterJob{}
-	if err := db.Where("unique_key = ?", unique).First(&job).Error; err == nil {
-		// If already succeeded, do nothing; if pending or error, reset to pending and schedule soon
+	// Use Find instead of First to avoid "record not found" error logs when job doesn't exist
+	result := db.Where("unique_key = ?", unique).Find(&job)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	if result.RowsAffected > 0 {
+		// Job exists - reset to pending and schedule soon
 		job.Status = entities.RouterJobStatusPending
 		job.LastError = nil
 		job.NextRunAt = time.Now().Add(delay)
@@ -38,7 +43,7 @@ func EnqueueRouterJob(db *gorm.DB, invoiceID string, action RouterAction, delay 
 		log.Printf("[routerjobs] reset job unique=%s invoice=%s action=%s retry_count=%d next_run_at=%s", unique, invoiceID, string(action), job.RetryCount, job.NextRunAt.Format(time.RFC3339))
 		return &job, nil
 	}
-	// Create new
+	// Create new job (record not found is expected here)
 	job = entities.RouterJob{
 		InvoiceID:  invoiceID,
 		Action:     string(action),

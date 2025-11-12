@@ -21,12 +21,16 @@ type IdAdminInvoiceRequest struct {
 
 type UpdateStatusAdminInvoiceRequest struct {
 	IdAdminInvoiceRequest
-	Status string `json:"status" validate:"required,oneof=paid unpaid pending"`
+	Status    string `json:"status" validate:"required,oneof=paid unpaid pending"`
+	AccountID string `json:"account_id"`
+	Method    string `json:"method"`
 }
 
 type UpdateAdminInvoiceRequest struct {
 	IdAdminInvoiceRequest
 	CreateAdminInvoiceRequest
+	AccountID *string `json:"account_id,omitempty"`
+	Method    *string `json:"method,omitempty"`
 }
 
 type PartialPaymentRequest struct {

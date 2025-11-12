@@ -2,6 +2,7 @@ package transaction
 
 type CreateAdminTransactionRequest struct {
 	AccountID   string `json:"account_id" validate:"required"`
+	InvoiceID   string `json:"invoice_id"`
 	TypeCash    string `json:"type_cash" validate:"required"`
 	TypeInOut   string `json:"type_in_out" validate:"required"`
 	Amount      int64  `json:"amount" validate:"required"`

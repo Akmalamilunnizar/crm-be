@@ -1,11 +1,133 @@
 package entities
 
 import (
+	"database/sql/driver"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
+
+// NullableTimeFromVarchar is a custom type that can scan VARCHAR to time.Time
+type NullableTimeFromVarchar struct {
+	Time  *time.Time
+	Valid bool
+}
+
+// Scan implements the sql.Scanner interface for NullableTimeFromVarchar
+func (nt *NullableTimeFromVarchar) Scan(value interface{}) error {
+	if value == nil {
+		nt.Time, nt.Valid = nil, false
+		return nil
+	}
+
+	nt.Valid = true
+	switch v := value.(type) {
+	case time.Time:
+		nt.Time = &v
+		return nil
+	case []byte:
+		// Handle VARCHAR as []byte
+		if len(v) == 0 {
+			nt.Time, nt.Valid = nil, false
+			return nil
+		}
+		str := string(v)
+		if str == "" || str == "NULL" {
+			nt.Time, nt.Valid = nil, false
+			return nil
+		}
+		// Try multiple date formats
+		formats := []string{
+			"2006-01-02 15:04:05",
+			time.RFC3339,
+			"2006-01-02T15:04:05Z07:00",
+			"2006-01-02 15:04:05.000",
+			"2006-01-02T15:04:05",
+			"2006-01-02",
+		}
+		for _, format := range formats {
+			if t, err := time.Parse(format, str); err == nil {
+				nt.Time = &t
+				return nil
+			}
+		}
+		return fmt.Errorf("cannot parse %q as time", str)
+	case string:
+		if v == "" || v == "NULL" {
+			nt.Time, nt.Valid = nil, false
+			return nil
+		}
+		// Try multiple date formats
+		formats := []string{
+			"2006-01-02 15:04:05",
+			time.RFC3339,
+			"2006-01-02T15:04:05Z07:00",
+			"2006-01-02 15:04:05.000",
+			"2006-01-02T15:04:05",
+			"2006-01-02",
+		}
+		for _, format := range formats {
+			if t, err := time.Parse(format, v); err == nil {
+				nt.Time = &t
+				return nil
+			}
+		}
+		return fmt.Errorf("cannot parse %q as time", v)
+	default:
+		return fmt.Errorf("cannot scan %T into NullableTimeFromVarchar", value)
+	}
+}
+
+// Value implements the driver.Valuer interface for NullableTimeFromVarchar
+func (nt NullableTimeFromVarchar) Value() (driver.Value, error) {
+	if !nt.Valid || nt.Time == nil {
+		return nil, nil
+	}
+	// Return as string for VARCHAR column
+	return nt.Time.Format("2006-01-02 15:04:05"), nil
+}
+
+// MarshalJSON implements json.Marshaler for NullableTimeFromVarchar
+func (nt NullableTimeFromVarchar) MarshalJSON() ([]byte, error) {
+	if !nt.Valid || nt.Time == nil {
+		return []byte("null"), nil
+	}
+	return []byte(fmt.Sprintf(`"%s"`, nt.Time.Format(time.RFC3339))), nil
+}
+
+// UnmarshalJSON implements json.Unmarshaler for NullableTimeFromVarchar
+func (nt *NullableTimeFromVarchar) UnmarshalJSON(data []byte) error {
+	if string(data) == "null" || string(data) == `""` {
+		nt.Time, nt.Valid = nil, false
+		return nil
+	}
+
+	// Remove quotes
+	str := string(data)
+	if len(str) > 2 && str[0] == '"' && str[len(str)-1] == '"' {
+		str = str[1 : len(str)-1]
+	}
+
+	// Try multiple date formats
+	formats := []string{
+		time.RFC3339,
+		"2006-01-02 15:04:05",
+		"2006-01-02T15:04:05Z07:00",
+		"2006-01-02 15:04:05.000",
+		"2006-01-02T15:04:05",
+		"2006-01-02",
+	}
+	for _, format := range formats {
+		if t, err := time.Parse(format, str); err == nil {
+			nt.Time = &t
+			nt.Valid = true
+			return nil
+		}
+	}
+	return fmt.Errorf("cannot parse %q as time", str)
+}
 
 // Enums
 type UserRole string
@@ -248,8 +370,9 @@ type TransactionsTypeCash string
 
 // Constants for TransactionsTypeCash
 const (
-	TransactionsTypeCashInternet TransactionsTypeCash = "internet"
-	TransactionsTypeCashCashFlow TransactionsTypeCash = "cash_flow"
+	TransactionsTypeCashInternet     TransactionsTypeCash = "internet"
+	TransactionsTypeCashCashFlow     TransactionsTypeCash = "cash_flow"
+	TransactionsTypeCashCollaborator TransactionsTypeCash = "collaborator"
 )
 
 // TransactionsTypeInOut represents the direction of the transaction
@@ -410,21 +533,21 @@ const (
 )
 
 type Invoice struct {
-	ID            string         `gorm:"column:id;type:varchar;primaryKey" json:"id"`
-	Amount        int64          `gorm:"column:amount;type:int;not null" json:"amount"`
-	CustomerID    string         `gorm:"column:customer_id;type:varchar;not null" json:"customer_id"`
-	Customer      Customer       `gorm:"foreignKey:CustomerID;references:id;constraint:OnUpdate:RESTRICT" json:"customer"`
-	Link          string         `gorm:"column:link;type:varchar;not null" json:"link"`
-	Status        InvoiceStatus  `gorm:"column:status;type:varchar;not null" json:"status"`
-	InvoiceDate   *time.Time     `gorm:"column:invoice_date;type:date" json:"invoice_date"`
-	DueDate       *time.Time     `gorm:"column:due_date;type:date" json:"due_date"`
-	PdfViewed     bool           `gorm:"column:pdf_viewed;type:boolean;default:false" json:"pdf_viewed"`
-	PdfViewedAt   *time.Time     `gorm:"column:pdf_viewed_at;type:timestamp" json:"pdf_viewed_at"`
-	CreatedAt     time.Time      `gorm:"column:createdAt;default:current_timestamp" json:"created_at"`
-	UpdatedAt     time.Time      `gorm:"column:updatedAt;not null" json:"updated_at"`
-	InvoiceItems  []InvoiceItems `gorm:"foreignKey:InvoiceID;constraint:OnUpdate:RESTRICT" json:"invoice_items"`
-	Transaction   Transaction    `gorm:"foreignKey:invoice_id;constraint:OnUpdate:RESTRICT" json:"transaction"`
-	PendingReason *string        `gorm:"-" json:"pending_reason,omitempty"` // Virtual field, not stored in DB
+	ID            string                  `gorm:"column:id;type:varchar;primaryKey" json:"id"`
+	Amount        int64                   `gorm:"column:amount;type:int;not null" json:"amount"`
+	CustomerID    string                  `gorm:"column:customer_id;type:varchar;not null" json:"customer_id"`
+	Customer      Customer                `gorm:"foreignKey:CustomerID;references:id;constraint:OnUpdate:RESTRICT" json:"customer"`
+	Link          string                  `gorm:"column:link;type:varchar;not null" json:"link"`
+	Status        InvoiceStatus           `gorm:"column:status;type:varchar;not null" json:"status"`
+	InvoiceDate   *time.Time              `gorm:"column:invoice_date;type:date" json:"invoice_date"`
+	DueDate       *time.Time              `gorm:"column:due_date;type:date" json:"due_date"`
+	PdfViewed     bool                    `gorm:"column:pdf_viewed;type:boolean;default:false" json:"pdf_viewed"`
+	PdfViewedAt   NullableTimeFromVarchar `gorm:"column:pdf_viewed_at;type:varchar(50)" json:"pdf_viewed_at"`
+	CreatedAt     time.Time               `gorm:"column:createdAt;default:current_timestamp" json:"created_at"`
+	UpdatedAt     time.Time               `gorm:"column:updatedAt;not null" json:"updated_at"`
+	InvoiceItems  []InvoiceItems          `gorm:"foreignKey:InvoiceID;constraint:OnUpdate:RESTRICT" json:"invoice_items"`
+	Transaction   Transaction             `gorm:"foreignKey:invoice_id;constraint:OnUpdate:RESTRICT" json:"transaction"`
+	PendingReason *string                 `gorm:"-" json:"pending_reason,omitempty"` // Virtual field, not stored in DB
 }
 
 // InvoicePendingReason stores customer's reason when invoice is pending

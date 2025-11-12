@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jinzhu/copier"
 	"gorm.io/gorm"
 
 	"skripsi-be/internal/models/entities"
@@ -39,7 +38,10 @@ func NewAdminInvoiceRepository(db *gorm.DB) *AdminInvoiceRepositoryStruct {
 
 func (r AdminInvoiceRepositoryStruct) FindAdminInvoiceRepository() ([]entities.Invoice, error) {
 	invoices := []entities.Invoice{}
-	tx := r.db.Preload("Customer").Preload("InvoiceItems.Invoice").Order("createdAt DESC").Find(&invoices)
+	// Load all invoices with relationships
+	// The custom NullableTimeFromVarchar scanner will automatically handle VARCHAR to time.Time conversion
+	tx := r.db.Preload("Customer").Preload("Customer.Area").Preload("InvoiceItems").Preload("InvoiceItems.Invoice").
+		Order("createdAt DESC").Find(&invoices)
 
 	if tx.Error != nil {
 		return invoices, tx.Error
@@ -73,7 +75,9 @@ func (r AdminInvoiceRepositoryStruct) FindAdminInvoiceRepository() ([]entities.I
 
 func (r AdminInvoiceRepositoryStruct) FindByIdAdminInvoiceRepository(request IdAdminInvoiceRequest) (entities.Invoice, error) {
 	invoice := entities.Invoice{}
-	tx := r.db.Preload("Customer").Preload("InvoiceItems.Invoice").Preload("Transaction").First(&invoice, "id = ?", request.Id)
+	// The custom NullableTimeFromVarchar scanner will automatically handle VARCHAR to time.Time conversion
+	tx := r.db.Preload("Customer").Preload("Customer.Area").Preload("InvoiceItems").Preload("InvoiceItems.Invoice").Preload("Transaction").
+		First(&invoice, "id = ?", request.Id)
 
 	if tx.Error != nil {
 		return invoice, tx.Error
@@ -171,8 +175,8 @@ func (r AdminInvoiceRepositoryStruct) CreateAdminInvoiceRepository(request Creat
 		invoice.DueDate = &due
 	}
 
-	// Convert request invoice items to entity invoice items
-	var invoiceItems []entities.InvoiceItems
+	// Convert request invoice items to entity invoice items (work on a local slice to avoid GORM auto-creating associations)
+	var itemsToCreate []entities.InvoiceItems
 	for _, reqItem := range request.InvoiceItems {
 		item := entities.InvoiceItems{
 			// Don't set ID here - let it be generated fresh in the loop below
@@ -181,14 +185,16 @@ func (r AdminInvoiceRepositoryStruct) CreateAdminInvoiceRepository(request Creat
 			Qty:   reqItem.Qty,
 			Total: reqItem.Total,
 		}
-		invoiceItems = append(invoiceItems, item)
+		itemsToCreate = append(itemsToCreate, item)
 	}
-	invoice.InvoiceItems = invoiceItems
+	// Important: Do NOT assign items to invoice before Create, otherwise GORM will auto-create associations
+	invoice.InvoiceItems = nil
 
 	tx := r.db.Begin()
 
 	// Create the invoice first
-	txInvoice := tx.Create(&invoice)
+	// Omit associations to prevent duplicate invoice_items creation
+	txInvoice := tx.Omit("InvoiceItems").Create(&invoice)
 	if txInvoice.Error != nil {
 		tx.Rollback()
 		return entities.Invoice{}, txInvoice.Error
@@ -196,18 +202,18 @@ func (r AdminInvoiceRepositoryStruct) CreateAdminInvoiceRepository(request Creat
 
 	// Calculate total amount from all invoice items and save them
 	var totalAmount int64 = 0
-	for i := range invoice.InvoiceItems {
+	for i := range itemsToCreate {
 		// Generate a fresh UUID for each item to ensure uniqueness
 		newID := uuid.New().String()
 		log.Printf("Creating invoice item %d with ID: %s", i, newID)
 
-		invoice.InvoiceItems[i].ID = newID
-		invoice.InvoiceItems[i].InvoiceID = invoice.ID
-		invoice.InvoiceItems[i].Total = invoice.InvoiceItems[i].Price * invoice.InvoiceItems[i].Qty
-		totalAmount += invoice.InvoiceItems[i].Total
+		itemsToCreate[i].ID = newID
+		itemsToCreate[i].InvoiceID = invoice.ID
+		itemsToCreate[i].Total = itemsToCreate[i].Price * itemsToCreate[i].Qty
+		totalAmount += itemsToCreate[i].Total
 
 		// Save each invoice item individually
-		txInvoiceItem := tx.Create(&invoice.InvoiceItems[i])
+		txInvoiceItem := tx.Create(&itemsToCreate[i])
 		if txInvoiceItem.Error != nil {
 			log.Printf("Error creating invoice item %d: %v", i, txInvoiceItem.Error)
 			tx.Rollback()
@@ -297,7 +303,8 @@ func (r AdminInvoiceRepositoryStruct) CreateAdminInvoiceRepository(request Creat
 
 	// Fetch the complete invoice with all relationships
 	var completeInvoice entities.Invoice
-	err := r.db.Preload("Customer").Preload("InvoiceItems").First(&completeInvoice, "id = ?", invoice.ID)
+	err := r.db.Preload("Customer").Preload("Customer.Area").Preload("InvoiceItems").
+		First(&completeInvoice, "id = ?", invoice.ID)
 	if err.Error != nil {
 		return entities.Invoice{}, err.Error
 	}
@@ -473,13 +480,114 @@ func (r AdminInvoiceRepositoryStruct) UpdateAdminInvoiceRepository(request Updat
 	if tx.Error != nil {
 		return invoice, tx.Error
 	}
-	copier.Copy(&invoice, &request)
 
-	r.db.Save(&invoice)
+	// Update only the invoice fields, not associations
+	updates := map[string]interface{}{
+		"customer_id": request.CustomerID,
+		"amount":      request.Amount,
+	}
+	if request.Status != nil {
+		updates["status"] = *request.Status
+	}
+	if request.PendingReason != nil {
+		updates["pending_reason"] = *request.PendingReason
+	}
+
+	// Update invoice fields only (exclude InvoiceItems to prevent duplicates)
+	tx = r.db.Model(&invoice).Updates(updates)
+	if tx.Error != nil {
+		return invoice, tx.Error
+	}
+
+	// If status is paid or pending, create or update a transaction
+	if request.Status != nil && (*request.Status == "paid" || *request.Status == "pending") {
+		// Check if a transaction already exists for this invoice
+		var existingTx entities.Transaction
+		txFind := r.db.Where("invoice_id = ?", invoice.ID).First(&existingTx)
+		var amount int64 = request.Amount
+		accountID := ""
+		method := ""
+		if request.AccountID != nil {
+			accountID = *request.AccountID
+		}
+		if request.Method != nil {
+			method = *request.Method
+		}
+		// Determine type_cash based on customer type
+		var customer entities.Customer
+		_ = r.db.Where("id = ?", invoice.CustomerID).First(&customer)
+		typeCash := entities.TransactionsTypeCashInternet
+		if customer.IsCollaborator == "yes" && customer.IsInternet != "yes" {
+			typeCash = entities.TransactionsTypeCashCollaborator
+		}
+		if txFind.Error == nil {
+			// Update existing transaction
+			r.db.Model(&existingTx).Updates(map[string]interface{}{
+				"account_id":  accountID,
+				"type_in_out": "debit",
+				"type_cash":   typeCash,
+				"amount":      amount,
+				"category":    "collaborator",
+				"method":      method,
+			})
+		} else {
+			// Create new transaction
+			newTx := entities.Transaction{
+				ID:          uuid.New().String(),
+				AccountID:   accountID,
+				InvoiceID:   invoice.ID,
+				TypeInOut:   "debit",
+				TypeCash:    typeCash,
+				Date:        time.Now().Format("2006-01-02"),
+				Description: "Payment for invoice " + invoice.ID,
+				Amount:      amount,
+				Category:    "internet income",
+				Method:      method,
+			}
+			r.db.Create(&newTx)
+		}
+	}
+
+	// Handle invoice items separately if provided
+	if len(request.InvoiceItems) > 0 {
+		// Delete existing invoice items
+		if err := r.db.Where("invoice_id = ?", request.Id).Delete(&entities.InvoiceItems{}).Error; err != nil {
+			return invoice, err
+		}
+
+		// Create new invoice items
+		var totalAmount int64 = 0
+		for _, reqItem := range request.InvoiceItems {
+			item := entities.InvoiceItems{
+				ID:        uuid.New().String(),
+				InvoiceID: invoice.ID,
+				Name:      reqItem.Name,
+				Price:     reqItem.Price,
+				Qty:       reqItem.Qty,
+				Total:     reqItem.Total,
+			}
+			if err := r.db.Create(&item).Error; err != nil {
+				return invoice, err
+			}
+			totalAmount += item.Total
+		}
+
+		// Update invoice amount if items were updated
+		if totalAmount > 0 {
+			r.db.Model(&invoice).Update("amount", totalAmount)
+		}
+	}
+
+	// Reload invoice with all relations
+	r.db.Preload("Customer").Preload("Customer.Area").Preload("InvoiceItems").Preload("Transaction").
+		First(&invoice, "id = ?", request.Id)
+
 	return invoice, nil
 }
 
 func (r AdminInvoiceRepositoryStruct) UpdateStatusAdminInvoiceRepository(request UpdateStatusAdminInvoiceRequest) (entities.Invoice, error) {
+	log.Printf("[UpdateStatus] Received request - InvoiceID: %s, Status: %s, AccountID: %s, Method: %s", request.Id, request.Status, request.AccountID, request.Method)
+
 	invoice := entities.Invoice{}
 	tx := r.db.First(&invoice, "id = ?", request.Id)
 
@@ -487,8 +595,8 @@ func (r AdminInvoiceRepositoryStruct) UpdateStatusAdminInvoiceRepository(request
 		return invoice, tx.Error
 	}
 
-	// Clear previous error link and update status
-	tx = r.db.Model(&invoice).Updates(map[string]interface{}{
+	// Clear previous error link and update status only (explicitly omit InvoiceItems to prevent duplicates)
+	tx = r.db.Model(&invoice).Omit("InvoiceItems").Updates(map[string]interface{}{
 		"status": request.Status,
 		"link":   "",
 	})
@@ -496,10 +604,73 @@ func (r AdminInvoiceRepositoryStruct) UpdateStatusAdminInvoiceRepository(request
 		return invoice, tx.Error
 	}
 
-	// Reload the invoice to get updated data
-	r.db.Preload("Customer").Preload("InvoiceItems.Invoice").Preload("Transaction").First(&invoice, "id = ?", request.Id)
+	// Reload the invoice to get updated data (read-only, no save operations)
+	r.db.Preload("Customer").Preload("Customer.Area").Preload("InvoiceItems").Preload("InvoiceItems.Invoice").Preload("Transaction").
+		First(&invoice, "id = ?", request.Id)
 
 	// Trigger MikroTik enforcement based on status (synchronous for unpaid to bubble errors)
+	if request.Status == "paid" || request.Status == "pending" {
+		log.Printf("[UpdateStatus] Status is %s, checking for transaction creation", request.Status)
+		// Only create transaction if AccountID is provided
+		if request.AccountID != "" && request.Method != "" {
+			log.Printf("[UpdateStatus] AccountID and Method provided, proceeding with transaction creation")
+			// Prevent duplicate transaction for the same invoice
+			var existingTx int64
+			r.db.Model(&entities.Transaction{}).Where("invoice_id = ?", invoice.ID).Count(&existingTx)
+			if existingTx == 0 {
+				// Determine type_cash based on customer type
+				// Note: Database only supports 'internet' and 'cash_flow'
+				// Use 'cash_flow' for collaborators, 'internet' for regular customers
+				typeCash := entities.TransactionsTypeCashInternet
+				if invoice.Customer.IsCollaborator == "yes" && invoice.Customer.IsInternet != "yes" {
+					typeCash = entities.TransactionsTypeCashCollaborator // Use cash_flow instead of collaborator
+				}
+
+				// Start transaction for atomicity
+				txDb := r.db.Begin()
+
+				// Create transaction record
+				txObj := entities.Transaction{
+					ID:          uuid.New().String(),
+					AccountID:   request.AccountID,
+					InvoiceID:   invoice.ID,
+					TypeCash:    typeCash,
+					TypeInOut:   entities.TransactionsTypeInOutIn,
+					Date:        time.Now().Format("2006-01-02"),
+					Description: fmt.Sprintf("Payment for invoice %s", invoice.ID),
+					Amount:      invoice.Amount,
+					Category:    "internet income",
+					Method:      request.Method,
+					CreatedAt:   time.Now(),
+					UpdatedAt:   time.Now(),
+				}
+				if err := txDb.Create(&txObj).Error; err != nil {
+					txDb.Rollback()
+					log.Printf("[transaction] failed to create transaction for invoice %s: %v", invoice.ID, err)
+				} else {
+					// Update account saldo (debit = increase balance)
+					var account entities.Accounts
+					if err := txDb.First(&account, "id = ?", request.AccountID).Error; err != nil {
+						txDb.Rollback()
+						log.Printf("[transaction] failed to find account %s: %v", request.AccountID, err)
+					} else {
+						account.Saldo = account.Saldo + invoice.Amount
+						if err := txDb.Save(&account).Error; err != nil {
+							txDb.Rollback()
+							log.Printf("[transaction] failed to update account saldo: %v", err)
+						} else {
+							txDb.Commit()
+							log.Printf("[transaction] created transaction %s and updated account %s saldo to %d", txObj.ID, account.ID, account.Saldo)
+							// Reload invoice to get the linked transaction
+							r.db.Preload("Transaction").First(&invoice, "id = ?", invoice.ID)
+						}
+					}
+				}
+			}
+		} else {
+			log.Printf("[UpdateStatus] AccountID or Method not provided - AccountID: '%s', Method: '%s'", request.AccountID, request.Method)
+		}
+	}
 	if request.Status == "paid" {
 		go r.enforceMikroTikForPaidInvoice(invoice)
 		// For PAID, still ensure scheduler start-date gets updated to the invoice due_date
@@ -510,7 +681,7 @@ func (r AdminInvoiceRepositoryStruct) UpdateStatusAdminInvoiceRepository(request
 		// Enqueue unpaid scheduler update instead of synchronous call
 		_, _ = services.EnqueueRouterJob(r.db, invoice.ID, services.RouterActionSetUnpaidScheduler, 0)
 		// Reload to capture any link/message written during scheduler checks
-		r.db.Preload("Customer").First(&invoice, "id = ?", invoice.ID)
+		r.db.Preload("Customer").Preload("Customer.Area").First(&invoice, "id = ?", invoice.ID)
 		if invoice.Link != "" && (strings.Contains(invoice.Link, "MikroTik") || strings.Contains(strings.ToLower(invoice.Link), "scheduler")) {
 			return invoice, fmt.Errorf(invoice.Link)
 		}
@@ -621,7 +792,7 @@ func (r AdminInvoiceRepositoryStruct) FindPaidInvoices() ([]entities.Invoice, er
 		Group("customer_id")
 
 	tx := r.db.Table("invoices i").
-		Select("i.*").
+		Select("i.id, i.amount, i.customer_id, i.link, i.status, i.invoice_date, i.due_date, i.pdf_viewed, i.createdAt, i.updatedAt").
 		Joins("INNER JOIN (?) s ON i.customer_id = s.customer_id AND i.createdAt = s.max_created_at", subQuery).
 		Where("i.status = ?", entities.InvoiceStatusPaid).
 		Find(&invoices)
@@ -639,7 +810,7 @@ func (r AdminInvoiceRepositoryStruct) FindNewestInvoicePerCustomer() ([]entities
 		Group("customer_id")
 
 	tx := r.db.Table("invoices i").
-		Select("i.*").
+		Select("i.id, i.amount, i.customer_id, i.link, i.status, i.invoice_date, i.due_date, i.pdf_viewed, i.createdAt, i.updatedAt").
 		Joins("INNER JOIN (?) s ON i.customer_id = s.customer_id AND i.createdAt = s.max_created_at", subQuery).
 		Find(&invoices)
 
@@ -746,7 +917,8 @@ func (r AdminInvoiceRepositoryStruct) ProcessPartialPaymentRepository(request Pa
 	tx.Commit()
 
 	// Reload invoice with updated data
-	r.db.Preload("Customer").Preload("InvoiceItems").Preload("Transaction").First(&invoice, "id = ?", request.Id)
+	r.db.Preload("Customer").Preload("Customer.Area").Preload("InvoiceItems").Preload("Transaction").
+		First(&invoice, "id = ?", request.Id)
 
 	return invoice, nil
 }
@@ -755,7 +927,8 @@ func (r AdminInvoiceRepositoryStruct) MarkPdfViewedRepository(request IdAdminInv
 	var invoice entities.Invoice
 
 	// Check if invoice exists
-	err := r.db.Preload("Customer").Preload("InvoiceItems").Preload("Transaction").First(&invoice, "id = ?", request.Id).Error
+	err := r.db.Preload("Customer").Preload("Customer.Area").Preload("InvoiceItems").Preload("Transaction").
+		First(&invoice, "id = ?", request.Id).Error
 	if err != nil {
 		return invoice, err
 	}
@@ -769,7 +942,7 @@ func (r AdminInvoiceRepositoryStruct) MarkPdfViewedRepository(request IdAdminInv
 	now := time.Now()
 	err = r.db.Model(&invoice).Updates(map[string]interface{}{
 		"pdf_viewed":    true,
-		"pdf_viewed_at": &now,
+		"pdf_viewed_at": now.Format("2006-01-02 15:04:05"), // Store as VARCHAR string
 	}).Error
 
 	if err != nil {
@@ -777,7 +950,8 @@ func (r AdminInvoiceRepositoryStruct) MarkPdfViewedRepository(request IdAdminInv
 	}
 
 	// Reload invoice with updated data
-	r.db.Preload("Customer").Preload("InvoiceItems").Preload("Transaction").First(&invoice, "id = ?", request.Id)
+	r.db.Preload("Customer").Preload("Customer.Area").Preload("InvoiceItems").Preload("Transaction").
+		First(&invoice, "id = ?", request.Id)
 
 	return invoice, nil
 }
@@ -908,7 +1082,8 @@ func (r AdminInvoiceRepositoryStruct) PrintAllUnpaidInvoicesRepository() (map[st
 	var invoices []entities.Invoice
 
 	// Get all unpaid and pending invoices with customer and invoice items
-	err := r.db.Preload("Customer").Preload("InvoiceItems").Where("status IN (?, ?)", entities.InvoiceStatusUnpaid, entities.InvoiceStatusPending).Find(&invoices).Error
+	err := r.db.Preload("Customer").Preload("Customer.Area").Preload("InvoiceItems").
+		Where("status IN (?, ?)", entities.InvoiceStatusUnpaid, entities.InvoiceStatusPending).Find(&invoices).Error
 	if err != nil {
 		return nil, err
 	}

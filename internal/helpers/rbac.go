@@ -1,7 +1,7 @@
 package helpers
 
 import (
-	"log"
+	"log/slog"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
@@ -48,12 +48,11 @@ func RequireRoles(roles ...string) fiber.Handler {
 		normalizedRole := NormalizeRole(role)
 
 		// Debug logging
-		log.Printf("RequireRoles - Original role: '%s', Normalized role: '%s'", originalRole, normalizedRole)
-		log.Printf("RequireRoles - Allowed roles: %v (ADMIN mapped to SUPERADMIN)", roles)
+		slog.Debug("RequireRoles check", "original_role", originalRole, "normalized_role", normalizedRole, "allowed_roles", roles)
 
 		// SUPERADMIN has access to all routes automatically
 		if normalizedRole == "SUPERADMIN" || originalRole == "SUPERADMIN" {
-			log.Printf("RequireRoles - Access granted to SUPERADMIN (bypasses role check)")
+			slog.Debug("Access granted to SUPERADMIN (bypasses role check)", "role", originalRole)
 			return c.Next()
 		}
 
@@ -61,12 +60,12 @@ func RequireRoles(roles ...string) fiber.Handler {
 		if _, ok := allowed[normalizedRole]; !ok {
 			// Also check original role (for SUPERADMIN which doesn't get normalized)
 			if _, ok := allowed[originalRole]; !ok {
-				log.Printf("RequireRoles - Access denied for role: '%s' (normalized: '%s')", originalRole, normalizedRole)
+				slog.Debug("Access denied", "original_role", originalRole, "normalized_role", normalizedRole)
 				return ResponseUtils(c, fiber.StatusForbidden, false, "forbidden", nil)
 			}
 		}
 
-		log.Printf("RequireRoles - Access granted for role: '%s' (normalized: '%s')", originalRole, normalizedRole)
+		slog.Debug("Access granted", "original_role", originalRole, "normalized_role", normalizedRole)
 		return c.Next()
 	}
 }

@@ -3,8 +3,10 @@ package main
 import (
 	"encoding/json"
 	"log"
+	"log/slog"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"skripsi-be/internal/api/admin/recurring_invoice"
@@ -14,11 +16,36 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
-	"github.com/gofiber/fiber/v2/middleware/logger"
 	recovermw "github.com/gofiber/fiber/v2/middleware/recover"
 )
 
 func main() {
+	// Initialize slog with LOG_LEVEL environment variable
+	logLevel := os.Getenv("LOG_LEVEL")
+	if logLevel == "" {
+		logLevel = "INFO" // default to INFO
+	}
+
+	var level slog.Level
+	switch strings.ToUpper(logLevel) {
+	case "DEBUG":
+		level = slog.LevelDebug
+	case "INFO":
+		level = slog.LevelInfo
+	case "WARN", "WARNING":
+		level = slog.LevelWarn
+	case "ERROR":
+		level = slog.LevelError
+	default:
+		level = slog.LevelInfo
+	}
+
+	handler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: level,
+	})
+	logger := slog.New(handler)
+	slog.SetDefault(logger)
+
 	database.GetDB()
 	app := fiber.New(fiber.Config{
 		JSONEncoder:  json.Marshal,
@@ -37,7 +64,7 @@ func main() {
 
 	// Recovery and request logging for diagnostics
 	app.Use(recovermw.New())
-	app.Use(logger.New())
+	app.Use(customLoggerMiddleware())
 
 	// Initialize routes
 	routes.RouteFiber(app)
@@ -118,4 +145,26 @@ func parsePort(portStr string) int {
 		return port
 	}
 	return 22 // default SSH port
+}
+
+// customLoggerMiddleware creates a Fiber middleware that uses slog for HTTP request logging
+func customLoggerMiddleware() fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		start := time.Now()
+
+		// Process request
+		err := c.Next()
+
+		// Log request details
+		slog.Info("HTTP Request",
+			"method", c.Method(),
+			"path", c.Path(),
+			"status", c.Response().StatusCode(),
+			"latency", time.Since(start),
+			"ip", c.IP(),
+			"user_agent", c.Get("User-Agent"),
+		)
+
+		return err
+	}
 }

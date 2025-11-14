@@ -2,7 +2,7 @@ package helpers
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"skripsi-be/internal/config/database"
 	"skripsi-be/internal/models/entities"
@@ -20,7 +20,7 @@ func CreateToken(username string, role string) (string, error) {
 	// Try to load .env file, but don't fail if it doesn't exist (for production)
 	err := godotenv.Load()
 	if err != nil {
-		log.Println("No .env file found, using environment variables")
+		slog.Debug("No .env file found, using environment variables")
 	}
 	// Add a new global variable for the secret key
 	secretKey := []byte(os.Getenv("JWT_SECRET_KEY"))
@@ -48,13 +48,13 @@ func VerifyToken(c *fiber.Ctx) error {
 	// Try to load .env file, but don't fail if it doesn't exist (for production)
 	err := godotenv.Load()
 	if err != nil {
-		log.Println("No .env file found, using environment variables")
+		slog.Debug("No .env file found, using environment variables")
 	}
 	// Add a new global variable for the secret key
 	secretKey := []byte(os.Getenv("JWT_SECRET_KEY"))
 
 	tokenString := c.Get("Authorization")
-	log.Println("Token from header:", tokenString)
+	slog.Debug("Token from header", "token", tokenString)
 	tokenString = strings.TrimPrefix(tokenString, "Bearer ")
 	if tokenString == "" {
 		return ResponseUtils(c, fiber.StatusUnauthorized, false, "Token not provided", nil)
@@ -110,7 +110,7 @@ func VerifyToken(c *fiber.Ctx) error {
 	}
 
 	// Debug logging
-	log.Printf("VerifyToken - Extracted role from JWT: '%s'", audience[0])
+	slog.Debug("Extracted role from JWT", "role", audience[0])
 
 	c.Locals("user_id", subject)
 	c.Locals("role", audience[0])
@@ -120,13 +120,14 @@ func VerifyToken(c *fiber.Ctx) error {
 func CustomerVerifyToken(c *fiber.Ctx) error {
 	err := godotenv.Load()
 	if err != nil {
-		log.Fatal("Error loading .env file")
+		slog.Error("Error loading .env file", "error", err)
+		return err
 	}
 	// Add a new global variable for the secret key
 	secretKey := []byte(os.Getenv("JWT_SECRET_KEY"))
 
 	tokenString := c.Get("Authorization")
-	log.Println("Token from header:", tokenString)
+	slog.Debug("Token from header", "token", tokenString)
 	tokenString = strings.TrimPrefix(tokenString, "Bearer ")
 	if tokenString == "" {
 		return ResponseUtils(c, fiber.StatusUnauthorized, false, "Token not provided", nil)

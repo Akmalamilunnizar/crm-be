@@ -789,12 +789,38 @@ func (r AdminInstallationReportRepositoryStruct) CreateCompleteInstallationRepor
 			}
 		}
 
+		// Auto-populate service_activation_date with installation_completed_at if not provided
+		currentTime := time.Now()
+		if serviceActivationDate == nil {
+			// Use installation_completed_at or current time
+			if request.InstallationCompletedAt != "" {
+				if parsedDate, err := time.Parse("2006-01-02T15:04:05", request.InstallationCompletedAt); err == nil {
+					serviceActivationDate = &parsedDate
+				} else {
+					serviceActivationDate = &currentTime
+				}
+			} else {
+				serviceActivationDate = &currentTime
+			}
+		}
+
+		// Use the provided DeviceID and CableID values (or set to nil if empty)
+		var deviceID *string
+		if service.DeviceID != "" {
+			deviceID = &service.DeviceID
+		}
+
+		var cableID *string
+		if service.CableID != "" {
+			cableID = &service.CableID
+		}
+
 		customerService := entities.CustomerService{
 			ID:                     "",
 			CustomerID:             request.CustomerId,
 			CustomerInstallationID: &installation.ID,
-			DeviceID:               &service.DeviceID,
-			CableID:                &service.CableID,
+			DeviceID:               deviceID,
+			CableID:                cableID,
 			CableLength:            &service.CableLength,
 			EndPortType:            &service.EndPortType,
 			UserLogin:              &service.UserLogin,
@@ -1054,11 +1080,39 @@ func (r AdminInstallationReportRepositoryStruct) UpdateCompleteInstallationRepor
 			}
 		}
 
+		// Auto-populate service_activation_date with installation_completed_at if not provided
+		currentTime := time.Now()
+		if serviceActivationDate == nil {
+			// Use installation_completed_at or current time
+			if request.InstallationCompletedAt != "" {
+				if parsedDate, err := time.Parse("2006-01-02T15:04:05", request.InstallationCompletedAt); err == nil {
+					serviceActivationDate = &parsedDate
+				} else {
+					serviceActivationDate = &currentTime
+				}
+			} else {
+				serviceActivationDate = &currentTime
+			}
+		}
+
+		// For now, just use the provided values or set to nil
+		// In a future enhancement, we could auto-populate device_id and cable_id
+		// by matching with created network devices and cables
+		var deviceID *string
+		if service.DeviceID != "" {
+			deviceID = &service.DeviceID
+		}
+
+		var cableID *string
+		if service.CableID != "" {
+			cableID = &service.CableID
+		}
+
 		serviceEntity := entities.CustomerService{
 			ID:                     "",
 			CustomerID:             request.CustomerId,
-			DeviceID:               &service.DeviceID,
-			CableID:                &service.CableID,
+			DeviceID:               deviceID,
+			CableID:                cableID,
 			CableLength:            &service.CableLength,
 			EndPortType:            &service.EndPortType,
 			UserLogin:              &service.UserLogin,

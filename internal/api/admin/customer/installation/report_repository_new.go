@@ -99,6 +99,11 @@ func stringToPtr(s string) *string {
 	return &s
 }
 
+// Helper function to convert float64 to pointer
+func stringToFloat(f float64) *float64 {
+	return &f
+}
+
 func getStringValue(s *string) string {
 	if s == nil {
 		return "nil"
@@ -406,22 +411,54 @@ func (r *ReportInstallationRepository) CreateReportInstallationRepository(reques
 
 	// Create customer service - only if both login and password are provided
 	if request.UserLogin != "" && request.Password != "" {
+		// Auto-populate device_id from first available network device for this installation if not provided
+		var deviceID *string
+		var cableID *string
+
+		// Try to get the most recently created network device for this installation
+		var networkDevice entities.NetworkDevice
+		if err := tx.Where("customer_installation_id = ?", installation.ID).Order("created_at DESC").First(&networkDevice).Error; err == nil {
+			deviceID = &networkDevice.ID
+			log.Printf("Auto-populated device_id with network device: %s for customer service", *deviceID)
+		}
+
+		// Try to get the most recently created cable for this installation
+		var cable entities.Cable
+		if err := tx.Where("customer_installation_id = ?", installation.ID).Order("created_at DESC").First(&cable).Error; err == nil {
+			cableID = &cable.ID
+			log.Printf("Auto-populated cable_id with cable: %s for customer service", *cableID)
+		}
+
+		// Auto-populate service_activation_date with installation_completed_at if available, or current time
+		var serviceActivationDate *time.Time
+		if installation.InstallationCompletedAt != nil {
+			serviceActivationDate = installation.InstallationCompletedAt
+		} else {
+			now := time.Now()
+			serviceActivationDate = &now
+		}
+
 		customerService := entities.CustomerService{
 			ID:                     "",
 			CustomerID:             request.CustomerID,
 			CustomerInstallationID: &installation.ID,
+			DeviceID:               deviceID,
+			CableID:                cableID,
+			CableLength:            stringToFloat(request.CableLength), // Use the provided cable length or nil
+			EndPortType:            stringToPtr(request.EndPortType),
 			UserLogin:              stringToPtr(request.UserLogin),
 			Password:               stringToPtr(request.Password),
 			UserStatus:             request.UserStatus,
-			EndPortType:            stringToPtr(request.EndPortType),
 			InstallationNotes:      stringToPtr(request.InstallationNotes),
+			ServiceActivationDate:  serviceActivationDate,
 		}
 
 		if err := tx.Create(&customerService).Error; err != nil {
 			tx.Rollback()
 			return installation, err
 		}
-		log.Printf("Created customer service for installation %s", installation.ID)
+		log.Printf("Created customer service for installation %s with auto-populated device_id: %s, cable_id: %s",
+			installation.ID, getStringValue(deviceID), getStringValue(cableID))
 	} else {
 		log.Printf("Skipping customer service creation - login and/or password not provided")
 	}

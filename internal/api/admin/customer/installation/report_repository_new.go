@@ -214,15 +214,8 @@ func (r *ReportInstallationRepository) CreateReportInstallationRepository(reques
 	}
 	
 	// Handle location fields
-	var latitude *float64
-	if request.Latitude != 0 {
-		latitude = &request.Latitude
-	}
-	
-	var longitude *float64
-	if request.Longitude != 0 {
-		longitude = &request.Longitude
-	}
+	latitude := request.Latitude
+	longitude := request.Longitude
 
 	// Create main installation record
 	installation := entities.CustomerInstallation{
@@ -413,7 +406,6 @@ func (r *ReportInstallationRepository) CreateReportInstallationRepository(reques
 	if request.UserLogin != "" && request.Password != "" {
 		// Auto-populate device_id from first available network device for this installation if not provided
 		var deviceID *string
-		var cableID *string
 
 		// Try to get the most recently created network device for this installation
 		var networkDevice entities.NetworkDevice
@@ -422,66 +414,34 @@ func (r *ReportInstallationRepository) CreateReportInstallationRepository(reques
 			log.Printf("Auto-populated device_id with network device: %s for customer service", *deviceID)
 		}
 
-		// Try to get the most recently created cable for this installation
-		var cable entities.Cable
-		if err := tx.Where("customer_installation_id = ?", installation.ID).Order("created_at DESC").First(&cable).Error; err == nil {
-			cableID = &cable.ID
-			log.Printf("Auto-populated cable_id with cable: %s for customer service", *cableID)
-		}
-
-		// Auto-populate service_activation_date with installation_completed_at if available, or current time
-		var serviceActivationDate *time.Time
-		if installation.InstallationCompletedAt != nil {
-			serviceActivationDate = installation.InstallationCompletedAt
-		} else {
-			now := time.Now()
-			serviceActivationDate = &now
-		}
+		
 
 		customerService := entities.CustomerService{
 			ID:                     "",
 			CustomerID:             request.CustomerID,
 			CustomerInstallationID: &installation.ID,
 			DeviceID:               deviceID,
-			CableID:                cableID,
 			CableLength:            stringToFloat(request.CableLength), // Use the provided cable length or nil
 			EndPortType:            stringToPtr(request.EndPortType),
 			UserLogin:              stringToPtr(request.UserLogin),
 			Password:               stringToPtr(request.Password),
 			UserStatus:             request.UserStatus,
 			InstallationNotes:      stringToPtr(request.InstallationNotes),
-			ServiceActivationDate:  serviceActivationDate,
 		}
 
 		if err := tx.Create(&customerService).Error; err != nil {
 			tx.Rollback()
 			return installation, err
 		}
-		log.Printf("Created customer service for installation %s with auto-populated device_id: %s, cable_id: %s",
-			installation.ID, getStringValue(deviceID), getStringValue(cableID))
+		log.Printf("Created customer service for installation %s with auto-populated device_id: %s",
+			installation.ID, getStringValue(deviceID))
 	} else {
 		log.Printf("Skipping customer service creation - login and/or password not provided")
 	}
 
-	// Create cable - only if cable type and length are provided
-	if request.CableType != "" && request.CableLength > 0 {
-		cable := entities.Cable{
-			ID:                     "",
-			Name:                   "Installation Cable",
-			Type:                   stringToPtr(request.CableType),
-			Length:                 &request.CableLength,
-			Status:                 "in_use",
-			CustomerInstallationID: &installation.ID,
-		}
-
-		if err := tx.Create(&cable).Error; err != nil {
-			tx.Rollback()
-			return installation, err
-		}
-		log.Printf("Created cable for installation %s", installation.ID)
-	} else {
-		log.Printf("Skipping cable creation - cable type and/or length not provided")
-	}
+	// Note: Cable table has been merged with customer_services table
+	// Cable data is now stored in customer_services table (cable_type, cable_length, end_port_type)
+	// No separate cable records are created anymore
 
 	// Update images with installation ID
 	if len(request.ImageIds) > 0 {
@@ -575,7 +535,6 @@ func (r *ReportInstallationRepository) CreateReportInstallationRepository(reques
 		Preload("NetworkDevices").
 		Preload("NetworkDevices.Assets").
 		Preload("CustomerServices").
-		Preload("Cables").
 		Where("id = ?", installation.ID).
 		First(&result).Error
 
@@ -664,12 +623,7 @@ func (r *ReportInstallationRepository) DeleteInstallation(installationId string)
 		return err
 	}
 
-	// Delete cables
-	if err := tx.Where("customer_installation_id = ?", installationId).
-		Delete(&entities.Cable{}).Error; err != nil {
-		tx.Rollback()
-		return err
-	}
+	// Note: Cable table no longer exists - data migrated to customer_services
 
 	// Delete installation images (Images are linked via ArchiveInstallationId)
 	if err := tx.Model(&entities.Image{}).

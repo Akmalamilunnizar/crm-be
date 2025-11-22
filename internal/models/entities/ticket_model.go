@@ -27,7 +27,7 @@ const (
 type TroubleTicket struct {
 	ID               uint64                `gorm:"primaryKey;autoIncrement" json:"id"`
 	CustomerID       string                `gorm:"type:varchar(191)" json:"customer_id"`
-	Type             *string               `gorm:"type:varchar(191)" json:"type,omitempty"`
+	Type             *string               `gorm:"column:type;type:varchar(191)"`
 	Title            string                `gorm:"type:longtext" json:"title"`
 	Description      *string               `gorm:"type:text" json:"description,omitempty"`
 	Status           string                `gorm:"type:varchar(191);default:'unfinished'" json:"status"`

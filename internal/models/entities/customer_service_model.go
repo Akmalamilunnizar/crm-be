@@ -13,11 +13,10 @@ type CustomerService struct {
 	CustomerID             string                `gorm:"column:customer_id;type:varchar;index:idx_customer_services_customer_id" json:"customer_id"`
 	CustomerInstallationID *string               `gorm:"column:customer_installation_id;type:varchar;index:idx_customer_services_customer_installation_id" json:"customer_installation_id,omitempty"`
 	DeviceID               *string               `gorm:"column:device_id;type:varchar;index:idx_customer_services_device_id" json:"device_id,omitempty"`
-	CableID                *string               `gorm:"column:cable_id;type:varchar" json:"cable_id,omitempty"`
+	CableType              *string               `gorm:"column:cable_type;type:varchar(100);collate:utf8mb4_unicode_ci" json:"cable_type,omitempty"`
 	CableLength            *float64              `gorm:"column:cable_length;type:decimal(10,2)" json:"cable_length,omitempty"`
 	EndPortType            *string               `gorm:"column:end_port_type;type:varchar(50)" json:"end_port_type,omitempty"`
 	UserLogin              *string               `gorm:"column:user_login;type:varchar(191)" json:"user_login,omitempty"`
-	ServiceActivationDate  *time.Time            `gorm:"column:service_activation_date;type:date" json:"service_activation_date,omitempty"`
 	Password               *string               `gorm:"column:password;type:varchar(191)" json:"password,omitempty"`
 	UserStatus             string                `gorm:"column:user_status;type:enum('Active','Inactive','Suspended','Pending');default:'Active'" json:"user_status,omitempty"`
 	InstallationNotes      *string               `gorm:"column:installation_notes;type:text" json:"installation_notes,omitempty"`

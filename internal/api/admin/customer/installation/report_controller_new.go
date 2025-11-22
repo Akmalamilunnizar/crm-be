@@ -68,12 +68,12 @@ func (c *ReportInstallationController) CreateReportInstallation(ctx *fiber.Ctx) 
 	// Parse latitude and longitude from form
 	if latStr := ctx.FormValue("latitude"); latStr != "" {
 		if parsed, err := strconv.ParseFloat(latStr, 64); err == nil {
-			request.Latitude = parsed
+			request.Latitude = &parsed
 		}
 	}
 	if lonStr := ctx.FormValue("longitude"); lonStr != "" {
 		if parsed, err := strconv.ParseFloat(lonStr, 64); err == nil {
-			request.Longitude = parsed
+			request.Longitude = &parsed
 		}
 	}
 	request.DocumentType = ctx.FormValue("document_type")
@@ -146,6 +146,12 @@ func (c *ReportInstallationController) CreateReportInstallation(ctx *fiber.Ctx) 
 	if request.TechnicianPhotosNotes != "" {
 		log.Printf("Parsed technician_photos_notes: %s", request.TechnicianPhotosNotes)
 	}
+
+	// Parse auto-populated fields
+	request.DeviceID = ctx.FormValue("device_id")
+	request.ServiceActivationDate = ctx.FormValue("service_activation_date")
+	request.InstallationTeamPhone = ctx.FormValue("installation_team_phone")
+	request.IsTrial = ctx.FormValue("is_trial") == "true" // Parse as boolean
 
 	// Handle document photo upload
 	var documentPhotoPath string

@@ -19,14 +19,14 @@ type UpdateCompleteInstallationReportRequest struct {
 	TrialEndDate            string `json:"trial_end_date"`
 	ServiceReadyDate        string `json:"service_ready_date"`
 	InstallationCompletedAt string `json:"installation_completed_at"`
-	
+
 	// Terminal installation fields
-	IsTerminal                      string `json:"is_terminal"` // 'yes' or 'no'
-	TerminalCustomerInstallationId  string `json:"terminal_customer_installation_id"` // Installation ID of the terminal installation
-	
+	IsTerminal                     string `json:"is_terminal"`                       // 'yes' or 'no'
+	TerminalCustomerInstallationId string `json:"terminal_customer_installation_id"` // Installation ID of the terminal installation
+
 	// Installation location
-	Latitude                        float64 `json:"latitude"`
-	Longitude                       float64 `json:"longitude"`
+	Latitude  *float64 `json:"latitude,omitempty"`
+	Longitude *float64 `json:"longitude,omitempty"`
 
 	// Network Devices (multiple devices support)
 	NetworkDevices []NetworkDeviceRequest `json:"network_devices"`
@@ -59,14 +59,14 @@ type CreateCompleteInstallationReportRequest struct {
 	TrialEndDate            string `json:"trial_end_date"`
 	ServiceReadyDate        string `json:"service_ready_date"`
 	InstallationCompletedAt string `json:"installation_completed_at"`
-	
+
 	// Terminal installation fields
-	IsTerminal                      string `json:"is_terminal"` // 'yes' or 'no'
-	TerminalCustomerInstallationId  string `json:"terminal_customer_installation_id"` // Installation ID of the terminal installation
-	
+	IsTerminal                     string `json:"is_terminal"`                       // 'yes' or 'no'
+	TerminalCustomerInstallationId string `json:"terminal_customer_installation_id"` // Installation ID of the terminal installation
+
 	// Installation location
-	Latitude                        float64 `json:"latitude"`
-	Longitude                       float64 `json:"longitude"`
+	Latitude  *float64 `json:"latitude,omitempty"`
+	Longitude *float64 `json:"longitude,omitempty"`
 
 	// Asset Tracking
 	AssetTransactions []AssetTransactionRequest `json:"asset_transactions"`
@@ -112,7 +112,6 @@ type NetworkDeviceRequest struct {
 // CustomerServiceRequest - Request untuk customer service
 type CustomerServiceRequest struct {
 	DeviceID              string  `json:"device_id"`
-	CableID               string  `json:"cable_id"`
 	CableType             string  `json:"cable_type"`
 	CableLength           float64 `json:"cable_length"`
 	EndPortType           string  `json:"end_port_type"`
@@ -215,11 +214,8 @@ type InstallationReportCompleteResponse struct {
 	Password                string     `json:"password"`
 	UserStatus              string     `json:"user_status"`
 	ServiceNotes            string     `json:"service_notes"`
-	CableId                 string     `json:"cable_id"`
-	CableName               string     `json:"cable_name"`
 	CableType               string     `json:"cable_type"`
 	CableLength             float64    `json:"cable_length"`
-	CableStatus             string     `json:"cable_status"`
 	EndPortType             string     `json:"end_port_type"`
 	InstallationCreatedAt   time.Time  `json:"installation_created_at"`
 	InstallationUpdatedAt   time.Time  `json:"installation_updated_at"`
@@ -232,8 +228,8 @@ type InstallationReportCompleteResponse struct {
 	ProductName              string  `json:"product_name"`
 	ProductDescription       string  `json:"product_description"`
 	ProductPrice             float64 `json:"product_price"`
-	ProductDownloadSpeedMbps *int    `json:"product_download_speed_mbps"`
-	ProductUploadSpeedMbps   *int    `json:"product_upload_speed_mbps"`
+	ProductDownloadSpeedMbps *int    `json:"download_speed_mbps"`
+	ProductUploadSpeedMbps   *int    `json:"upload_speed_mbps"`
 }
 
 // Installation Technician Team Response
@@ -289,11 +285,8 @@ type CompleteInstallationReportWithTechnicianPhotosResponse struct {
 	ServiceNotes             string    `json:"service_notes"`
 	InstallationTeamName     string    `json:"installation_team_name"`
 	InstallationTeamPhone    string    `json:"installation_team_phone"`
-	CableId                  string    `json:"cable_id"`
-	CableName                string    `json:"cable_name"`
 	CableType                string    `json:"cable_type"`
 	CableLength              float64   `json:"cable_length"`
-	CableStatus              string    `json:"cable_status"`
 	EndPortType              string    `json:"end_port_type"`
 	InstallationCreatedAt    time.Time `json:"installation_created_at"`
 	InstallationUpdatedAt    time.Time `json:"installation_updated_at"`
@@ -301,6 +294,6 @@ type CompleteInstallationReportWithTechnicianPhotosResponse struct {
 	ProductName              string    `json:"product_name"`
 	ProductDescription       string    `json:"product_description"`
 	ProductPrice             float64   `json:"product_price"`
-	ProductDownloadSpeedMbps *int      `json:"product_download_speed_mbps"`
-	ProductUploadSpeedMbps   *int      `json:"product_upload_speed_mbps"`
+	ProductDownloadSpeedMbps *int      `json:"download_speed_mbps"`
+	ProductUploadSpeedMbps   *int      `json:"upload_speed_mbps"`
 }

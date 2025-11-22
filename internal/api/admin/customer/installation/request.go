@@ -53,8 +53,8 @@ type CreateReportInstallationRequest struct {
 	InstallationCompletedAt       string                 `form:"installation_completed_at" json:"installation_completed_at"`
 	IsTerminal                    string                 `form:"is_terminal" json:"is_terminal"` // 'yes' or 'no'
 	TerminalCustomerInstallationId string                `form:"terminal_customer_installation_id" json:"terminal_customer_installation_id"` // Installation ID of the terminal installation
-	Latitude                      float64                `form:"latitude" json:"latitude"`
-	Longitude                     float64                `form:"longitude" json:"longitude"`
+	Latitude                      *float64               `form:"latitude" json:"latitude,omitempty"`
+	Longitude                     *float64               `form:"longitude" json:"longitude,omitempty"`
 	SwitchID                      string                 `form:"switch_id" json:"switch_id"`
 	PortNumber                    string                 `form:"port_number" json:"port_number"`
 	RemotePort                    string                 `form:"remote_port" json:"remote_port"`
@@ -78,4 +78,10 @@ type CreateReportInstallationRequest struct {
 	// Technician Photo Documentation
 	TechnicianPhotos      []string `form:"technician_photos" json:"technician_photos"`
 	TechnicianPhotosNotes string   `form:"technician_photos_notes" json:"technician_photos_notes"`
+
+	// Auto-populated fields
+	DeviceID              string `form:"device_id" json:"device_id"`
+	ServiceActivationDate string `form:"service_activation_date" json:"service_activation_date"`
+	InstallationTeamPhone string `form:"installation_team_phone" json:"installation_team_phone"`
+	IsTrial               bool   `form:"is_trial" json:"is_trial"`
 }

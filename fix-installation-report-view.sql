@@ -1,96 +1,76 @@
--- Fix installation_report_complete view to remove installation_team_phone field
+USE iqgncnzy_skripsi;
 
-DROP VIEW IF EXISTS `installation_report_complete`;
+DROP VIEW IF EXISTS installation_report_complete;
 
-CREATE VIEW `installation_report_complete` AS
-SELECT 
-    -- Basic Installation Info
-    ci.id as installation_id,
+CREATE VIEW installation_report_complete AS
+SELECT
+    ci.id AS installation_id,
     ci.customer_id,
-    c.name as customer_name,
-    c.address as customer_address,
-    c.phone as customer_phone,
+    c.name AS customer_name,
+    c.address AS customer_address,
+    c.phone AS customer_phone,
+    c.service_request_date AS tgl_permintaan_psb,
     ci.technician_id,
-    u.name as technician_name,
-    u.phone as technician_phone,
-    
-    -- Installation Details
-    ci.status as installation_status,
+    u.name AS technician_name,
+    u.phone AS technician_phone,
+    ci.status AS installation_status,
     ci.installation_type,
-    ci.notes as installation_notes,
+    ci.notes AS installation_notes,
     ci.on_air_date,
     ci.trial_end_date,
     ci.service_ready_date,
     ci.installation_completed_at,
-    
-    -- Document Info
+    CASE
+        WHEN c.service_request_date IS NOT NULL AND ci.installation_completed_at IS NOT NULL
+        THEN DATEDIFF(ci.installation_completed_at, c.service_request_date)
+        ELSE NULL
+    END AS durasi_psb,
+    CASE
+        WHEN c.service_request_date IS NOT NULL AND ci.installation_completed_at IS NOT NULL
+        THEN CASE
+            WHEN DATEDIFF(ci.installation_completed_at, c.service_request_date) <= 3
+            THEN 'Tepat Waktu'
+            ELSE 'Terlambat'
+        END
+        ELSE NULL
+    END AS status_psb,
     ci.document_type,
     ci.document_photo,
-    
-    -- Asset Info
-    ci.total_assets_out,
-    ci.total_assets_in,
-    
-    -- Network Device Info
-    nd.id as network_device_id,
+    nd.id AS network_device_id,
     nd.switch_id,
     nd.port_number,
     nd.remote_port,
     nd.eth_port,
     nd.mac_address,
     nd.ip_static,
-    nd.status_perangkat,
     nd.kepemilikan_perangkat,
-    nd.last_ping_status,
-    nd.last_ping_timestamp,
-    
-    -- Asset Details
-    a.brand as router_brand,
-    a.type as router_type,
-    a.model as router_model,
-    a.serial_number as router_serial,
-    
-    -- Customer Service Info
-    cs.id as customer_service_id,
+    a.brand AS router_brand,
+    a.type AS router_type,
+    a.model AS router_model,
+    a.serial_number AS router_serial,
+    p.name AS product_name,
+    p.description AS product_description,
+    p.price AS product_price,
+    p.download_speed_mbps,
+    p.upload_speed_mbps,
+    cs.id AS customer_service_id,
     cs.user_login,
     cs.password,
     cs.user_status,
-    cs.installation_notes as service_notes,
-    
-    -- Cable Info
-    cab.id as cable_id,
-    cab.name as cable_name,
-    cab.type as cable_type,
-    cab.length as cable_length,
-    cab.status as cable_status,
-    
-    -- End Port Type
+    cs.installation_notes AS service_notes,
+    cs.cable_type,
+    cs.cable_length,
     cs.end_port_type,
-    
-    -- Timestamps
-    ci.createdAt as installation_created_at,
-    ci.updatedAt as installation_updated_at
-    
+    ci.createdAt AS installation_created_at,
+    ci.updatedAt AS installation_updated_at,
+    p.id AS product_id
 FROM customer_installations ci
 LEFT JOIN customer c ON ci.customer_id = c.id
 LEFT JOIN users u ON ci.technician_id = u.id
 LEFT JOIN network_devices nd ON ci.id = nd.customer_installation_id
 LEFT JOIN assets a ON nd.assets_id = a.id
-LEFT JOIN customer_services cs ON ci.id = cs.customer_installation_id
-LEFT JOIN cable cab ON ci.id = cab.customer_installation_id
-ORDER BY ci.createdAt DESC;
+LEFT JOIN products p ON nd.product_id = p.id
+LEFT JOIN customer_services cs ON ci.id = cs.customer_installation_id;
 
--- Test the view
-SELECT COUNT(*) as total_records FROM installation_report_complete;
-
--- Show sample data
-SELECT 
-    installation_id,
-    customer_name,
-    technician_name,
-    installation_status,
-    installation_type,
-    on_air_date,
-    installation_created_at
-FROM installation_report_complete 
-LIMIT 5;
+SELECT 'View created successfully' AS status;
+SELECT COUNT(*) AS record_count FROM installation_report_complete;

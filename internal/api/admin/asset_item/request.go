@@ -4,6 +4,7 @@ type CreateAssetItemRequest struct {
 	AssetID      string  `json:"asset_id" validate:"required"`
 	MacAddress   string  `json:"mac_address" validate:"required"`
 	SerialNumber *string `json:"serial_number"`
+	MacSticker   *string `json:"mac_sticker"`
 	Status       string  `json:"status" validate:"required,oneof=in_stock in_use maintenance damaged retired"`
 	CompanyID    *string `json:"company_id"`
 	Site         *string `json:"site"`

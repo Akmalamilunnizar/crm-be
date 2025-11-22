@@ -197,6 +197,7 @@ type AssetItem struct {
 	Asset        *Asset    `json:"asset,omitempty" gorm:"foreignKey:AssetID;references:ID"`
 	MacAddress   string    `json:"mac_address" gorm:"type:varchar(17);uniqueIndex;not null"`
 	SerialNumber *string   `json:"serial_number" gorm:"type:varchar(191)"`
+	MacSticker   *string   `json:"mac_sticker" gorm:"type:varchar(191)"`
 	Status       string    `json:"status" gorm:"type:enum('in_stock','in_use','maintenance','damaged','retired');default:'in_stock'"`
 	CompanyID    *string   `json:"company_id" gorm:"type:varchar(191)"`
 	Company      *Company  `json:"company,omitempty" gorm:"foreignKey:CompanyID;references:ID"`
@@ -625,6 +626,30 @@ func (rp *RolePermission) TableName() string {
 func (rp *RolePermission) BeforeCreate(tx *gorm.DB) error {
 	if rp.ID == "" {
 		rp.ID = uuid.New().String()
+	}
+	return nil
+}
+
+// InstallationHistory model for tracking deleted installation reports
+type InstallationHistory struct {
+	ID                string                `gorm:"column:id;type:varchar;primaryKey" json:"id"`
+	InstallationID    string                `gorm:"column:installation_id;type:varchar;not null;index:idx_installation_history_installation_id" json:"installation_id"`
+	OldIP             *string               `gorm:"column:old_ip;type:varchar;default:null" json:"old_ip,omitempty"`
+	OldMac            *string               `gorm:"column:old_mac;type:varchar;default:null" json:"old_mac,omitempty"`
+	ChangeReason      string                `gorm:"column:change_reason;type:enum('router_broken','upgrade','terminated');default:'terminated'" json:"change_reason"`
+	TicketID          uint                  `gorm:"column:ticket_id;not null" json:"ticket_id"`
+	CreatedAt         time.Time             `gorm:"column:created_at;not null;default:current_timestamp" json:"created_at"`
+	Installation      *CustomerInstallation `gorm:"foreignKey:InstallationID;references:ID;constraint:OnDelete:CASCADE,OnUpdate:CASCADE" json:"installation,omitempty"`
+	TroubleTicket     *TroubleTicket        `gorm:"foreignKey:TicketID;references:ID;constraint:OnDelete:CASCADE,OnUpdate:CASCADE" json:"trouble_ticket,omitempty"`
+}
+
+func (i *InstallationHistory) TableName() string {
+	return "installation_history"
+}
+
+func (i *InstallationHistory) BeforeCreate(tx *gorm.DB) error {
+	if i.ID == "" {
+		i.ID = uuid.New().String()
 	}
 	return nil
 }

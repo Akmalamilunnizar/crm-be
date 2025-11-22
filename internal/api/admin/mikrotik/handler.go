@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -263,18 +264,53 @@ func (h *MikroTikHandler) GetRealTimeLogs(c *fiber.Ctx) error {
 	})
 }
 
-// GetDHCPLease fetches DHCP lease information for a given MAC address
+// getShiftedMac takes "AA:BB:CC:00:00:01" and returns "AA:BB:CC:00:00:02"
+func getShiftedMac(originalMac string) (string, error) {
+	// 1. Clean the string (remove colons)
+	cleanMac := strings.ReplaceAll(originalMac, ":", "")
+	cleanMac = strings.ReplaceAll(cleanMac, "-", "") // just in case
+
+	// 2. Parse Hex to Integer
+	val, err := strconv.ParseUint(cleanMac, 16, 64)
+	if err != nil {
+		return "", err
+	}
+
+	// 3. Add 1 (The WAN Port Shift)
+	val++
+
+	// 4. Format back to Hex String
+	newHex := fmt.Sprintf("%012X", val)
+
+	// 5. Re-add colons (XX:XX:XX...)
+	var sb strings.Builder
+	for i := 0; i < len(newHex); i++ {
+		if i > 0 && i%2 == 0 {
+			sb.WriteRune(':')
+		}
+		sb.WriteByte(newHex[i])
+	}
+	return sb.String(), nil // Returns standard format (e.g., AA:BB:...)
+}
+
+// GetDHCPLease finds the router MAC in DHCP leases based on sticker MAC
 func (h *MikroTikHandler) GetDHCPLease(c *fiber.Ctx) error {
 	var req struct {
-		MacAddress string `json:"mac_address"`
+		StickerMac string `json:"sticker_mac"`
 	}
 
 	if err := c.BodyParser(&req); err != nil {
 		return helpers.ResponseUtils(c, http.StatusBadRequest, false, "Invalid request body", nil)
 	}
 
-	if req.MacAddress == "" {
-		return helpers.ResponseUtils(c, http.StatusBadRequest, false, "MAC address is required", nil)
+	if req.StickerMac == "" {
+		return helpers.ResponseUtils(c, http.StatusBadRequest, false, "Sticker MAC address is required", nil)
+	}
+
+	// Calculate the Shifted (+1) version
+	shiftedMac, err := getShiftedMac(req.StickerMac)
+	if err != nil {
+		return helpers.ResponseUtils(c, http.StatusBadRequest, false, "Invalid MAC address format", nil)
 	}
 
 	// Always use the shared MikroTik service (which is set by auto-connect)
@@ -288,96 +324,84 @@ func (h *MikroTikHandler) GetDHCPLease(c *fiber.Ctx) error {
 		return helpers.ResponseUtils(c, http.StatusServiceUnavailable, false, "MikroTik service not connected. Please connect to MikroTik first.", nil)
 	}
 
-	// Execute MikroTik command to get DHCP lease
-	cmd := "/ip/dhcp-server/lease/print where mac-address=" + req.MacAddress + " status=bound disabled=no"
+	// Execute MikroTik command to get all bound DHCP leases
+	cmd := "/ip/dhcp-server/lease/print terse where status=bound"
 	output, err := sharedService.ExecuteCommand(cmd)
 	if err != nil {
-		return helpers.ResponseUtils(c, http.StatusInternalServerError, false, "Failed to query DHCP lease: "+err.Error(), map[string]interface{}{
-			"mac_address": req.MacAddress,
+		return helpers.ResponseUtils(c, http.StatusInternalServerError, false, "Failed to query DHCP leases: "+err.Error(), map[string]interface{}{
+			"sticker_mac": req.StickerMac,
+			"shifted_mac": shiftedMac,
 			"command":     cmd,
 			"error":       err.Error(),
 		})
 	}
 
-	// Parse the output to extract IP address
-	ipAddress := parseDHCPLeaseOutput(output)
-	if ipAddress == "" {
-		return helpers.ResponseUtils(c, http.StatusNotFound, false, "No active DHCP lease found for MAC address "+req.MacAddress, map[string]interface{}{
-			"mac_address":   req.MacAddress,
+	// Find the router MAC in DHCP
+	foundMac, foundIP, err := findRouterMacInDHCP(output, req.StickerMac, shiftedMac)
+	if err != nil {
+		return helpers.ResponseUtils(c, http.StatusNotFound, false, err.Error(), map[string]interface{}{
+			"sticker_mac":   req.StickerMac,
+			"shifted_mac":   shiftedMac,
 			"command":       cmd,
 			"raw_output":    output,
-			"parsing_debug": "Failed to extract IP address from output",
+			"parsing_debug": "Router not found in active DHCP leases",
 		})
 	}
 
-	return helpers.ResponseUtils(c, http.StatusOK, true, "DHCP lease found successfully", map[string]interface{}{
-		"mac_address": req.MacAddress,
-		"ip_address":  ipAddress,
-		"command":     cmd,
-		"raw_output":  output,
+	return helpers.ResponseUtils(c, http.StatusOK, true, "Router MAC found in DHCP lease", map[string]interface{}{
+		"sticker_mac":   req.StickerMac,
+		"shifted_mac":   shiftedMac,
+		"mac_address":   foundMac,
+		"mac_sticker":   req.StickerMac,
+		"found_ip":      foundIP,
+		"command":       cmd,
+		"raw_output":    output,
 	})
 }
 
-// parseDHCPLeaseOutput parses MikroTik output to extract IP address
-func parseDHCPLeaseOutput(output string) string {
-	// MikroTik output format can be different:
-	// Format 1: "address=10.10.21.125 mac-address=40:EE:15:7D:43:01 client-id=1:40:ee:15:7d:43:1 server=dhcp1 status=bound"
-	// Format 2: Table format with columns like "10.10.21.125 40:EE:15:7D:43:01 dhcp1 bound 7m2s"
+// findRouterMacInDHCP finds the router MAC (sticker or shifted) in DHCP leases
+func findRouterMacInDHCP(output string, stickerMac string, shiftedMac string) (string, string, error) {
+	// Normalize everything to Upper Case to avoid case-sensitivity issues
+	stickerMac = strings.ToUpper(stickerMac)
+	shiftedMac = strings.ToUpper(shiftedMac)
+	output = strings.ToUpper(output)
 
+	// Split the output into lines to process one by one
 	lines := strings.Split(output, "\n")
 
-	// Debug: log the output for troubleshooting
-	fmt.Printf("DEBUG: Parsing DHCP output (%d lines):\n", len(lines))
-	for i, line := range lines {
-		fmt.Printf("  Line %d: '%s'\n", i, line)
-	}
-
+	// The Filtering Loop
 	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" {
+		// Ignore empty lines
+		if strings.TrimSpace(line) == "" {
 			continue
 		}
 
-		// Skip header lines
-		if strings.Contains(line, "Columns:") || strings.Contains(line, "# ADDRESS") || strings.Contains(line, "Flags:") {
-			continue
-		}
-
-		// Try format 1: address=10.10.21.125 mac-address=...
-		re1 := regexp.MustCompile(`address=([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)`)
-		matches1 := re1.FindStringSubmatch(line)
-		if len(matches1) > 1 {
-			return matches1[1]
-		}
-
-		// Try format 2: Table format - IP is usually the 3rd field (after number and flags)
-		// Look for lines that start with a number (skip # entries)
-		if !strings.HasPrefix(line, "#") && !strings.Contains(line, "Flags:") {
-			fields := strings.Fields(line)
-			if len(fields) >= 3 {
-				// Check if first field is a number and second field is flags (like "D")
-				// Then the third field should be the IP address
-				if len(fields[0]) > 0 && len(fields[1]) == 1 && len(fields[2]) > 0 {
-					ipField := fields[2]
-					// Validate it's an IP address
-					ipRegex := regexp.MustCompile(`^([0-9]{1,3}\.){3}[0-9]{1,3}$`)
-					if ipRegex.MatchString(ipField) {
-						fmt.Printf("DEBUG: Found IP address: %s\n", ipField)
-						return ipField
-					}
-				}
-
-				// Fallback: check all fields for IP addresses
-				for _, field := range fields {
-					ipRegex := regexp.MustCompile(`^([0-9]{1,3}\.){3}[0-9]{1,3}$`)
-					if ipRegex.MatchString(field) {
-						fmt.Printf("DEBUG: Found IP address in field: %s\n", field)
-						return field
-					}
-				}
+		// CHECK 1: Is it the Sticker MAC?
+		// We check for "MAC-ADDRESS=XX..." to ensure we don't match partial strings
+		if strings.Contains(line, "MAC-ADDRESS="+stickerMac) {
+			// Extract IP address
+			ipRegex := regexp.MustCompile(`ADDRESS=([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)`)
+			ipMatch := ipRegex.FindStringSubmatch(line)
+			if len(ipMatch) > 1 {
+				return stickerMac, ipMatch[1], nil
 			}
+			// No IP found, but MAC matched
+			return stickerMac, "", nil
+		}
+
+		// CHECK 2: Is it the Shifted MAC?
+		if strings.Contains(line, "MAC-ADDRESS="+shiftedMac) {
+			// Extract IP address
+			ipRegex := regexp.MustCompile(`ADDRESS=([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)`)
+			ipMatch := ipRegex.FindStringSubmatch(line)
+			if len(ipMatch) > 1 {
+				return shiftedMac, ipMatch[1], nil
+			}
+			// No IP found, but MAC matched
+			return shiftedMac, "", nil
 		}
 	}
 
-	return ""
+	// If loop finishes and nothing returned, the device is not online
+	return "", "", fmt.Errorf("router not found (checked %s and %s)", stickerMac, shiftedMac)
 }

@@ -3,23 +3,13 @@ package main
 import (
 	"fmt"
 	"log"
-	"os"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
 
 func main() {
-	// Get DSN from environment variable or use default
-	dsn := os.Getenv("DB_DSN")
-	if dsn == "" {
-		// Default DSN - update this with your database credentials
-		dsn = "iqgncnzy_skripsi:XhYJOWlwNgsk@tcp(103.63.24.139:3306)/iqgncnzy_skripsi?charset=utf8mb4&parseTime=True&loc=Local"
-		log.Println("Using default DSN from code")
-	} else {
-		log.Println("Using DSN from environment variable")
-	}
-
+	dsn := "iqgncnzy_skripsi:XhYJOWlwNgsk@tcp(103.63.24.139:3306)/iqgncnzy_skripsi?charset=utf8mb4&parseTime=True&loc=Local"
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
 		log.Fatal("Failed to connect to database:", err)
@@ -28,16 +18,50 @@ func main() {
 	log.Println("Connected to database successfully")
 
 	// Drop the view if exists
-	log.Println("Dropping existing view if it exists...")
+	log.Println("Dropping existing view...")
 	err = db.Exec("DROP VIEW IF EXISTS installation_report_complete").Error
 	if err != nil {
-		log.Fatal("Failed to drop view:", err)
+		log.Printf("Warning: Failed to drop view: %v", err)
+	} else {
+		log.Println("View dropped successfully")
 	}
-	log.Println("Existing view dropped successfully")
 
-	// Create the view
-	log.Println("Creating new view...")
-	sql := `
+	// Create a simplified view first to test
+	log.Println("Creating simplified view for testing...")
+	simpleSql := `
+	CREATE VIEW installation_report_complete AS
+	SELECT
+		ci.id AS installation_id,
+		ci.customer_id AS customer_id,
+		c.name AS customer_name
+	FROM customer_installations ci
+	LEFT JOIN customer c ON ci.customer_id = c.id
+	WHERE ci.deleted_at IS NULL
+	`
+
+	err = db.Exec(simpleSql).Error
+	if err != nil {
+		log.Printf("❌ Failed to create simplified view: %v", err)
+		log.Println("\nTrying to get more details about the error...")
+		
+		// Try to get SQL error details
+		var result interface{}
+		err2 := db.Raw("SELECT 1").Scan(&result).Error
+		if err2 != nil {
+			log.Printf("Database connection issue: %v", err2)
+		}
+		
+		log.Fatal("Cannot proceed")
+	}
+
+	log.Println("✅ Simplified view created successfully!")
+	
+	// Now try to drop and create the full view
+	log.Println("\nDropping simplified view...")
+	db.Exec("DROP VIEW IF EXISTS installation_report_complete")
+	
+	log.Println("Creating full view...")
+	fullSql := `
 	CREATE VIEW installation_report_complete AS
 	SELECT
 		ci.id AS installation_id,
@@ -110,12 +134,15 @@ func main() {
 	WHERE ci.deleted_at IS NULL
 	`
 
-	err = db.Exec(sql).Error
+	err = db.Exec(fullSql).Error
 	if err != nil {
-		log.Fatal("Failed to create view:", err)
+		log.Printf("❌ Failed to create full view: %v", err)
+		log.Fatal("View creation failed")
 	}
 
-	log.Println("✅ View created successfully!")
-	fmt.Println("\nThe installation_report_complete view has been updated with all necessary fields.")
-	fmt.Println("You can now test the installation report detail page in the frontend.")
+	log.Println("✅ Full view created successfully!")
+	fmt.Println("\n========================================")
+	fmt.Println("SUCCESS! The installation_report_complete view has been updated.")
+	fmt.Println("You can now test the installation report detail page.")
+	fmt.Println("========================================")
 }

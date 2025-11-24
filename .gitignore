@@ -2,6 +2,8 @@ node_modules/
 whatsapp-session/
 *.log
 .env
+uploads/
+!uploads/.gitkeep  # (Optional: keeps the folder structure but ignores files)
 
 
 

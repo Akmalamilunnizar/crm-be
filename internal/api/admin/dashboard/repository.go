@@ -650,7 +650,7 @@ func (r AdminDashboardRepositoryStruct) GetUnpaidCustomersChart(start *time.Time
 			WHERE invoice_id IS NOT NULL 
 			GROUP BY invoice_id
 		) t ON i.id = t.invoice_id`).
-		Where("COALESCE(t.total_paid, 0) < i.amount").
+		Where("COALESCE(t.total_paid, 0) < i.amount AND i.status != ?", entities.InvoiceStatusPaid).
 		Group("DATE(i.due_date), CASE WHEN COALESCE(t.total_paid, 0) = 0 THEN 'unpaid' WHEN COALESCE(t.total_paid, 0) < i.amount THEN 'pending' ELSE 'paid' END")
 
 	if start != nil && end != nil {
@@ -745,7 +745,7 @@ func (r AdminDashboardRepositoryStruct) GetUnpaidCustomersList() ([]map[string]i
 			WHERE invoice_id IS NOT NULL 
 			GROUP BY invoice_id
 		) t ON i.id = t.invoice_id`).
-		Where("COALESCE(t.total_paid, 0) < i.amount").
+		Where("COALESCE(t.total_paid, 0) < i.amount AND i.status != ?", entities.InvoiceStatusPaid).
 		Order("i.due_date ASC, i.id DESC")
 
 	fmt.Println("🔧 [DEBUG] GetUnpaidCustomersList: Executing database query...")

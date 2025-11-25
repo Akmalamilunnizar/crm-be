@@ -34,9 +34,6 @@ type UpdateCompleteInstallationReportRequest struct {
 	// Customer Services (multiple services support)
 	CustomerServices []CustomerServiceRequest `json:"customer_services"`
 
-	// Cables (multiple cables support)
-	Cables []CableRequest `json:"cables"`
-
 	// Images
 	ImageIds []string `json:"image_ids"`
 

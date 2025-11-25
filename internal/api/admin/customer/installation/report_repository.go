@@ -850,69 +850,11 @@ func (r AdminInstallationReportRepositoryStruct) UpdateCompleteInstallationRepor
 	}
 	installation.InstallationType = request.InstallationType
 
-	// Handle technician photos using images table instead of JSON storage
-	log.Printf("DEBUG: Processing technician photos - Count: %d", len(request.TechnicianPhotos))
-	log.Printf("DEBUG: Technician photos data: %+v", request.TechnicianPhotos)
-	log.Printf("DEBUG: Technician photos notes: %s", request.TechnicianPhotosNotes)
-
-	if len(request.TechnicianPhotos) > 0 {
-		// Validate photo count
-		if len(request.TechnicianPhotos) > 10 {
-			tx.Rollback()
-			return installation, fmt.Errorf("technician photos count exceeds maximum limit of 10, got %d", len(request.TechnicianPhotos))
-		}
-
-		// Delete existing technician photos (images with this installation_id)
-		if err := tx.Where("archive_installation_id = ?", installation.ID).Delete(&entities.Image{}).Error; err != nil {
-			log.Printf("ERROR: Failed to delete existing technician photos: %v", err)
-			tx.Rollback()
-			return installation, fmt.Errorf("failed to delete existing technician photos: %v", err)
-		}
-
-		// Create new Image records for each technician photo
-		for i, photoPath := range request.TechnicianPhotos {
-			if photoPath == "" {
-				log.Printf("WARNING: Empty photo path at index %d", i)
-				continue
-			}
-
-			log.Printf("DEBUG: Creating image record %d for photo: %s", i+1, photoPath)
-
-			// Extract filename from path
-			filename := photoPath
-			if lastSlash := len(photoPath); lastSlash > 0 {
-				for i := len(photoPath) - 1; i >= 0; i-- {
-					if photoPath[i] == '/' {
-						filename = photoPath[i+1:]
-						break
-					}
-				}
-			}
-
-			image := entities.Image{
-				ID:                    fmt.Sprintf("img_%s_%d", installation.ID[:8], i+1),
-				File:                  filename,
-				FullPath:              photoPath,
-				ArchiveInstallationId: installation.ID,
-			}
-
-			if err := tx.Create(&image).Error; err != nil {
-				log.Printf("ERROR: Failed to create image record for photo %d: %v", i+1, err)
-				tx.Rollback()
-				return installation, fmt.Errorf("failed to create image record for photo %d: %v", i+1, err)
-			}
-
-			log.Printf("DEBUG: Successfully created image record %d with ID: %s", i+1, image.ID)
-		}
-
-		log.Printf("DEBUG: Technician photos processed successfully - %d photos stored in images table", len(request.TechnicianPhotos))
-	} else {
-		log.Printf("DEBUG: No technician photos provided, deleting existing photos")
-		// Delete any existing technician photos
-		if err := tx.Where("archive_installation_id = ?", installation.ID).Delete(&entities.Image{}).Error; err != nil {
-			log.Printf("WARNING: Failed to delete existing technician photos: %v", err)
-		}
-	}
+	// Handle technician photos - they are already uploaded via file upload API
+	// and linked to this installation via archive_installation_id
+	// No need to delete/recreate them here
+	log.Printf("DEBUG: Technician photos are already uploaded and linked via archive_installation_id")
+	log.Printf("DEBUG: Skipping technician photo processing in update - photos persist in images table")
 
 	// Note: Technician photos are now stored in images table with archive_installation_id
 	// No need to store metadata in customer_installations table

@@ -202,8 +202,8 @@ func (r AdminInstallationReportRepositoryStruct) FindCompleteInstallationReportW
 		service := installation.CustomerServices[0]
 		// Cable ID is no longer separate, cable data is stored directly in customer_services
 		// Cable name is not stored separately anymore
-		if service.EndPortType != nil {
-			response.CableType = *service.EndPortType // Use end port type as proxy for cable type
+		if service.CableType != nil {
+			response.CableType = *service.CableType
 		}
 		if service.CableLength != nil {
 			response.CableLength = *service.CableLength
@@ -474,9 +474,13 @@ func (r AdminInstallationReportRepositoryStruct) FindInstallationTechnicianTeamR
             it.technician_id,
             u.name as technician_name,
             u.phone as technician_phone,
+            u.email as technician_email,
+            it.role,
             it.is_primary,
-            it.notes
-        FROM installation_technicians it
+            it.notes,
+            it.createdAt as created_at,
+            it.updatedAt as updated_at
+        FROM installation_report_technicians it
         JOIN users u ON it.technician_id = u.id
         WHERE it.customer_installation_id = ?
     `
@@ -785,6 +789,7 @@ func (r AdminInstallationReportRepositoryStruct) CreateCompleteInstallationRepor
 			CustomerID:             request.CustomerId,
 			CustomerInstallationID: &installation.ID,
 			DeviceID:               deviceID,
+			CableType:              &service.CableType,
 			CableLength:            &service.CableLength,
 			EndPortType:            &service.EndPortType,
 			UserLogin:              &service.UserLogin,

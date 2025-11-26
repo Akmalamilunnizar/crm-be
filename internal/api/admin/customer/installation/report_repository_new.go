@@ -421,6 +421,7 @@ func (r *ReportInstallationRepository) CreateReportInstallationRepository(reques
 			CustomerID:             request.CustomerID,
 			CustomerInstallationID: &installation.ID,
 			DeviceID:               deviceID,
+			CableType:              stringToPtr(request.CableType),
 			CableLength:            stringToFloat(request.CableLength), // Use the provided cable length or nil
 			EndPortType:            stringToPtr(request.EndPortType),
 			UserLogin:              stringToPtr(request.UserLogin),

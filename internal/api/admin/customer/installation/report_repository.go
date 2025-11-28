@@ -416,9 +416,9 @@ func (r AdminInstallationReportRepositoryStruct) FindAllCompleteInstallationRepo
 
 // FindInstallationSummaryPerCustomerRepository - Get installation summary grouped by customer
 func (r AdminInstallationReportRepositoryStruct) FindInstallationSummaryPerCustomerRepository() ([]InstallationSummaryResponse, error) {
-    var summaries []InstallationSummaryResponse
+	var summaries []InstallationSummaryResponse
 
-    query := `
+	query := `
         SELECT 
             c.id as customer_id,
             c.name as customer_name,
@@ -457,17 +457,17 @@ func (r AdminInstallationReportRepositoryStruct) FindInstallationSummaryPerCusto
         ORDER BY total_installations DESC
     `
 
-    err := r.db.Raw(query).Scan(&summaries).Error
-    return summaries, err
+	err := r.db.Raw(query).Scan(&summaries).Error
+	return summaries, err
 }
 
 // FindInstallationTechnicianTeamRepository - Get technician team for specific installation
 func (r AdminInstallationReportRepositoryStruct) FindInstallationTechnicianTeamRepository(installationId string) ([]InstallationTechnicianTeamResponse, error) {
-    var teams []InstallationTechnicianTeamResponse
-    
-    // I am adding a placeholder query here because this function was missing.
-    // You should replace this query with your logic to fetch the team members.
-    query := `
+	var teams []InstallationTechnicianTeamResponse
+
+	// I am adding a placeholder query here because this function was missing.
+	// You should replace this query with your logic to fetch the team members.
+	query := `
         SELECT 
             it.id,
             it.customer_installation_id,
@@ -484,9 +484,9 @@ func (r AdminInstallationReportRepositoryStruct) FindInstallationTechnicianTeamR
         JOIN users u ON it.technician_id = u.id
         WHERE it.customer_installation_id = ?
     `
-    
-    err := r.db.Raw(query, installationId).Scan(&teams).Error
-    return teams, err
+
+	err := r.db.Raw(query, installationId).Scan(&teams).Error
+	return teams, err
 }
 
 // FindInstallationAssetReportRepository - Get asset report for specific installation
@@ -1033,29 +1033,47 @@ func (r AdminInstallationReportRepositoryStruct) DeleteInstallationReportReposit
 	// Get current timestamp for the soft delete
 	now := time.Now()
 
-	// Update MAC address status back to in_stock for each network device
+	// Loop through the NetworkDevices associated with the installation
 	for _, networkDevice := range installation.NetworkDevices {
-		if networkDevice.MacAddress != nil && *networkDevice.MacAddress != "" {
-			// Update asset item status back to in_stock
-			if err := tx.Model(&entities.AssetItem{}).
-				Where("mac_address = ?", *networkDevice.MacAddress).
-				Update("status", "in_stock").Error; err != nil {
-				tx.Rollback()
-				return err
-			}
+		// Try to locate the asset item by explicit asset_item_id first, fallback to MAC lookup
+		var assetItem entities.AssetItem
+		var assetItemFound bool
 
-			// Also reset mac_address to mac_sticker if available
-			var assetItem entities.AssetItem
-			if err := tx.Where("mac_address = ?", *networkDevice.MacAddress).First(&assetItem).Error; err == nil {
-				if assetItem.MacSticker != nil && *assetItem.MacSticker != "" {
-					if err := tx.Model(&entities.AssetItem{}).
-						Where("mac_address = ?", *networkDevice.MacAddress).
-						Update("mac_address", *assetItem.MacSticker).Error; err != nil {
-						log.Printf("⚠️ Warning: Failed to reset MAC address to sticker for %s: %v", *networkDevice.MacAddress, err)
-						// Don't rollback for this non-critical error
-					}
-				}
+		if networkDevice.AssetItemID != nil && *networkDevice.AssetItemID != "" {
+			if err := tx.Unscoped().Where("id = ?", *networkDevice.AssetItemID).First(&assetItem).Error; err == nil {
+				assetItemFound = true
 			}
+		}
+
+		if !assetItemFound && networkDevice.MacAddress != nil && *networkDevice.MacAddress != "" {
+			if err := tx.Unscoped().Where("mac_address = ?", *networkDevice.MacAddress).First(&assetItem).Error; err == nil {
+				assetItemFound = true
+			}
+		}
+
+		if !assetItemFound {
+			continue
+		}
+
+		// Prepare updates for the asset item
+		updates := map[string]interface{}{
+			"status": "in_stock",
+		}
+
+		// Reset MAC address back to the sticker value when available
+		if assetItem.MacSticker != nil && *assetItem.MacSticker != "" {
+			updates["mac_address"] = *assetItem.MacSticker
+
+			// Keep network_devices table consistent with inventory MAC reset
+			if err := tx.Model(&entities.NetworkDevice{}).
+				Where("id = ?", networkDevice.ID).
+				Update("mac_address", *assetItem.MacSticker).Error; err != nil {
+				log.Printf("?? Warning: Failed to reset network device %s MAC to sticker: %v", networkDevice.ID, err)
+			}
+		}
+
+		if err := tx.Unscoped().Model(&assetItem).Updates(updates).Error; err != nil {
+			log.Printf("?? Warning: Failed to reset asset item %s: %v", assetItem.ID, err)
 		}
 	}
 

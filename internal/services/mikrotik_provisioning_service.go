@@ -312,11 +312,11 @@ func (s *MikrotikProvisioningService) findDHCPLeaseIP(macAddress string, provide
 	if err != nil {
 		// Check if it's a connection/timeout error
 		errMsg := err.Error()
-		if strings.Contains(errMsg, "timeout") || 
-		   strings.Contains(errMsg, "connection") || 
-		   strings.Contains(errMsg, "failed to create SSH session") {
+		if strings.Contains(errMsg, "timeout") ||
+			strings.Contains(errMsg, "connection") ||
+			strings.Contains(errMsg, "failed to create SSH session") {
 			log.Printf("⚠️ DHCP lease query failed due to connection issue (%v), using fallback IP for MAC %s", err, macAddress)
-			result.CommandsOutput = append(result.CommandsOutput, 
+			result.CommandsOutput = append(result.CommandsOutput,
 				fmt.Sprintf("WARNING: DHCP lease query failed (%v), using fallback IP: 192.168.1.100", err))
 			// Don't fail the installation - use fallback IP instead
 			return "192.168.1.100", nil
@@ -438,14 +438,14 @@ func (s *MikrotikProvisioningService) cleanupDeviceConfigurations(macAddress str
 		// Disable netwatch entries
 		fmt.Sprintf("/tool/netwatch/disable [find comment=\"%s\"]", codeNameStr),
 
-		// Remove schedulers (removes the scheduled execution)
-		fmt.Sprintf("/system/scheduler/remove [find name=\"%s\"]", codeNameStr),
+		// Disable scheduler instead of removing it
+		fmt.Sprintf("/system/scheduler/disable [find name=\"%s\"]", codeNameStr),
 
-		// Remove scripts (RouterOS scripts don't have a disable command, must be removed)
-		fmt.Sprintf("/system/script/remove [find name=\"open_%s\"]", codeNameStr),
+		// Disable script instead of removing it
+		fmt.Sprintf("/system/script/disable [find name=\"open_%s\"]", codeNameStr),
 	}
 
-	log.Printf("🔒 Executing %d cleanup commands (disable/remove) for MAC %s, Code %s", len(disableCommands), macAddress, codeNameStr)
+	log.Printf("🔒 Executing %d cleanup commands (disable) for MAC %s, Code %s", len(disableCommands), macAddress, codeNameStr)
 
 	// Execute each cleanup command
 	for _, cmd := range disableCommands {

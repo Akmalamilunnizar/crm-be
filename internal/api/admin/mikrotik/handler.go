@@ -349,13 +349,13 @@ func (h *MikroTikHandler) GetDHCPLease(c *fiber.Ctx) error {
 	}
 
 	return helpers.ResponseUtils(c, http.StatusOK, true, "Router MAC found in DHCP lease", map[string]interface{}{
-		"sticker_mac":   req.StickerMac,
-		"shifted_mac":   shiftedMac,
-		"mac_address":   foundMac,
-		"mac_sticker":   req.StickerMac,
-		"found_ip":      foundIP,
-		"command":       cmd,
-		"raw_output":    output,
+		"sticker_mac": req.StickerMac,
+		"shifted_mac": shiftedMac,
+		"mac_address": foundMac,
+		"mac_sticker": req.StickerMac,
+		"found_ip":    foundIP,
+		"command":     cmd,
+		"raw_output":  output,
 	})
 }
 

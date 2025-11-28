@@ -207,33 +207,33 @@ func (r *ReportInstallationRepository) CreateReportInstallationRepository(reques
 	if request.IsTerminal != "" {
 		isTerminal = &request.IsTerminal
 	}
-
+	
 	var terminalCustomerInstallationId *string
 	if request.TerminalCustomerInstallationId != "" {
 		terminalCustomerInstallationId = &request.TerminalCustomerInstallationId
 	}
-
+	
 	// Handle location fields
 	latitude := request.Latitude
 	longitude := request.Longitude
 
 	// Create main installation record
 	installation := entities.CustomerInstallation{
-		CustomerID:                     stringToPtr(request.CustomerID),
-		TechnicianID:                   technicianID,
-		Status:                         request.Status,
-		Notes:                          request.Notes,
-		DocumentType:                   stringToPtr(request.DocumentType),
-		DocumentPhoto:                  stringToPtr(request.DocumentPhoto),
-		InstallationType:               request.InstallationType,
-		IsTerminal:                     isTerminal,
+		CustomerID:                    stringToPtr(request.CustomerID),
+		TechnicianID:                  technicianID,
+		Status:                        request.Status,
+		Notes:                         request.Notes,
+		DocumentType:                  stringToPtr(request.DocumentType),
+		DocumentPhoto:                 stringToPtr(request.DocumentPhoto),
+		InstallationType:              request.InstallationType,
+		IsTerminal:                    isTerminal,
 		TerminalCustomerInstallationID: terminalCustomerInstallationId,
-		Latitude:                       latitude,
-		Longitude:                      longitude,
-		InstallationCompletedAt:        installationCompletedAt,
-		TrialEndDate:                   trialEndDate,
-		ServiceReadyDate:               serviceReadyDate,
-		OnAirDate:                      onAirDate,
+		Latitude:                      latitude,
+		Longitude:                     longitude,
+		InstallationCompletedAt: installationCompletedAt,
+		TrialEndDate:            trialEndDate,
+		ServiceReadyDate:        serviceReadyDate,
+		OnAirDate:               onAirDate,
 	}
 
 	// Normalize document photo path before saving
@@ -413,6 +413,8 @@ func (r *ReportInstallationRepository) CreateReportInstallationRepository(reques
 			deviceID = &networkDevice.ID
 			log.Printf("Auto-populated device_id with network device: %s for customer service", *deviceID)
 		}
+
+		
 
 		customerService := entities.CustomerService{
 			ID:                     "",

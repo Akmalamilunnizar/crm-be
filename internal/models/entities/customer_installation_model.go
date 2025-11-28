@@ -52,6 +52,9 @@ type CustomerInstallation struct {
 	CustomerServices             []CustomerService              `gorm:"foreignKey:CustomerInstallationID;references:ID" json:"customer_services,omitempty"`
 	InstallationTechnicians      []InstallationReportTechnician `gorm:"foreignKey:CustomerInstallationID;references:ID" json:"installation_technicians,omitempty"`
 	InstallationProvisioningLogs []InstallationProvisioningLog  `gorm:"foreignKey:CustomerInstallationID;references:ID" json:"provisioning_logs,omitempty"`
+
+	// Soft delete marker
+	DeletedAt *time.Time `gorm:"column:deleted_at" json:"deleted_at,omitempty"`
 }
 
 func (c *CustomerInstallation) TableName() string {

@@ -1147,14 +1147,13 @@ func (r AdminInstallationReportRepositoryStruct) DeleteInstallationReportReposit
 
 	log.Printf("✅ Installation history record created for installation %s", installationId)
 
-	// Mark recurring invoices tied to this installation as completed
-	if err := tx.Model(&entities.RecurringInvoice{}).
-		Where("customer_installation = ?", installationId).
-		Update("status", entities.RecurringInvoiceStatusCompleted).Error; err != nil {
+	// Delete recurring invoices tied to this installation
+	if err := tx.Where("customer_installation = ?", installationId).
+		Delete(&entities.RecurringInvoice{}).Error; err != nil {
 		tx.Rollback()
-		return fmt.Errorf("failed to update recurring invoices for installation %s: %v", installationId, err)
+		return fmt.Errorf("failed to delete recurring invoices for installation %s: %v", installationId, err)
 	}
-	log.Printf("✅ Marked recurring invoices as completed for installation %s", installationId)
+	log.Printf("🗑️ Deleted recurring invoices for installation %s", installationId)
 
 	// Keep only critical related records and soft delete main installation
 

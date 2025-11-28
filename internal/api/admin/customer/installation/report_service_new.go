@@ -120,12 +120,24 @@ func (s *ReportInstallationService) createRecurringInvoiceForInstallation(instal
 	}
 
 	// Create the recurring invoice
-	_, err := s.recurringInvoiceRepo.CreateRecurringInvoice(recurringRequest, createdByUserID)
+	recurring, err := s.recurringInvoiceRepo.CreateRecurringInvoice(recurringRequest, createdByUserID)
 	if err != nil {
 		return err
 	}
 
 	log.Printf("✅ Successfully created recurring invoice for customer %s (installation %s)", *installation.CustomerID, installation.ID)
+
+	// Immediately generate the first invoice from this recurring template
+	genReq := recurring_invoice.GenerateInvoiceRequest{
+		IdRecurringInvoiceRequest: recurring_invoice.IdRecurringInvoiceRequest{Id: recurring.ID},
+		InvoiceDate:               &recurring.InvoiceDate,
+		DueDate:                   &recurring.DueDate,
+	}
+	if _, genErr := s.recurringInvoiceRepo.GenerateInvoiceFromRecurring(genReq); genErr != nil {
+		log.Printf("⚠️ Failed to auto-generate invoice from recurring %s: %v", recurring.ID, genErr)
+		// Do not fail installation creation on invoice generation error
+	}
+
 	return nil
 }
 

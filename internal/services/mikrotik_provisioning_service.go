@@ -426,23 +426,32 @@ func (s *MikrotikProvisioningService) cleanupDeviceConfigurations(macAddress str
 		codeNameStr = *codeName
 	}
 
+	// Sanitize code name to avoid RouterOS parse errors
+	codeNameSafe := s.sanitizeComment(codeNameStr)
+
 	// List of commands to disable/remove all configurations
 	// Based on customer_id data and mac_address from network_devices table
-	disableCommands := []string{
-		// Disable queue simple rules
-		fmt.Sprintf("/queue/simple/disable [find name=\"%s\"]", codeNameStr),
+	disableCommands := []string{}
 
-		// Disable hotspot IP bindings (use set disabled=yes for IP bindings)
+	// Disable hotspot IP bindings (use set disabled=yes for IP bindings) - MAC based
+	disableCommands = append(disableCommands,
 		fmt.Sprintf("/ip/hotspot/ip-binding/set disabled=yes [find mac-address=%s]", macAddress),
+		// Remove static DHCP lease for this MAC (cleanup)
+		fmt.Sprintf("/ip/dhcp-server/lease/remove [find mac-address=%s]", macAddress),
+	)
 
-		// Disable netwatch entries
-		fmt.Sprintf("/tool/netwatch/disable [find comment=\"%s\"]", codeNameStr),
-
-		// Disable scheduler instead of removing it
-		fmt.Sprintf("/system/scheduler/disable [find name=\"%s\"]", codeNameStr),
-
-		// Disable script instead of removing it
-		fmt.Sprintf("/system/script/disable [find name=\"open_%s\"]", codeNameStr),
+	// Name-based disables only when we have a usable, sanitized code name
+	if codeNameSafe != "" {
+		disableCommands = append(disableCommands,
+			// Disable queue simple rules
+			fmt.Sprintf("/queue/simple/disable [find name=\"%s\"]", codeNameSafe),
+			// Disable netwatch entries
+			fmt.Sprintf("/tool/netwatch/disable [find comment=\"%s\"]", codeNameSafe),
+			// Disable scheduler instead of removing it
+			fmt.Sprintf("/system/scheduler/disable [find name=\"%s\"]", codeNameSafe),
+			// script cant be disabled so let it be
+			// fmt.Sprintf(":if ([:len [/system/script/find name=\"open_%s\"]] > 0) do={ /system/script/disable [find name=\"open_%s\"] }", codeNameSafe, codeNameSafe),
+		)
 	}
 
 	log.Printf("🔒 Executing %d cleanup commands (disable) for MAC %s, Code %s", len(disableCommands), macAddress, codeNameStr)

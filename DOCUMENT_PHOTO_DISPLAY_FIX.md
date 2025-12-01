@@ -107,7 +107,7 @@ function downloadDocumentPhoto() {
     
     <template #footer>
       <UButton @click="downloadDocumentPhoto">
-        <UIcon name="i-heroicons-arrow-down-tray" class="mr-2" />
+        <LucideIcon name="i-heroicons-arrow-down-tray" class="mr-2" />
         Download
       </UButton>
     </template>

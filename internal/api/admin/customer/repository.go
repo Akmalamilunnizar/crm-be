@@ -247,9 +247,20 @@ type CustomerListResponse struct {
 func (r AdminCustomerRepositoryStruct) FindByIdDetailAdminCustomerRepository(request IdAdminCustomerRequest) (*CustomerDetailResponse, error) {
 	// Get customer with all related data
 	customer := entities.Customer{}
-	tx := r.db.Preload("Area").Preload("Company").Where("deleted_at IS NULL").First(&customer, "id = ?", request.Id)
+	tx := r.db.Preload("Area").Preload("Company").Where("deleted_at IS NULL").Find(&customer, "id = ?", request.Id)
 	if tx.Error != nil {
 		return nil, tx.Error
+	}
+
+	// Check if customer was found
+	if customer.ID == "" {
+		// Check if customer exists but is soft-deleted
+		var deletedCustomer entities.Customer
+		deletedCheck := r.db.Where("id = ? AND deleted_at IS NOT NULL", request.Id).First(&deletedCustomer)
+		if deletedCheck.Error == nil {
+			return nil, fmt.Errorf("customer with ID '%s' has been deleted", request.Id)
+		}
+		return nil, fmt.Errorf("customer with ID '%s' not found", request.Id)
 	}
 
 	// Get customer installations

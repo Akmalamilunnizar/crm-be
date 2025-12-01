@@ -255,17 +255,49 @@ func (h *Handler) GetTechnicianChecklist(c *fiber.Ctx) error {
 		}
 	}
 
-	// Get ticket to retrieve network architecture
+	// Get ticket to retrieve network architecture and check if it's a dismantle ticket
 	ticket, terr := h.svc.repo.GetTicketByID(id)
 	var networkArchPtr *string
-	if terr == nil && ticket.NetworkArchitecture != nil && *ticket.NetworkArchitecture != "" {
-		networkArchPtr = ticket.NetworkArchitecture
+	isDismantleTicket := false
+
+	if terr == nil {
+		// Check if this is a dismantle ticket by checking classification_id field
+		classificationStr := strings.ToLower(ticket.ClassificationID)
+		if classificationStr == "dismantle" {
+			isDismantleTicket = true
+		}
+
+		// Set network architecture
+		if ticket.NetworkArchitecture != nil && *ticket.NetworkArchitecture != "" {
+			networkArchPtr = ticket.NetworkArchitecture
+		}
+
+		// Auto-set network architecture to DISMANTLE for dismantle tickets
+		if isDismantleTicket && (networkArchPtr == nil || *networkArchPtr == "") {
+			dismantleArch := "DISMANTLE"
+			networkArchPtr = &dismantleArch
+			// Update ticket with DISMANTLE architecture
+			_ = h.svc.repo.SetNetworkArchitecture(id, "DISMANTLE")
+		}
 	}
 
 	// Get all predefined steps filtered by network architecture
 	steps, err := h.svc.GetTechnicianSteps(networkArchPtr)
 	if err != nil {
 		return helpers.ResponseUtils(c, 500, false, err.Error(), nil)
+	}
+
+	// Filter to only step ID 12 and selfie step (step_order = 0) for dismantle tickets
+	const DISMANTLE_STEP_ID = uint64(12)
+	if isDismantleTicket {
+		var dismantleSteps []entities.TechnicianStep
+		for _, step := range steps {
+			// Include selfie step (step_order = 0) and dismantle photo step (id = 12)
+			if step.StepOrder == 0 || step.ID == DISMANTLE_STEP_ID {
+				dismantleSteps = append(dismantleSteps, step)
+			}
+		}
+		steps = dismantleSteps
 	}
 
 	// Get technician progress
@@ -311,20 +343,22 @@ func (h *Handler) GetTechnicianChecklist(c *fiber.Ctx) error {
 		checklist = append(checklist, item)
 	}
 
-	// Return checklist with network architecture
-	// Ticket was already fetched above, reuse it
-	if terr != nil {
-		// do not fail the whole response; return checklist only
-		return helpers.ResponseUtils(c, 200, true, "technician checklist retrieved", fiber.Map{
-			"checklist":            checklist,
-			"network_architecture": nil,
-		})
+	// Return checklist with network architecture and ticket metadata
+	// Include classification info so frontend can also detect dismantle tickets
+	responseData := fiber.Map{
+		"checklist":            checklist,
+		"network_architecture": networkArchPtr,
 	}
 
-	return helpers.ResponseUtils(c, 200, true, "technician checklist retrieved", fiber.Map{
-		"checklist":            checklist,
-		"network_architecture": ticket.NetworkArchitecture,
-	})
+	// Add ticket metadata for frontend to detect dismantle status
+	if terr == nil {
+		responseData["ticket"] = fiber.Map{
+			"classification_id": ticket.ClassificationID,
+			"status":            ticket.Status,
+		}
+	}
+
+	return helpers.ResponseUtils(c, 200, true, "technician checklist retrieved", responseData)
 }
 
 // SaveSelfieStep saves a selfie photo as step 0 for a ticket

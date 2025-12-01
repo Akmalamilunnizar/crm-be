@@ -81,9 +81,9 @@ func (s *Service) MarkTechnicianJobCompleted(ticketID uint64) error {
 	return s.repo.MarkTechnicianJobCompleted(ticketID)
 }
 
-// SetNetworkArchitecture sets FTTH/HTB for a ticket
+// SetNetworkArchitecture sets FTTH/HTB/DISMANTLE for a ticket
 func (s *Service) SetNetworkArchitecture(ticketID uint64, arch string) error {
-	if arch != "FTTH" && arch != "HTB" {
+	if arch != "FTTH" && arch != "HTB" && arch != "DISMANTLE" {
 		return fmt.Errorf("invalid architecture: %s", arch)
 	}
 	return s.repo.SetNetworkArchitecture(ticketID, arch)

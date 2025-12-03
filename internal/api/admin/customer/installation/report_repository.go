@@ -911,6 +911,36 @@ func (r AdminInstallationReportRepositoryStruct) UpdateCompleteInstallationRepor
 
 	log.Printf("DEBUG: Installation saved successfully")
 
+	// Debug incoming network devices and enforce presence of asset_item_id when MAC is provided
+	for i, d := range request.NetworkDevices {
+		log.Printf("DEBUG: Incoming device[%d] AssetsID=%s AssetItemID=%s MAC=%s", i, d.AssetsID, d.AssetItemID, d.MacAddress)
+		if d.MacAddress != "" && d.AssetItemID == "" {
+			tx.Rollback()
+			return installation, fmt.Errorf("device %d with MAC %s is missing asset_item_id", i, d.MacAddress)
+		}
+	}
+
+	// Find existing network devices to release asset items
+	var existingDevices []entities.NetworkDevice
+	if err := tx.Where("customer_installation_id = ?", installation.ID).Find(&existingDevices).Error; err != nil {
+		tx.Rollback()
+		return installation, err
+	}
+
+	// Release asset items (set status to in_stock)
+	for _, device := range existingDevices {
+		if device.AssetItemID != nil && *device.AssetItemID != "" {
+			if err := tx.Model(&entities.AssetItem{}).
+				Where("id = ?", *device.AssetItemID).
+				Update("status", "in_stock").Error; err != nil {
+				log.Printf("WARNING: Failed to release asset item %s: %v", *device.AssetItemID, err)
+				// Continue execution as this is non-critical
+			} else {
+				log.Printf("DEBUG: Released asset item %s (status set to in_stock)", *device.AssetItemID)
+			}
+		}
+	}
+
 	// Delete existing related data
 	if err := tx.Where("customer_installation_id = ?", installation.ID).Delete(&entities.NetworkDevice{}).Error; err != nil {
 		tx.Rollback()
@@ -921,12 +951,15 @@ func (r AdminInstallationReportRepositoryStruct) UpdateCompleteInstallationRepor
 		return installation, err
 	}
 
-	// Create network devices
+	// Create network devices and store their new IDs
+	newNetworkDeviceIDs := make([]string, 0, len(request.NetworkDevices))
+
 	for _, device := range request.NetworkDevices {
 		deviceEntity := entities.NetworkDevice{
 			ID:                     "",
 			CustomerID:             request.CustomerId,
 			AssetsID:               sql.NullString{String: device.AssetsID, Valid: device.AssetsID != ""},
+			AssetItemID:            nil,
 			SwitchID:               &device.SwitchID,
 			PortNumber:             &device.PortNumber,
 			RemotePort:             &device.RemotePort,
@@ -938,10 +971,20 @@ func (r AdminInstallationReportRepositoryStruct) UpdateCompleteInstallationRepor
 			CustomerInstallationID: &installation.ID,
 		}
 
+		// Persist selected asset item ID so it can be released on future updates
+		if device.AssetItemID != "" {
+			assetItemID := device.AssetItemID
+			deviceEntity.AssetItemID = &assetItemID
+		}
+
 		if err := tx.Create(&deviceEntity).Error; err != nil {
 			tx.Rollback()
 			return installation, err
 		}
+
+		// Store the newly created network device ID
+		newNetworkDeviceIDs = append(newNetworkDeviceIDs, deviceEntity.ID)
+		log.Printf("DEBUG: Created network device with new ID: %s", deviceEntity.ID)
 
 		// Handle asset item tracking if asset_item_id is provided
 		if device.AssetItemID != "" {
@@ -956,16 +999,16 @@ func (r AdminInstallationReportRepositoryStruct) UpdateCompleteInstallationRepor
 	}
 
 	// Create customer services
-	for _, service := range request.CustomerServices {
-		// Use service_ready_date from the main installation as service_activation_date
-		// This eliminates the need for a separate service_activation_date field
-
-		// For now, just use the provided values or set to nil
-		// In a future enhancement, we could auto-populate device_id and cable_id
-		// by matching with created network devices and cables
+	// Link each customer service to the corresponding newly created network device
+	for i, service := range request.CustomerServices {
+		// Use the newly created network device ID instead of the old device_id from the request
+		// This prevents foreign key constraint errors since old device IDs were deleted
 		var deviceID *string
-		if service.DeviceID != "" {
-			deviceID = &service.DeviceID
+		if i < len(newNetworkDeviceIDs) {
+			deviceID = &newNetworkDeviceIDs[i]
+			log.Printf("DEBUG: Linking customer service %d to new network device ID: %s", i, *deviceID)
+		} else {
+			log.Printf("WARNING: Customer service %d has no corresponding network device", i)
 		}
 
 		// CableID no longer used - cable data is stored directly in customer_services
@@ -974,6 +1017,7 @@ func (r AdminInstallationReportRepositoryStruct) UpdateCompleteInstallationRepor
 			ID:                     "",
 			CustomerID:             request.CustomerId,
 			DeviceID:               deviceID,
+			CableType:              &service.CableType,
 			CableLength:            &service.CableLength,
 			EndPortType:            &service.EndPortType,
 			UserLogin:              &service.UserLogin,
@@ -984,9 +1028,11 @@ func (r AdminInstallationReportRepositoryStruct) UpdateCompleteInstallationRepor
 		}
 
 		if err := tx.Create(&serviceEntity).Error; err != nil {
+			log.Printf("ERROR: Failed to create customer service: %v", err)
 			tx.Rollback()
 			return installation, err
 		}
+		log.Printf("DEBUG: Created customer service with ID: %s", serviceEntity.ID)
 	}
 
 	// Note: Cable table has been merged with customer_services table

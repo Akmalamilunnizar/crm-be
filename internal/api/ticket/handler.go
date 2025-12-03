@@ -94,32 +94,6 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 		t.ImgCS = in.ImgCS
 	}
 
-	// Auto-classify using SVM if requested or if no type provided
-	if in.AutoClassify || in.Type == nil {
-		log.Printf("Auto-classifying trouble ticket: %s", in.Title)
-
-		// Initialize ML service
-		mlService := NewMLService()
-
-		// Classify the ticket
-		classification, err := mlService.ClassifyTroubleTicket(in.Title)
-		if err != nil {
-			log.Printf("SVM classification failed: %v", err)
-			// Continue without classification if ML fails
-		} else {
-			// Map ML classifier result to trouble type ID
-			troubleTypeID, err := h.svc.repo.GetOrCreateTroubleTypeID(classification.Type)
-			if err != nil {
-				log.Printf("Failed to get/create trouble type ID for '%s': %v", classification.Type, err)
-				// Continue without classification if mapping fails
-			} else {
-				t.Type = &troubleTypeID
-				log.Printf("SVM classified ticket as: %s (confidence: %.2f) -> mapped to trouble type ID: %s",
-					classification.Type, classification.Confidence, troubleTypeID)
-			}
-		}
-	}
-
 	// Use new classification_id field, fallback to legacy classification field
 	classification := in.ClassificationID
 	if classification == "" {
@@ -128,6 +102,37 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 	// Default to "gangguan" if no classification provided
 	if classification == "" {
 		classification = "gangguan"
+	}
+
+	// Auto-classify using SVM ONLY for gangguan tickets
+	// PSB, dismantle, and lainnya tickets should NOT have type field set
+	if classification == "gangguan" && (in.AutoClassify || in.Type == nil) {
+		log.Printf("Auto-classifying gangguan ticket: %s", in.Title)
+
+		// Initialize ML service
+		mlService := NewMLService()
+
+		// Classify the ticket
+		mlClassification, err := mlService.ClassifyTroubleTicket(in.Title)
+		if err != nil {
+			log.Printf("SVM classification failed: %v", err)
+			// Continue without classification if ML fails
+		} else {
+			// Map ML classifier result to trouble type ID
+			troubleTypeID, err := h.svc.repo.GetOrCreateTroubleTypeID(mlClassification.Type)
+			if err != nil {
+				log.Printf("Failed to get/create trouble type ID for '%s': %v", mlClassification.Type, err)
+				// Continue without classification if mapping fails
+			} else {
+				t.Type = &troubleTypeID
+				log.Printf("SVM classified ticket as: %s (confidence: %.2f) -> mapped to trouble type ID: %s",
+					mlClassification.Type, mlClassification.Confidence, troubleTypeID)
+			}
+		}
+	} else if classification != "gangguan" {
+		// For PSB, dismantle, and lainnya: explicitly set Type to nil (leave empty)
+		log.Printf("Non-gangguan ticket (%s) - type field will be left empty", classification)
+		t.Type = nil
 	}
 
 	out, err := h.svc.CreateCS(t, classification)

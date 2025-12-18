@@ -45,73 +45,72 @@ func CreateToken(username string, role string) (string, error) {
 
 // Function to verify JWT tokens
 func VerifyToken(c *fiber.Ctx) error {
-    _ = godotenv.Load()
-    secretKey := []byte(os.Getenv("JWT_SECRET_KEY"))
+	_ = godotenv.Load()
+	secretKey := []byte(os.Getenv("JWT_SECRET_KEY"))
 
-    tokenString := c.Get("Authorization")
-    tokenString = strings.TrimPrefix(tokenString, "Bearer ")
-    if tokenString == "" {
-        return ResponseUtils(c, fiber.StatusUnauthorized, false, "Token not provided", nil)
-    }
+	tokenString := c.Get("Authorization")
+	tokenString = strings.TrimPrefix(tokenString, "Bearer ")
+	if tokenString == "" {
+		return ResponseUtils(c, fiber.StatusUnauthorized, false, "Token not provided", nil)
+	}
 
-    // 1. Parse JWT
-    token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-        return secretKey, nil
-    })
+	// 1. Parse JWT
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		return secretKey, nil
+	})
 
-    if err != nil {
-        return ResponseUtils(c, fiber.StatusUnauthorized, false, "Invalid Token (parse)", err.Error())
-    }
+	if err != nil {
+		return ResponseUtils(c, fiber.StatusUnauthorized, false, "Invalid Token (parse)", err.Error())
+	}
 
-    if !token.Valid {
-        return ResponseUtils(c, fiber.StatusUnauthorized, false, "Invalid Token (not valid)", nil)
-    }
+	if !token.Valid {
+		return ResponseUtils(c, fiber.StatusUnauthorized, false, "Invalid Token (not valid)", nil)
+	}
 
-    dbmysql := database.GetDB()
-    var user entities.User
+	dbmysql := database.GetDB()
+	var user entities.User
 
-    // 2. Cek token di DB
-    if err := dbmysql.First(&user, "token = ?", tokenString).Error; err != nil {
-        if err == gorm.ErrRecordNotFound {
-            return ResponseUtils(c, fiber.StatusUnauthorized, false, "Invalid Token (db not found)", nil)
-        }
-        return ResponseUtils(c, fiber.StatusUnauthorized, false, "Invalid Token (db error)", err.Error())
-    }
+	// 2. Cek token di DB
+	if err := dbmysql.First(&user, "token = ?", tokenString).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return ResponseUtils(c, fiber.StatusUnauthorized, false, "Invalid Token (db not found)", nil)
+		}
+		return ResponseUtils(c, fiber.StatusUnauthorized, false, "Invalid Token (db error)", err.Error())
+	}
 
-    // 3. Cek exp (juga perbaiki tipe)
-    if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-        if expVal, ok := claims["exp"].(float64); ok {
-            exp := int64(expVal)
-            if time.Unix(exp, 0).Before(time.Now()) {
-                return ResponseUtils(c, fiber.StatusUnauthorized, false, "Token Expired", nil)
-            }
-        }
-    } else {
-        return ResponseUtils(c, fiber.StatusUnauthorized, false, "Invalid Token Claims", nil)
-    }
+	// 3. Cek exp (juga perbaiki tipe)
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		if expVal, ok := claims["exp"].(float64); ok {
+			exp := int64(expVal)
+			if time.Unix(exp, 0).Before(time.Now()) {
+				return ResponseUtils(c, fiber.StatusUnauthorized, false, "Token Expired", nil)
+			}
+		}
+	} else {
+		return ResponseUtils(c, fiber.StatusUnauthorized, false, "Invalid Token Claims", nil)
+	}
 
-    subject, err := token.Claims.GetSubject()
-    if err != nil {
-        return ResponseUtils(c, fiber.StatusUnauthorized, false, "Invalid Token Claims (sub)", nil)
-    }
+	subject, err := token.Claims.GetSubject()
+	if err != nil {
+		return ResponseUtils(c, fiber.StatusUnauthorized, false, "Invalid Token Claims (sub)", nil)
+	}
 
-    aud, err := token.Claims.GetAudience()
-    if err != nil || len(aud) == 0 {
-        return ResponseUtils(c, fiber.StatusUnauthorized, false, "Invalid Token Claims (aud)", nil)
-    }
+	aud, err := token.Claims.GetAudience()
+	if err != nil || len(aud) == 0 {
+		return ResponseUtils(c, fiber.StatusUnauthorized, false, "Invalid Token Claims (aud)", nil)
+	}
 
-    c.Locals("user_id", subject)
-    c.Locals("role", aud[0])
+	c.Locals("user_id", subject)
+	c.Locals("role", aud[0])
 
-    return c.Next()
+	return c.Next()
 }
 
-
 func CustomerVerifyToken(c *fiber.Ctx) error {
+	// Try to load .env file, but don't fail if it doesn't exist (for production/Docker)
 	err := godotenv.Load()
 	if err != nil {
-		slog.Error("Error loading .env file", "error", err)
-		return err
+		slog.Debug("No .env file found, using environment variables")
 	}
 	// Add a new global variable for the secret key
 	secretKey := []byte(os.Getenv("JWT_SECRET_KEY"))

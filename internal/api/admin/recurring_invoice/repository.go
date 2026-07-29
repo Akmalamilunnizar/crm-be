@@ -286,7 +286,7 @@ func (r AdminRecurringInvoiceRepositoryStruct) GenerateInvoiceFromRecurring(requ
 			dv := clampToMonth(*invoiceDate, monthsToAdd, preferredDay)
 			dueDate = &dv
 		}
-		log.Printf("[recurring-gen] computed dates id=%s invoice_date=%s due_date=%s (freq=%s preferredDay=%d)", request.Id, invoiceDate.Format("2006-01-02"), dueDate.Format("2006-01-02"), string(recurringInvoice.Frequency), recurringInvoice.DueDate.Day())
+		//log.Printf("[recurring-gen] computed dates id=%s invoice_date=%s due_date=%s (freq=%s preferredDay=%d)", request.Id, invoiceDate.Format("2006-01-02"), dueDate.Format("2006-01-02"), string(recurringInvoice.Frequency), recurringInvoice.DueDate.Day())
 
 		// Consolidate: collapse all unpaid months into a single invoice for the customer
 		var inv entities.Invoice

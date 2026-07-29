@@ -69,7 +69,7 @@ func (s *Service) CreateCS(input entities.TroubleTicket, classification string) 
 	return &input, nil
 }
 
-// CreateTicketFromNetwatch creates a ticket from Netwatch monitoring
+// CreateTicketFromNetwatch create a ticket from Netwatch monitoring
 // DISABLED FOR TESTING - Netwatch integration is currently disabled
 func (s *Service) CreateTicketFromNetwatch(input *entities.TroubleTicket) (*entities.TroubleTicket, error) {
 	// Force initial state to match DB enum values
